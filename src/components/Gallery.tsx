@@ -71,14 +71,14 @@ export function Gallery(props: {
   })
 
   return (
-    <Show when={count > 0} fallback={<div class="h-72 rounded-xl bg-gray-200/60" />}>
+    <Show when={count > 0} fallback={<div class="h-72 rounded-xl bg-surface-2" />}>
       <div>
         <div class="relative" ref={wrapperEl}>
           <Show when={displayed()}>
             <img
               src={displayed()}
               alt=""
-              class="w-full max-h-100 object-contain rounded-xl bg-gray-100"
+              class="w-full max-h-100 object-contain rounded-xl bg-surface"
               style={{
                 height: hPx() ? `${hPx()}px` : 'auto',
                 transition: 'height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
@@ -92,7 +92,7 @@ export function Gallery(props: {
             <img
               src={incoming()!}
               alt=""
-              class="absolute inset-0 w-full h-full object-contain rounded-xl bg-gray-100 transition-opacity duration-200"
+              class="absolute inset-0 w-full h-full object-contain rounded-xl bg-surface transition-opacity duration-200"
               style={{ opacity: ready() ? 1 : 0 }}
               onClick={props.onOpenFull}
               onError={onImageError}
@@ -100,8 +100,8 @@ export function Gallery(props: {
           </Show>
           {/* spinner while the target preloads */}
           <Show when={incoming() && !ready()}>
-            <div class="absolute inset-0 flex items-center justify-center bg-white/60 rounded-xl">
-              <div class="w-6 h-6 rounded-full border-[3px] border-transparent border-t-blue-500 animate-spin" />
+            <div class="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-black/40 rounded-xl">
+              <div class="spinner w-6 h-6" />
             </div>
           </Show>
         </div>
@@ -133,13 +133,13 @@ function SelectorThumb(props: { url: string; active: boolean; onSelect: () => vo
   })
   return (
     <div
-      class="relative w-15 h-15 shrink-0 rounded-md cursor-pointer border-2 overflow-hidden bg-gray-100"
+      class="relative w-15 h-15 shrink-0 rounded-md cursor-pointer border-2 overflow-hidden bg-surface-2"
       style={{ 'border-color': props.active ? '#3b82f6' : 'transparent' }}
       onClick={props.onSelect}
     >
       <Show when={!loaded()}>
         <div class="absolute inset-0 flex items-center justify-center">
-          <div class="w-4 h-4 rounded-full border-2 border-transparent border-t-blue-500 animate-spin" />
+          <div class="spinner w-4 h-4" />
         </div>
       </Show>
       <img

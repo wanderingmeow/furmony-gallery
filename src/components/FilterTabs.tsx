@@ -66,13 +66,13 @@ export function FilterTabs() {
             class="h-8 px-3 rounded-lg text-sm whitespace-nowrap"
             classList={{
               'bg-blue-600 text-white': selected(),
-              'bg-gray-200/70 text-gray-700': !selected() && !warn(),
+              'bg-surface-2 text-ink': !selected() && !warn(),
               'bg-red-600 text-white': !selected() && warn(),
             }}
             onClick={() => setTab(t)}
           >
             {TAB_LABELS[t]}
-            <span class={selected() ? 'text-white/70' : 'text-gray-500'}> ({count()})</span>
+            <span class={selected() ? 'text-white/70' : 'text-muted'}> ({count()})</span>
           </button>
         )
       })}

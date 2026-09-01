@@ -27,14 +27,14 @@ export function SortButtons() {
     <div class="flex items-center gap-2">
       <button
         class="h-8 px-2 rounded-lg text-sm flex items-center gap-1"
-        classList={{ 'bg-orange-400/25 text-orange-700': isPrice(), 'bg-gray-200/70 text-gray-600': !isPrice() }}
+        classList={{ 'bg-orange-400/25 text-orange-700 dark:text-orange-300': isPrice(), 'bg-surface-2 text-ink': !isPrice() }}
         onClick={() => setSortMode(togglePrice(sm()))}
       >
         <AntIcon icon={priceIcon} /> 价格
       </button>
       <button
         class="h-8 px-2 rounded-lg text-sm flex items-center gap-1"
-        classList={{ 'bg-orange-400/25 text-orange-700': isTime(), 'bg-gray-200/70 text-gray-600': !isTime() }}
+        classList={{ 'bg-orange-400/25 text-orange-700 dark:text-orange-300': isTime(), 'bg-surface-2 text-ink': !isTime() }}
         onClick={() => setSortMode(toggleTime(sm()))}
       >
         <AntIcon icon={timeIcon} /> 时间
