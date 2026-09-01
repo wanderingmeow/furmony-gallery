@@ -14,12 +14,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Glass toolbar background — blur + saturate + brightness lifts the backdrop */
+/* Glass toolbar background — blur + saturate + brightness lifts the backdrop.
+   Android WebViews (older Chromium) don't support backdrop-filter, so the default
+   here is a near-opaque fallback that stays readable WITHOUT blur; browsers that
+   DO support it drop to the translucent 0.75 + full filter stack (blur/saturate/brightness). */
 .glass {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
   -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
   border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+@supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
+  .glass {
+    background: rgba(255, 255, 255, 0.75);
+  }
 }
 
 /* Custom drag bar removed: rely on the native scrollbar (iOS overlay bar shows
