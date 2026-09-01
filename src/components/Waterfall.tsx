@@ -21,6 +21,11 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
   const [viewportH, setViewportH] = createSignal(0)
   const [scrollTop, setScrollTop] = createSignal(0)
 
+  // row preview chip shown while scrolling (replaces the old drag-thumb preview)
+  const [preview, setPreview] = createSignal<{ label: string; top: number } | null>(null)
+  let hideTimer: number | null = null
+  const PREVIEW_H = 36
+
   // reset per-mount so scroll restores on return to `/`
   setRestored(false)
 
@@ -44,8 +49,26 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
     raf = requestAnimationFrame(() => {
       raf = 0
       setScrollTop(scroller.scrollTop)
+      updatePreview()
     })
   }
+
+  // compute the current row's preview chip + vertical position, show it, then
+  // hide after ~700ms of no scrolling (idle). Called once per scroll frame.
+  const updatePreview = () => {
+    const s = scrollHeight()
+    const h = viewportH()
+    const top = s <= 0 ? 0 : (scrollTop() / s) * (h - PREVIEW_H)
+    const row = Math.floor(Math.max(0, scrollTop()) / rowHeight())
+    const idx = Math.min(row * cols(), items().length - 1)
+    const item = items()[Math.max(0, idx)]
+    const isPrice = sortMode() === 'priceAsc' || sortMode() === 'priceDesc'
+    const label = item ? (isPrice ? `¥${Math.round(displayPrice(item))}` : `#${item.adoptId}`) : ''
+    setPreview({ label, top })
+    if (hideTimer) clearTimeout(hideTimer)
+    hideTimer = setTimeout(() => setPreview(null), 700)
+  }
+  onCleanup(() => { if (hideTimer) clearTimeout(hideTimer) })
 
   const items = filteredListings
 
@@ -119,8 +142,6 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
     }
   })
 
-  const showScrollbar = () => viewportH() > 0 && scrollHeight() > 0
-
   return (
     <div class="relative h-full w-full overflow-hidden">
       <div
@@ -161,16 +182,16 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
         </div>
       </div>
 
-      <Show when={showScrollbar()}>
-        <ScrollBar
-          viewportH={viewportH}
-          contentHeight={contentHeight}
-          scrollTop={scrollTop}
-          rowHeight={rowHeight}
-          cols={cols}
-          items={items}
-          setScroll={(top) => { scroller.scrollTop = top; setScrollTop(top) }}
-        />
+      {/* row preview chip — pointer-events-none so it never blocks scroll/drag */}
+      <Show when={preview()}>
+        {(p) => (
+          <div
+            class="absolute right-6 z-20 glass rounded-lg px-3 py-2 text-sm font-semibold shadow pointer-events-none"
+            style={{ top: `${Math.min(p().top, viewportH() - PREVIEW_H)}px` }}
+          >
+            {p().label}
+          </div>
+        )}
       </Show>
 
       <BackToTop
@@ -233,118 +254,6 @@ function CardSlot(props: {
       <button class="text-left" onClick={() => props.onOpen(props.listing.adoptId)}>
         <ListingCard listing={props.listing} width={props.cardWidth()} />
       </button>
-    </div>
-  )
-}
-
-// ---- Right-edge iOS-Contacts-style scrollbar with drag preview ----
-function ScrollBar(props: {
-  viewportH: () => number; contentHeight: () => number; scrollTop: () => number; rowHeight: () => number; cols: () => number
-  items: () => AdoptListing[]; setScroll: (top: number) => void
-}) {
-  const trackH = () => props.viewportH()
-  const scrollH = () => props.contentHeight() - props.viewportH()
-  const thumbH = () => Math.max(40, props.viewportH() * (props.viewportH() / props.contentHeight()))
-  const thumbTop = () => (props.scrollTop() / Math.max(1, scrollH())) * (trackH() - thumbH())
-
-  const [dragging, setDragging] = createSignal(false)
-  const [preview, setPreview] = createSignal<{ label: string; top: number } | null>(null)
-
-  let thumbEl!: HTMLDivElement
-  let trackEl!: HTMLDivElement
-  let dragStartY = 0
-  let dragStartTop = 0
-  let rafId: number | null = null
-  let pendingTop = 0
-  let pendingClientY = 0
-
-  // preview label is bigger for finger-friendliness (px-3 py-2 text-sm ≈36px tall)
-  const PREVIEW_H = 36
-
-  // cache the track's page-space top once per drag — reading getBoundingClientRect on
-  // every pointermove forces a synchronous layout flush and punches through the rAF
-  // coalescing (the drag-lag culprit).
-  let trackTop = 0
-  const pointerTopAt = (base: number, clientY: number) => {
-    const y = clientY - base
-    return Math.max(0, Math.min(y - PREVIEW_H / 2, trackH() - PREVIEW_H)) // center on pointer
-  }
-
-  const previewLabel = (top: number): string => {
-    const row = Math.floor(top / props.rowHeight())
-    const idx = Math.min(row * props.cols(), props.items().length - 1)
-    const item = props.items()[Math.max(0, idx)]
-    if (!item) return ''
-    const isPrice = sortMode() === 'priceAsc' || sortMode() === 'priceDesc'
-    return isPrice ? `¥${Math.round(displayPrice(item))}` : `#${item.adoptId}`
-  }
-
-  const onDown = (e: PointerEvent) => {
-    e.preventDefault()
-    thumbEl.setPointerCapture(e.pointerId)
-    dragStartY = e.clientY
-    dragStartTop = props.scrollTop()
-    pendingTop = dragStartTop
-    pendingClientY = e.clientY
-    trackTop = trackEl.getBoundingClientRect().top // one layout read per drag
-    setDragging(true)
-    setPreview({ label: previewLabel(dragStartTop), top: pointerTopAt(trackTop, e.clientY) })
-  }
-
-  const onMove = (e: PointerEvent) => {
-    if (!dragging()) return
-    const dy = e.clientY - dragStartY
-    const top = dragStartTop + (dy / Math.max(1, trackH() - thumbH())) * scrollH()
-    pendingTop = Math.max(0, Math.min(scrollH(), top))
-    pendingClientY = e.clientY
-    // onMove does NO layout reads / no heavy work — only accumulate. All
-    // previewLabel/pointerTop work happens once per frame inside the rAF callback.
-    if (rafId == null) {
-      rafId = requestAnimationFrame(() => {
-        rafId = null
-        props.setScroll(pendingTop)
-        setPreview({ label: previewLabel(pendingTop), top: pointerTopAt(trackTop, pendingClientY) })
-      })
-    }
-  }
-
-  const onUp = (e: PointerEvent) => {
-    if (rafId != null) { cancelAnimationFrame(rafId); rafId = null }
-    thumbEl.releasePointerCapture(e.pointerId)
-    setDragging(false)
-    setPreview(null)
-  }
-
-  onMount(() => {
-    thumbEl.addEventListener('pointerdown', onDown)
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onUp)
-    onCleanup(() => {
-      thumbEl.removeEventListener('pointerdown', onDown)
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onUp)
-    })
-  })
-
-  return (
-    <div ref={trackEl} class="absolute right-1 top-0 bottom-0 w-2 z-20 touch-none select-none">
-      <div
-        ref={thumbEl}
-        class="absolute w-2 bg-black/20 rounded-full"
-        style={{ height: `${thumbH()}px`, top: `${thumbTop()}px` }}
-      />
-      <Show when={preview()}>
-        {(p) => (
-          <div
-            class="absolute right-2 z-20 glass rounded-lg px-3 py-2 text-sm font-semibold shadow"
-            style={{ top: `${Math.min(p().top, trackH() - PREVIEW_H)}px` }}
-          >
-            {p().label}
-          </div>
-        )}
-      </Show>
     </div>
   )
 }

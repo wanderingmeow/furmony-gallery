@@ -96,7 +96,7 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
 
   return (
     <div
-      class="rounded-xl bg-white/80 border border-black/10 p-1.5 shadow-sm select-none"
+      class="rounded-xl bg-white/80 border border-black/10 p-1.5 select-none"
       style={{ width: `${props.width}px`, opacity: locked ? 0.55 : 1 }}
     >
       {/* painter row */}

@@ -47,7 +47,7 @@ export function Detail(props: { onClose: () => void }) {
   return (
     <div class="h-full w-full bg-white flex flex-col">
       <button
-        class="absolute top-3 left-3 z-20 w-10 h-10 rounded-full glass shadow flex items-center justify-center text-lg border border-black/10"
+        class="absolute top-3 left-3 z-20 w-11 h-11 rounded-full glass shadow flex items-center justify-center text-xl border border-black/10"
         onClick={props.onClose}
         aria-label="关闭"
         title="关闭"
