@@ -115,7 +115,7 @@ export function DetailSheet(props: { open: () => boolean; onDismiss: () => void 
             transition: dragging() ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
           }}
         >
-          <div class="relative w-full h-full bg-white overflow-hidden sm:max-w-190 sm:h-[calc(100vh-3rem)] sm:rounded-2xl sm:shadow-2xl">
+          <div class="relative w-full h-full bg-surface overflow-hidden sm:max-w-190 sm:h-[calc(100vh-3rem)] sm:rounded-2xl sm:shadow-2xl">
             <Detail onClose={dismiss} />
           </div>
         </div>

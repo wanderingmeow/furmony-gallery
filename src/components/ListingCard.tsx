@@ -16,7 +16,7 @@ function Avatar(props: { url?: string; alt: string }) {
   return (
     <Show
       when={props.url}
-      fallback={<span class="inline-block w-4.5 h-4.5 rounded-full bg-gray-300" />}
+      fallback={<span class="inline-block w-4.5 h-4.5 rounded-full bg-surface-2" />}
     >
       {(url) => (
         <img
@@ -24,7 +24,7 @@ function Avatar(props: { url?: string; alt: string }) {
           alt={props.alt}
           loading="eager"
           decoding="async"
-          class="w-4.5 h-4.5 rounded-full object-cover bg-gray-200"
+          class="w-4.5 h-4.5 rounded-full object-cover bg-surface-2"
           onError={(e) => {
             if (show) { show = false; e.currentTarget.style.display = 'none' }
           }}
@@ -70,7 +70,7 @@ function Tags(props: { tags: string[]; width: number }) {
       style={{ '-webkit-mask-image': mask(), 'mask-image': mask() }}
     >
       {estimate().map((t) => (
-        <span class="shrink-0 px-2 py-1 rounded-md bg-gray-200/80 text-[11px] text-gray-700">{t}</span>
+        <span class="shrink-0 px-2 py-1 rounded-md bg-surface-2 text-[11px] text-ink">{t}</span>
       ))}
     </div>
   )
@@ -100,21 +100,21 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
 
   return (
     <div
-      class="rounded-xl bg-white/80 border border-black/10 p-1.5 select-none"
+      class="rounded-xl bg-surface border border-border p-1.5 select-none"
       style={{ width: `${props.width}px`, opacity: locked ? 0.55 : 1 }}
     >
       {/* painter row */}
       <div class="flex items-center gap-1.5 px-2 py-1.5">
         <Avatar url={painterAvatar(l)} alt="画师" />
-        <span class="text-[11px] text-gray-500 truncate">{painterName(l) ?? `画师${l.paintersId}`}</span>
+        <span class="text-[11px] text-muted truncate">{painterName(l) ?? `画师${l.paintersId}`}</span>
       </div>
 
       {/* thumbnail — spinner while loading */}
       <div class="px-1.5">
-        <div class="relative card-img w-full rounded-lg bg-gray-100 overflow-hidden" style={{ 'aspect-ratio': String(THUMB_ASPECT) }}>
+        <div class="relative card-img w-full rounded-lg bg-surface overflow-hidden" style={{ 'aspect-ratio': String(THUMB_ASPECT) }}>
           <Show when={thumbLoading()}>
             <div class="absolute inset-0 flex items-center justify-center">
-              <div class="w-5 h-5 rounded-full border-2 border-transparent border-t-blue-500 animate-spin" />
+              <div class="spinner w-5 h-5" />
             </div>
           </Show>
           <img
@@ -133,14 +133,14 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
       <div class="px-2 pt-1.5 pb-1.5 space-y-1">
         <div class="flex items-center gap-1.5">
           <span class="text-sm font-medium truncate">{l.adoptName ?? '未知'}</span>
-          <span class="text-[11px] text-gray-400 shrink-0">#{id}</span>
+          <span class="text-[11px] text-faint shrink-0">#{id}</span>
           <button
             class="ml-auto shrink-0 text-lg leading-none"
             style={{ visibility: showHeart() ? 'visible' : 'hidden' }}
             onClick={onHeart}
             aria-label="收藏"
           >
-            <span class={wishlisted() ? 'text-red-500' : locked ? 'text-gray-400' : 'text-gray-600'}>
+            <span class={wishlisted() ? 'text-red-500' : locked ? 'text-faint' : 'text-ink'}>
               <AntIcon icon={wishlisted() ? HeartFilled : HeartOutlined} />
             </span>
           </button>

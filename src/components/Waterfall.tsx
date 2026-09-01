@@ -110,14 +110,24 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
 
   // ---- persist top visible id (throttled) ----
   // depend on firstRow (changes only on row boundaries), not scrollTop, so the
-  // effect body doesn't re-run on every scroll frame.
+  // effect body doesn't re-run on every scroll frame. At the TOP (firstRow<=0) we
+  // DROP any saved position (lastVisibleId=null) so a refresh lands at the top
+  // instead of restoring the previous spot.
   let saveTimer: number | null = null
   createEffect(() => {
-    const row = firstRow()
-    if (row <= 0) return
     if (saveTimer) return
     saveTimer = setTimeout(() => {
       saveTimer = null
+      // read CURRENT firstRow at fire time, not the captured one — otherwise a
+      // stale timer (e.g. started at top) could wrongly clear/save after scrolling
+      const row = firstRow()
+      if (row <= 0) {
+        if (lastVisibleId() != null) {
+          setLastVisibleId(null)
+          persistSession()
+        }
+        return
+      }
       const idx = Math.min(row * cols(), items().length - 1)
       const item = items()[Math.max(0, idx)]
       if (item) {
@@ -128,11 +138,20 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
   })
   onCleanup(() => { if (saveTimer) clearTimeout(saveTimer) })
 
-  // save scroll position when navigating away
+  // save scroll position when navigating away; at the top, drop it instead so a
+  // refresh lands at the top
   onCleanup(() => {
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
     const top = scrollTop()
-    if (top > 0 && items().length > 0) {
-      const row = Math.floor(top / rowHeight())
+    const row = Math.floor(top / rowHeight())
+    if (row <= 0) {
+      if (lastVisibleId() != null) {
+        setLastVisibleId(null)
+        persistSession()
+      }
+      return
+    }
+    if (items().length > 0) {
       const idx = Math.min(row * cols(), items().length - 1)
       const item = items()[Math.max(0, idx)]
       if (item) {
@@ -174,7 +193,7 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
           </div>
           {/* copyright footer pinned below the last row */}
           <div
-            class="absolute left-0 right-0 flex items-center justify-center text-center text-sm text-gray-500 px-6 py-5 border-t border-black/10"
+            class="absolute left-0 right-0 flex items-center justify-center text-center text-sm text-muted px-6 py-5 border-t border-border"
             style={{ top: `${VIEW_PAD + rowCount() * rowHeight()}px` }}
           >
             所有图片与文字素材均源自 Furmony（furmony.com），版权归原作者所有；本页面仅作浏览展示，不用于商业用途。
@@ -266,7 +285,7 @@ function BackToTop(props: { scrollTop: () => number; onTop: () => void }) {
   return (
     <Show when={show()}>
       <button
-        class="absolute bottom-4 right-4 z-10 w-10 h-10 rounded-full glass shadow flex items-center justify-center text-lg border border-black/10"
+        class="absolute bottom-4 right-4 z-10 w-10 h-10 rounded-full glass shadow flex items-center justify-center text-lg border border-border"
         onClick={() => {
           if (isRefresh()) loadData()
           else props.onTop()

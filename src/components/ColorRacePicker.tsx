@@ -50,12 +50,12 @@ function Column(props: {
     <div class="w-37.5 sm:w-55 flex flex-col">
       <div class="flex items-center px-1.5 pt-0.5">
         <span class="text-xs font-semibold flex items-center gap-1">{props.icon} {props.title}</span>
-        <span class="ml-auto text-[10px] text-gray-400">({props.selected.size}/{props.items.length})</span>
+        <span class="ml-auto text-[10px] text-faint">({props.selected.size}/{props.items.length})</span>
       </div>
       <div class="max-h-60 overflow-y-auto px-1">
         <Show
           when={filtered().length > 0}
-          fallback={<div class="text-xs text-gray-400 px-1.5 py-2">无匹配</div>}
+          fallback={<div class="text-xs text-faint px-1.5 py-2">无匹配</div>}
         >
           {filtered().map((v) => {
             const sel = () => props.selected.has(v)
@@ -65,10 +65,10 @@ function Column(props: {
                 classList={{ 'bg-blue-500/15': sel() }}
                 onClick={() => props.toggle(v)}
               >
-                <span class={sel() ? 'text-blue-600' : 'text-gray-400'}>{sel() ? '✓' : '○'}</span>
+                <span class={sel() ? 'text-blue-600' : 'text-faint'}>{sel() ? '✓' : '○'}</span>
                 <Show when={props.iconOf}><span class="w-4 text-center">{props.iconOf!(v)}</span></Show>
                 <Show when={props.dot}>
-                  <span class={`w-2.5 h-2.5 rounded-full shrink-0 border border-black/20 ${props.dot!(v)}`} />
+                  <span class={`w-2.5 h-2.5 rounded-full shrink-0 border border-border/50 ${props.dot!(v)}`} />
                 </Show>
                 <span>{v}</span>
               </button>
@@ -127,7 +127,7 @@ export function ColorRacePicker() {
         classList={{
           'bg-blue-600 text-white shadow-sm': open(),
           'bg-orange-500 text-white shadow-sm': !open() && active(),
-          'bg-gray-200/70 text-gray-600': !open() && !active(),
+          'bg-surface-2 text-ink': !open() && !active(),
         }}
         onClick={() => setOpen((o) => !o)}
         aria-label="筛选"

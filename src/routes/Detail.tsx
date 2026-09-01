@@ -62,7 +62,7 @@ export function Detail(props: { onClose: () => void }) {
   })
 
   return (
-    <div class="h-full w-full bg-white flex flex-col">
+    <div class="h-full w-full bg-surface flex flex-col">
       <button
         class="absolute top-3 left-3 z-20 w-11 h-11 rounded-full glass shadow flex items-center justify-center text-xl border border-black/10"
         onClick={props.onClose}
@@ -78,7 +78,7 @@ export function Detail(props: { onClose: () => void }) {
         <Show
           when={listing()}
           fallback={
-            <div class="py-20 text-center text-gray-500">
+            <div class="py-20 text-center text-muted">
               {/* deep-link: data not loaded yet (cache read or fetch in flight) → loading;
                   only after dataReady do we know the id truly doesn't exist → not found */}
               {(!dataReady() || isLoading()) ? '加载中…' : '未找到该设定'}
@@ -107,7 +107,7 @@ export function Detail(props: { onClose: () => void }) {
       </div>
 
       {/* bottom toolbar: 前往官网 + wishlist button */}
-      <div class="border-t border-black/10 bg-white px-4 py-3">
+      <div class="border-t border-border bg-surface px-4 py-3">
         <div class="flex items-center gap-4">
           <Show when={listing()}>
             {(l) => {
@@ -118,14 +118,14 @@ export function Detail(props: { onClose: () => void }) {
                 <>
                   <button
                     class="flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm"
-                    classList={{ 'bg-red-500/15 text-red-600': wishlisted(), 'bg-gray-200/70 text-gray-700': !wishlisted() }}
+                    classList={{ 'bg-red-500/15 text-red-600': wishlisted(), 'bg-surface-2 text-ink': !wishlisted() }}
                     style={{ visibility: showHeart ? 'visible' : 'hidden' }}
                     onClick={() => {
                       if (wishlisted()) removeFromWishlist(item.adoptId)
                       else toggleWishlist(item)
                     }}
                   >
-                    <span class={wishlisted() ? 'text-red-500' : 'text-gray-500'}>
+                    <span class={wishlisted() ? 'text-red-500' : 'text-muted'}>
                       <AntIcon icon={wishlisted() ? HeartFilled : HeartOutlined} size={18} />
                     </span>
                     <span>{wishlisted() ? '已收藏' : '收藏'}</span>
@@ -164,7 +164,7 @@ export function Detail(props: { onClose: () => void }) {
 // iOS-style centered loading spinner while the detail image preloads
 function ImageLoading() {
   return (
-    <div class="h-72 rounded-xl bg-gray-200/60 flex items-center justify-center">
+    <div class="h-72 rounded-xl bg-surface-2 flex items-center justify-center">
       <div class="w-6 h-6 rounded-full border-[3px] border-transparent border-t-blue-500 animate-spin" />
     </div>
   )

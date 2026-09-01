@@ -9,7 +9,7 @@ import { StatusBadge } from './StatusBadge'
 function Row(props: { label: string; children: any }) {
   return (
     <div class="grid grid-cols-[72px_1fr] gap-3">
-      <span class="text-xs text-gray-500 pt-1">{props.label}</span>
+      <span class="text-xs text-muted pt-1">{props.label}</span>
       <div class="min-w-0">{props.children}</div>
     </div>
   )
@@ -19,18 +19,18 @@ function HeadImg(props: { url?: string }) {
   // spinner while loading; alt="" so no "head" placeholder text ever shows
   const [loading, setLoading] = createSignal(true)
   return (
-    <Show when={props.url} fallback={<span class="w-15 h-15 rounded-lg bg-gray-200 shrink-0 flex items-center justify-center"><div class="w-4 h-4 rounded-full border-2 border-transparent border-t-blue-500 animate-spin" /></span>}>
+    <Show when={props.url} fallback={<span class="w-15 h-15 rounded-lg bg-surface-2 shrink-0 flex items-center justify-center"><div class="spinner w-4 h-4" /></span>}>
       {(url) => (
-        <div class="relative w-15 h-15 rounded-lg bg-gray-200 shrink-0 overflow-hidden">
+        <div class="relative w-15 h-15 rounded-lg bg-surface-2 shrink-0 overflow-hidden">
           <Show when={loading()}>
             <div class="absolute inset-0 flex items-center justify-center">
-              <div class="w-4 h-4 rounded-full border-2 border-transparent border-t-blue-500 animate-spin" />
+              <div class="spinner w-4 h-4" />
             </div>
           </Show>
           <img
             src={url()}
             alt=""
-            class="w-15 h-15 rounded-lg object-cover border border-black/10 shadow"
+            class="w-15 h-15 rounded-lg object-cover border border-border shadow"
             onLoad={() => setLoading(false)}
             onError={(e) => { setLoading(false); e.currentTarget.style.display = 'none' }}
           />
@@ -48,19 +48,19 @@ export function InfoTable(props: { listing: AdoptListing }) {
   const isDifferent = () => discount() > 0
 
   return (
-    <div class="rounded-xl bg-white/80 border border-black/10 p-3 space-y-2.5">
+    <div class="rounded-xl bg-surface border border-border p-3 space-y-2.5">
       {/* header */}
       <div class="flex items-center gap-3">
         <HeadImg url={stableImageUrl(l.adoptHeadPicture)} />
         <div class="min-w-0">
           <div class="flex items-baseline gap-2">
             <h2 class="text-xl font-bold truncate">{l.adoptName ?? '未知'}</h2>
-            <span class="text-sm text-gray-500 shrink-0">#{l.adoptId}</span>
+            <span class="text-sm text-muted shrink-0">#{l.adoptId}</span>
           </div>
           <div class="flex items-center gap-1.5 mt-1">
             <span class="text-lg font-bold text-orange-600">{formatPrice(non())}</span>
-            <Show when={isDifferent()} fallback={<span class="text-sm text-gray-400">{formatPrice(all())}</span>}>
-              <span class="text-sm text-gray-400 line-through">{formatPrice(all())}</span>
+            <Show when={isDifferent()} fallback={<span class="text-sm text-faint">{formatPrice(all())}</span>}>
+              <span class="text-sm text-faint line-through">{formatPrice(all())}</span>
               <span class="px-1.5 py-0.5 rounded bg-red-600 text-white text-[11px] font-bold">
                 {discount().toFixed(1)}折
               </span>
@@ -73,7 +73,7 @@ export function InfoTable(props: { listing: AdoptListing }) {
       <Show when={l.harmonyPainterVo}>
         <Row label="画师">
           <div class="flex items-center gap-1.5">
-            <Show when={painterAvatar(l)} fallback={<span class="w-6 h-6 rounded-full bg-gray-300" />}>
+            <Show when={painterAvatar(l)} fallback={<span class="w-6 h-6 rounded-full bg-surface-2" />}>
               {(url) => <img src={url()} alt="画师" class="w-6 h-6 rounded-full object-cover" />}
             </Show>
             <span>{painterName(l) ?? '未知'}</span>
@@ -91,7 +91,7 @@ export function InfoTable(props: { listing: AdoptListing }) {
         <Row label="颜色">
           <div class="flex flex-wrap gap-1">
             {colorNames(l).map((c) => (
-              <span class="px-2 py-0.5 rounded-md bg-gray-200/70 text-[11px]">{c}</span>
+              <span class="px-2 py-0.5 rounded-md bg-surface-2 text-[11px] text-ink">{c}</span>
             ))}
           </div>
         </Row>
