@@ -51,7 +51,7 @@ export function FullScreenZoom(props: {
   return (
     <div
       ref={container}
-      class="fixed top-0 left-0 z-50 w-full fs-height bg-black flex items-center justify-center"
+      class="fixed inset-0 z-50 bg-black flex items-center justify-center"
       onKeyDown={keyHandler}
       tabindex={-1}
     >

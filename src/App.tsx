@@ -48,9 +48,7 @@ function Shell() {
     <>
       <Home />
       <Show when={show()}>
-        {/* fs-height (100dvh) instead of inset-0 — inset-0's bottom sits under the
-            iPhone Safari URL bar, so the sheet never reached the visible screen bottom */}
-        <div class="fixed top-0 left-0 z-50 w-full fs-height">
+        <div class="fixed inset-0 z-50">
           {/* dimmed, blurred backdrop — only outside the solid card */}
           <div
             class={`absolute inset-0 bg-black/30 backdrop-blur-md ${closing() ? 'overlay-fade-out' : 'overlay-fade-in'}`}

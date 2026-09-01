@@ -57,7 +57,7 @@ export function Home() {
   // no cache → full-screen loader until first data arrives (cache → immediate render)
   return (
     <Show when={dataReady() || fetchFailed()} fallback={<Loader />}>
-      <div class="h-screen flex flex-col bg-[#f5f5f7]">
+      <div class="fixed inset-0 flex flex-col bg-[#f5f5f7]">
         <Toolbar />
         <div class="flex-1 min-h-0 relative">
           <Show when={errorMessage()}>
@@ -75,7 +75,7 @@ export function Home() {
 
 function Loader() {
   return (
-    <div class="h-screen flex items-center justify-center bg-[#f5f5f7]">
+    <div class="fixed inset-0 flex items-center justify-center bg-[#f5f5f7]">
       <div class="flex flex-col items-center gap-3 text-gray-500">
         <div class="w-10 h-10 rounded-full border-4 border-gray-300 border-t-blue-600 animate-spin" />
         <span class="text-sm">加载中…</span>

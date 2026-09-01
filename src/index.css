@@ -22,18 +22,6 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* Full-height overlay: iPhone Safari's URL bar makes `100vh`/`inset-0` taller than the
-   visible viewport (bottom hidden behind the bar). `100dvh` tracks the dynamic viewport
-   height; keep a `100vh` fallback for browsers without dvh. */
-.fs-height {
-  height: 100vh;
-}
-@supports (height: 100dvh) {
-  .fs-height {
-    height: 100dvh;
-  }
-}
-
 /* Custom drag bar removed: rely on the native scrollbar (iOS overlay bar shows
    during scroll; desktop bar is draggable and fires scroll events → preview shows) */
 .vscroll {

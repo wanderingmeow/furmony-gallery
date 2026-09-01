@@ -22,7 +22,7 @@ export function SearchBar(props: { initial?: string }) {
       <input
         value={input()}
         onInput={onInput}
-        placeholder="搜索设定名称或描述"
+        placeholder="搜索名称/描述/ID"
         class="bg-transparent outline-none text-sm w-full"
       />
     </div>

@@ -3,20 +3,16 @@ import type { SortMode } from '../utils'
 import { sortMode, setSortMode } from '../store'
 import { AntIcon } from './AntIcon'
 
+// simplest toggle: each button only flips between its own two directions and never
+// cancels back to the other group (no triple-press-to-deselect)
 function togglePrice(current: SortMode): SortMode {
-  switch (current) {
-    case 'timeDesc': case 'timeAsc': return 'priceAsc'
-    case 'priceAsc': return 'priceDesc'
-    case 'priceDesc': return 'timeDesc'
-  }
+  // enter price group at priceAsc, then flip asc↔desc — never cancels back to time
+  return current === 'priceAsc' ? 'priceDesc' : 'priceAsc'
 }
 
 function toggleTime(current: SortMode): SortMode {
-  switch (current) {
-    case 'priceAsc': case 'priceDesc': return 'timeDesc'
-    case 'timeDesc': return 'timeAsc'
-    case 'timeAsc': return 'timeDesc'
-  }
+  // enter time group at timeDesc (default), then flip desc↔asc — never cancels back
+  return current === 'timeDesc' ? 'timeAsc' : 'timeDesc'
 }
 
 export function SortButtons() {
