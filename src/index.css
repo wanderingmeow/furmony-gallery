@@ -5,13 +5,30 @@
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Disable pinch-zoom & double-tap zoom page-wide. `touch-action: none` on the root
+   blocks ALL gestures including pinch — supported on iOS since 9, unlike
+   `pan-x pan-y` (iOS 12- can't parse those values, and Safari often ignores them on
+   <html> for document-level pinch). Scrolling is re-enabled ONLY on the real
+   scroll containers below via `pan-x pan-y` (which still excludes pinch). */
+html, body {
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   background: #f5f5f7;
   -webkit-font-smoothing: antialiased;
-  /* SPA: disable pinch / double-tap zoom so layout stays stable */
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+}
+
+/* Re-enable touch scrolling on the actual scroll containers (waterfall, detail
+   sheet, notification list, color/race popup, filter tabs) — pan-x pan-y keeps
+   panning but still excludes pinch-zoom. */
+.vscroll,
+[data-detail-scroll],
+.overflow-y-auto,
+.overflow-x-auto {
+  touch-action: pan-x pan-y;
 }
 
 /* Glass toolbar background — blur + saturate + brightness lifts the backdrop.
@@ -49,24 +66,6 @@ body {
    `contain: layout paint` stays: it clips + scopes raster to this window. */
 .virtual-content {
   contain: layout paint;
-}
-
-/* iOS sheet: solid card slides up from the bottom (in) / down (out) */
-@keyframes sheet-in {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
-.sheet-in {
-  animation: sheet-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@keyframes sheet-out {
-  from { transform: translateY(0); }
-  to   { transform: translateY(100%); }
-}
-.sheet-out {
-  animation: sheet-out 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
-  animation-fill-mode: forwards;
 }
 
 /* Backdrop fade for the detail overlay */

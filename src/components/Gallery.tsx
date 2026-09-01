@@ -13,6 +13,13 @@ export function Gallery(props: {
   const [incoming, setIncoming] = createSignal<string | null>(null)
   const [ready, setReady] = createSignal(false)
 
+  // explicit main-image height (px) so aspect-ratio changes on thumbnail switch
+  // animate smoothly instead of jumping: 0 = auto (first load), then px + transition
+  const MAX_H = 400 // Tailwind max-h-100
+  const [hPx, setHPx] = createSignal(0)
+  let wrapperEl!: HTMLDivElement
+  let targetH = 0
+
   let pendingImg: HTMLImageElement | null = null
   let pendingTarget = ''
 
@@ -28,6 +35,10 @@ export function Gallery(props: {
     pendingImg = img
     const mark = () => {
       if (pendingImg === img && pendingTarget === target && current() === target) {
+        // target height for the incoming image: w-full object-contain capped at MAX_H
+        const w = wrapperEl ? wrapperEl.clientWidth : 0
+        const aspect = img.naturalWidth / (img.naturalHeight || 1)
+        targetH = w > 0 ? Math.min(w / aspect, MAX_H) : 0
         setReady(true)
         pendingImg = null
       }
@@ -37,12 +48,19 @@ export function Gallery(props: {
     img.src = target
   })
 
-  // once the incoming has faded in, promote it to displayed and drop the overlay
+  // once the incoming has faded in, promote it to displayed and drop the overlay.
+  // the new image renders at the OLD height first, then hPx animates to the target
+  // height → smooth extend/shrink instead of an instant jump.
   createEffect(() => {
     if (!ready()) return
     const t = setTimeout(() => {
       const inc = incoming()
-      if (inc) { setDisplayed(inc); setIncoming(null); setReady(false) }
+      if (inc) {
+        setDisplayed(inc)
+        setIncoming(null)
+        setReady(false)
+        if (targetH > 0) setHPx(targetH)
+      }
     }, 220)
     onCleanup(() => clearTimeout(t))
   })
@@ -55,13 +73,18 @@ export function Gallery(props: {
   return (
     <Show when={count > 0} fallback={<div class="h-72 rounded-xl bg-gray-200/60" />}>
       <div>
-        <div class="relative">
+        <div class="relative" ref={wrapperEl}>
           <Show when={displayed()}>
             <img
               src={displayed()}
               alt=""
               class="w-full max-h-100 object-contain rounded-xl bg-gray-100"
+              style={{
+                height: hPx() ? `${hPx()}px` : 'auto',
+                transition: 'height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
+              }}
               onClick={props.onOpenFull}
+              onLoad={(e) => { if (hPx() === 0) setHPx(e.currentTarget.offsetHeight) }}
               onError={onImageError}
             />
           </Show>
