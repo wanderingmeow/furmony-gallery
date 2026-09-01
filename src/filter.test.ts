@@ -121,4 +121,36 @@ describe('compute — search', () => {
     const rows = [listing(1), listing(2)]
     expect(ids(compute(rows, 'all', 'timeDesc', EMPTY, EMPTY, '', EMPTY_MAP))).toEqual([1, 2])
   })
+
+  it('digits-only query substring-matches adoptId (e.g. 259 matches ids containing 259)', () => {
+    const rows = [listing(2594), listing(259), listing(12594), listing(42)]
+    expect(ids(compute(rows, 'all', 'timeDesc', EMPTY, EMPTY, '259', EMPTY_MAP))).toEqual([2594, 259, 12594])
+    expect(ids(compute(rows, 'all', 'timeDesc', EMPTY, EMPTY, '42', EMPTY_MAP))).toEqual([42])
+  })
+
+  it('digits query unions id match with name/description (e.g. 3 finds "L3D" in description)', () => {
+    const rows = [
+      listing(1, { adoptName: '狼' }),
+      listing(2, { detailDescription: 'L3D 渲染' }),
+      listing(3, { adoptName: '某设定' }),
+      listing(30, { adoptName: '别的' }),
+    ]
+    expect(ids(compute(rows, 'all', 'timeDesc', EMPTY, EMPTY, '3', EMPTY_MAP))).toEqual([2, 3, 30])
+  })
+
+  it('digits query trims whitespace', () => {
+    const rows = [listing(2594), listing(42)]
+    expect(ids(compute(rows, 'all', 'timeDesc', EMPTY, EMPTY, '  2594  ', EMPTY_MAP))).toEqual([2594])
+  })
+
+  it('non-digits query falls back to name/description search', () => {
+    const rows = [listing(2594, { adoptName: 'Furry Fox' }), listing(42, { adoptName: '狼' })]
+    expect(ids(compute(rows, 'all', 'timeDesc', EMPTY, EMPTY, 'Fox', EMPTY_MAP))).toEqual([2594])
+    expect(ids(compute(rows, 'all', 'timeDesc', EMPTY, EMPTY, '狼', EMPTY_MAP))).toEqual([42])
+  })
+
+  it('digits query with no match returns empty', () => {
+    const rows = [listing(2594)]
+    expect(ids(compute(rows, 'all', 'timeDesc', EMPTY, EMPTY, '999', EMPTY_MAP))).toEqual([])
+  })
 })

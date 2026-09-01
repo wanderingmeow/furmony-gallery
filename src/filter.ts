@@ -48,11 +48,18 @@ export function compute(
   }
 
   if (searchText) {
-    const q = searchText.toLowerCase()
-    result = result.filter((l) =>
+    const q = searchText.trim().toLowerCase()
+    const byText = (l: AdoptListing) =>
       (l.adoptName?.toLowerCase().includes(q) ?? false) ||
-      (l.detailDescription?.toLowerCase().includes(q) ?? false),
-    )
+      (l.detailDescription?.toLowerCase().includes(q) ?? false)
+    // digits-only input → union of id substring match AND name/description match
+    // (e.g. "3" also finds a listing whose description mentions "L3D")
+    const isDigit = /^\d+$/.test(q);
+    if (isDigit) {
+      result = result.filter((l) => String(l.adoptId).includes(q) || byText(l))
+    } else {
+      result = result.filter(byText)
+    }
   }
   return result
 }
