@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
+import { createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { onImageError } from '../cache'
 
 export function Gallery(props: {
@@ -102,6 +102,12 @@ export function Gallery(props: {
 // (same treatment as card thumbnails, so slow-3G doesn't show a blank frame).
 function SelectorThumb(props: { url: string; active: boolean; onSelect: () => void }) {
   const [loaded, setLoaded] = createSignal(false)
+  let imgEl!: HTMLImageElement
+  // already in cache (complete + has natural size) → set loaded synchronously so the
+  // spinner doesn't flash on a cached thumb (async onLoad would lag a frame)
+  onMount(() => {
+    if (imgEl.complete && imgEl.naturalWidth > 0) setLoaded(true)
+  })
   return (
     <div
       class="relative w-15 h-15 shrink-0 rounded-md cursor-pointer border-2 overflow-hidden bg-gray-100"
@@ -114,9 +120,11 @@ function SelectorThumb(props: { url: string; active: boolean; onSelect: () => vo
         </div>
       </Show>
       <img
+        ref={imgEl}
         src={props.url}
         alt=""
-        loading="lazy"
+        loading="eager"
+        decoding="async"
         class="w-full h-full object-cover"
         onLoad={() => setLoaded(true)}
         onError={onImageError}

@@ -2,8 +2,10 @@ import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from
 import { Portal } from 'solid-js/web'
 import { useParams } from '@solidjs/router'
 import { listings, isWishlisted, toggleWishlist, removeFromWishlist, isLoading, dataReady } from '../store'
+import { HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
 import { detailImages, isLocked } from '../utils'
 import { stableImageUrl } from '../cache'
+import { AntIcon } from '../components/AntIcon'
 import { Gallery } from '../components/Gallery'
 import { FullScreenZoom } from '../components/FullScreenZoom'
 import { InfoTable } from '../components/InfoTable'
@@ -42,15 +44,20 @@ export function Detail(props: { onClose: () => void }) {
     onCleanup(() => document.removeEventListener('keydown', handler))
   })
 
-  // image preload gate: keep a hidden Image, reveal the gallery only once loaded
+  // image preload gate: reveal the gallery only once the FIRST image is loaded.
+  // Switching thumbnails must NOT re-gate — the Gallery already crossfades each
+  // switch on its own, so resetting ready() here would hide the whole gallery and
+  // spin again on every index change even for cached images.
   const [ready, setReady] = createSignal(false)
+  let firstLoadDone = false
   createEffect(() => {
+    if (firstLoadDone) return
     const src = current()
-    if (!src) { setReady(true); return }
+    if (!src) { setReady(true); firstLoadDone = true; return }
     setReady(false)
     const img = new Image()
-    img.onload = () => setReady(true)
-    img.onerror = () => setReady(true) // never block: show fallback instead
+    img.onload = () => { setReady(true); firstLoadDone = true }
+    img.onerror = () => { setReady(true); firstLoadDone = true } // never block: show fallback
     img.src = src
   })
 
@@ -116,8 +123,8 @@ export function Detail(props: { onClose: () => void }) {
                       else toggleWishlist(item)
                     }}
                   >
-                    <span class={wishlisted() ? 'text-red-500 text-lg' : 'text-gray-500 text-lg'}>
-                      {wishlisted() ? '♥' : '♡'}
+                    <span class={wishlisted() ? 'text-red-500' : 'text-gray-500'}>
+                      <AntIcon icon={wishlisted() ? HeartFilled : HeartOutlined} size={18} />
                     </span>
                     <span>{wishlisted() ? '已收藏' : '收藏'}</span>
                   </button>
