@@ -1,4 +1,5 @@
-import { createSignal, onCleanup, onMount, Show } from 'solid-js'
+import { createMemo, createSignal, onCleanup, onMount, Show } from 'solid-js'
+import { HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
 import type { AdoptListing } from '../types'
 import {
   colorNames, displayPrice, formatDiscount, formatPrice, isLocked,
@@ -6,6 +7,7 @@ import {
 } from '../utils'
 import { removeFromWishlist, toggleWishlist, isWishlisted } from '../store'
 import { onImageError, stableImageUrl } from '../cache'
+import { AntIcon } from './AntIcon'
 
 const THUMB_ASPECT = 921 / 597
 
@@ -78,8 +80,10 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
   const l = props.listing
   const id = l.adoptId
   const locked = isLocked(l)
-  const wishlisted = isWishlisted(id)
-  const showHeart = !locked || wishlisted
+  // reactive: isWishlisted reads the wishlist() signal, so the card's heart updates
+  // the moment you favorite/unfavorite (no need to wait for a re-render on scroll)
+  const wishlisted = createMemo(() => isWishlisted(id))
+  const showHeart = () => !locked || wishlisted()
   const discount = formatDiscount(l)
   const tags = [
     ...(raceName(l) ? [raceName(l)!] : []),
@@ -88,7 +92,7 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
 
   const onHeart = (e: MouseEvent) => {
     e.stopPropagation()
-    if (wishlisted) removeFromWishlist(id)
+    if (wishlisted()) removeFromWishlist(id)
     else if (!locked) toggleWishlist(l)
   }
 
@@ -132,12 +136,12 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
           <span class="text-[11px] text-gray-400 shrink-0">#{id}</span>
           <button
             class="ml-auto shrink-0 text-lg leading-none"
-            style={{ visibility: showHeart ? 'visible' : 'hidden' }}
+            style={{ visibility: showHeart() ? 'visible' : 'hidden' }}
             onClick={onHeart}
             aria-label="收藏"
           >
-            <span class={wishlisted ? 'text-red-500' : locked ? 'text-gray-400' : 'text-gray-600'}>
-              {wishlisted ? '♥' : '♡'}
+            <span class={wishlisted() ? 'text-red-500' : locked ? 'text-gray-400' : 'text-gray-600'}>
+              <AntIcon icon={wishlisted() ? HeartFilled : HeartOutlined} />
             </span>
           </button>
         </div>
