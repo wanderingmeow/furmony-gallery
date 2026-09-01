@@ -30,8 +30,14 @@ export function FullScreenZoom(props: {
         setScale(pz.getScale())
       }
     }
+    // sync scale on ANY zoom source (wheel, buttons, pinch, double-tap) — panzoom
+    // fires `panzoomchange` on every transform, so the zoom buttons reflect the
+    // real current state even when the user zoomed manually.
+    const onZoomChange = () => { if (pz) setScale(pz.getScale()) }
+    img.addEventListener('panzoomchange', onZoomChange)
     container.addEventListener('wheel', wheel, { passive: false })
     onCleanup(() => {
+      img.removeEventListener('panzoomchange', onZoomChange)
       container.removeEventListener('wheel', wheel)
       pz?.destroy()
       pz = null
@@ -45,7 +51,7 @@ export function FullScreenZoom(props: {
   return (
     <div
       ref={container}
-      class="fixed inset-0 z-50 bg-black flex items-center justify-center"
+      class="fixed top-0 left-0 z-50 w-full fs-height bg-black flex items-center justify-center"
       onKeyDown={keyHandler}
       tabindex={-1}
     >
@@ -59,7 +65,7 @@ export function FullScreenZoom(props: {
 
       {/* close */}
       <button
-        class="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/40 text-white flex items-center justify-center text-xl hover:bg-black/70"
+        class="absolute top-4 left-4 w-11 h-11 rounded-full bg-black/40 text-white flex items-center justify-center text-xl hover:bg-black/70"
         onClick={props.onClose}
       >
         ✕
