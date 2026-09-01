@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
+import { createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons-svg'
 import Panzoom from '@panzoom/panzoom'
 import { onImageError } from '../cache'
@@ -44,16 +44,21 @@ export function FullScreenZoom(props: {
     })
   })
 
-  const keyHandler = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') props.onClose()
-  }
+  // document-level keys so they work regardless of focus: Esc/X close, +/- zoom
+  onMount(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'x' || e.key === 'X') props.onClose()
+      else if (e.key === '+' || e.key === '=' || e.key === 'Add') { pz?.zoomIn(); setScale(pz?.getScale() ?? 1) }
+      else if (e.key === '-' || e.key === '_' || e.key === 'Subtract') { pz?.zoomOut(); setScale(pz?.getScale() ?? 1) }
+    }
+    document.addEventListener('keydown', handler)
+    onCleanup(() => document.removeEventListener('keydown', handler))
+  })
 
   return (
     <div
       ref={container}
       class="fixed inset-0 z-50 bg-black flex items-center justify-center"
-      onKeyDown={keyHandler}
-      tabindex={-1}
     >
       <img
         ref={img}

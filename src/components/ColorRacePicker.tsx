@@ -44,19 +44,10 @@ function Column(props: {
   dot?: (v: string) => string
   iconOf?: (v: string) => string
 }) {
-  const [q, setQ] = createSignal('')
-  const filtered = () => {
-    const s = q().toLowerCase()
-    return props.items.filter((i) => i.toLowerCase().includes(s))
-  }
+  // per-column search inputs removed — the toolbar search bar already covers it
+  const filtered = () => props.items
   return (
     <div class="w-37.5 sm:w-55 flex flex-col">
-      <input
-        value={q()}
-        onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)}
-        placeholder="筛选…"
-        class="h-7 px-2 my-1 mx-1.5 rounded bg-gray-100 outline-none text-xs"
-      />
       <div class="flex items-center px-1.5 pt-0.5">
         <span class="text-xs font-semibold flex items-center gap-1">{props.icon} {props.title}</span>
         <span class="ml-auto text-[10px] text-gray-400">({props.selected.size}/{props.items.length})</span>
@@ -70,7 +61,7 @@ function Column(props: {
             const sel = () => props.selected.has(v)
             return (
               <button
-                class="w-full flex items-center gap-1.5 px-1.5 py-1 rounded text-xs"
+                class="w-full flex items-center gap-1.5 px-1.5 py-2 rounded text-xs"
                 classList={{ 'bg-blue-500/15': sel() }}
                 onClick={() => props.toggle(v)}
               >
@@ -154,7 +145,7 @@ export function ColorRacePicker() {
           <div
             ref={popup}
             class="fixed z-50 glass rounded-xl shadow-xl p-2 flex flex-col border border-black/10"
-            style={{ top: `${pos()!.top}px`, right: `${pos()!.right}px`, 'backdrop-filter': 'blur(24px) saturate(200%)', '-webkit-backdrop-filter': 'blur(24px) saturate(200%)', background: 'rgba(255,255,255,0.75)' }}
+            style={{ top: `${pos()!.top}px`, right: `${pos()!.right}px` }}
           >
           <div class="flex gap-1">
             <Column

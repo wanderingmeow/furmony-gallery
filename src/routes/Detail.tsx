@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import { useParams } from '@solidjs/router'
 import { listings, isWishlisted, toggleWishlist, removeFromWishlist, isLoading, dataReady } from '../store'
@@ -31,6 +31,16 @@ export function Detail(props: { onClose: () => void }) {
   }
 
   const wishlisted = () => listing() ? isWishlisted(listing()!.adoptId) : false
+
+  // Esc closes the detail sheet. When the fullscreen zoom is open it owns Esc
+  // (closes zoom) — detail defers so a single Esc never closes both at once.
+  onMount(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !full()) props.onClose()
+    }
+    document.addEventListener('keydown', handler)
+    onCleanup(() => document.removeEventListener('keydown', handler))
+  })
 
   // image preload gate: keep a hidden Image, reveal the gallery only once loaded
   const [ready, setReady] = createSignal(false)

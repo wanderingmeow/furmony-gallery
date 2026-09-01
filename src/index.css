@@ -14,11 +14,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Glass toolbar background */
+/* Glass toolbar background — blur + saturate + brightness lifts the backdrop */
 .glass {
   background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 

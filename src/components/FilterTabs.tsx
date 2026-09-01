@@ -61,7 +61,7 @@ export function FilterTabs() {
         const warn = () => t === 'wishlist' && wishlistLockedCount() > 0
         return (
           <button
-            class="h-8 px-3 rounded-lg text-sm whitespace-nowrap"
+            class="h-9 px-3 rounded-lg text-sm whitespace-nowrap"
             classList={{
               'bg-blue-600 text-white': selected(),
               'bg-gray-200/70 text-gray-700': !selected() && !warn(),
