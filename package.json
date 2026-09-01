@@ -1,0 +1,32 @@
+{
+  "name": "furmony-gallery",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build && cp dist/index.html dist/404.html",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.3.4",
+    "@panzoom/panzoom": "^4.6.2",
+    "@solidjs/router": "^1.0.0",
+    "solid-js": "^1.9.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.13.3",
+    "autoprefixer": "^10.5.4",
+    "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^20.12.0",
+    "jsdom": "^30.0.1",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2",
+    "vite-plugin-solid": "^2.11.14",
+    "vitest": "^4.1.11"
+  }
+}

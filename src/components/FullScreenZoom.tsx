@@ -1,0 +1,96 @@
+import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
+import { ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons-svg'
+import Panzoom from '@panzoom/panzoom'
+import { onImageError } from '../cache'
+import { AntIcon } from './AntIcon'
+
+export function FullScreenZoom(props: {
+  imageUrl: string; count: number; index: () => number; onClose: () => void
+}) {
+  let container!: HTMLDivElement
+  let img!: HTMLImageElement
+  let pz: ReturnType<typeof Panzoom> | null = null
+  const [scale, setScale] = createSignal(1)
+  const atMax = () => scale() >= MAX_SCALE - 0.01
+  const atMin = () => scale() <= MIN_SCALE + 0.01
+
+  const MIN_SCALE = 1
+  const MAX_SCALE = 5
+
+  createEffect(() => {
+    const url = props.imageUrl
+    if (!url) return
+    if (pz) { pz.destroy(); pz = null }
+
+    pz = Panzoom(img, { maxScale: MAX_SCALE, minScale: MIN_SCALE, contain: 'outside', cursor: 'grab' })
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault()
+      if (pz) {
+        pz.zoomWithWheel(e)
+        setScale(pz.getScale())
+      }
+    }
+    container.addEventListener('wheel', wheel, { passive: false })
+    onCleanup(() => {
+      container.removeEventListener('wheel', wheel)
+      pz?.destroy()
+      pz = null
+    })
+  })
+
+  const keyHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') props.onClose()
+  }
+
+  return (
+    <div
+      ref={container}
+      class="fixed inset-0 z-50 bg-black flex items-center justify-center"
+      onKeyDown={keyHandler}
+      tabindex={-1}
+    >
+      <img
+        ref={img}
+        src={props.imageUrl}
+        alt=""
+        class="w-full h-full object-contain"
+        onError={onImageError}
+      />
+
+      {/* close */}
+      <button
+        class="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/40 text-white flex items-center justify-center text-xl hover:bg-black/70"
+        onClick={props.onClose}
+      >
+        ✕
+      </button>
+
+      {/* zoom controls — bottom-right; blackened when the zoom limit is reached */}
+      <div class="absolute bottom-6 right-6 flex flex-col gap-2">
+        <button
+          class="w-9 h-9 rounded flex items-center justify-center"
+          classList={{ 'bg-black/20 text-white/40 cursor-not-allowed': atMax(), 'bg-black/40 text-white': !atMax() }}
+          disabled={atMax()}
+          onClick={() => { pz?.zoomIn(); setScale(pz?.getScale() ?? 1) }}
+        >
+          <AntIcon icon={ZoomInOutlined} size={20} />
+        </button>
+        <button
+          class="w-9 h-9 rounded flex items-center justify-center"
+          classList={{ 'bg-black/20 text-white/40 cursor-not-allowed': atMin(), 'bg-black/40 text-white': !atMin() }}
+          disabled={atMin()}
+          onClick={() => { pz?.zoomOut(); setScale(pz?.getScale() ?? 1) }}
+        >
+          <AntIcon icon={ZoomOutOutlined} size={20} />
+        </button>
+      </div>
+
+      {/* page indicator — centered */}
+      <Show when={props.count > 1}>
+        <span class="absolute bottom-6 left-1/2 -translate-x-1/2 px-2 py-1 rounded bg-black/50 text-white text-xs">
+          {props.index() + 1} / {props.count}
+        </span>
+      </Show>
+    </div>
+  )
+}
