@@ -27,12 +27,16 @@ function Shell() {
     initStore()
     window.addEventListener('beforeunload', flushImageUrlMap)
   })
-  createEffect(() => setNavigator((p: string) => navigate(p)))
+  // navigate with scroll:false — @solidjs/router's navigate DEFAULTS scroll:true, which
+  // makes it window.scrollTo(0,0) on EVERY navigation. Clicking a card (or a notification)
+  // to open the sheet must NOT yank the waterfall to top; only the initial-load scroll
+  // restore (createScrollRestore) is allowed to scroll.
+  createEffect(() => setNavigator((p: string) => navigate(p, { scroll: false })))
 
   return (
     <>
       <Home />
-      <DetailSheet open={isDetail} onDismiss={() => navigate('/')} />
+      <DetailSheet open={isDetail} onDismiss={() => navigate('/', { scroll: false })} />
       <NotificationCenter />
     </>
   )

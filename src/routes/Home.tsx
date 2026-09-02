@@ -27,7 +27,10 @@ export function Home() {
   // open detail — no URL query carry: filters/scroll state live in the in-memory store,
   // so nothing pollutes the browser history (every scroll/filter/search used to push a
   // new query entry and flooded the history stack).
-  const onOpen = (id: number) => navigate(`/detail/${id}`)
+  // scroll:false — @solidjs/router's navigate defaults scroll:true and scrolls the
+  // document (the waterfall) to top on EVERY navigation. Opening a card must preserve
+  // the user's current scroll; only the initial-load restore is allowed to scroll.
+  const onOpen = (id: number) => navigate(`/detail/${id}`, { scroll: false })
 
   // no cache → full-screen loader until first data arrives (cache → immediate render)
   return (
