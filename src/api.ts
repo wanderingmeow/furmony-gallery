@@ -19,11 +19,20 @@ async function fetchPage(pageSize?: number, pageNum = 1): Promise<AdoptListRespo
   return data
 }
 
-// Step 1: default call (no pageSize) → total + first page.
-// Step 2: pageSize = total → all rows in one response.
-// (If the backend ever caps pageSize and returns rows < total, we'd switch to
-//  pagination — kept out per Swift's current implementation.)
+// Dev-only mock: the official API is fetched ONCE into listings_sample.json
+// (image URLs replaced with an empty base64 PNG) so dev/test never hammers the
+// live API. Release builds keep the live fetch — `import.meta.env.DEV` is
+// statically `false` in production, so Rollup drops this branch (and the mock
+// chunk) from the shipped bundle.
 export async function fetchAllListings(): Promise<AdoptListing[]> {
+  if (import.meta.env.DEV) {
+    const mockFiles = import.meta.glob<{ default: any }>('../agent/listings_sample.json')
+    const mockLoader = mockFiles['../agent/listings_sample.json']
+    if (mockLoader) {
+      const { default: mock } = await mockLoader()
+      return mock.rows as unknown as AdoptListing[]
+    }
+  }
   const firstPage = await fetchPage(undefined, 1)
   const total = firstPage.total
   const allPage = await fetchPage(total, 1)

@@ -1,4 +1,4 @@
-import { createMemo, createSignal, onCleanup, onMount, Show } from 'solid-js'
+import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
 import type { AdoptListing } from '../types'
 import {
@@ -45,9 +45,9 @@ function Tags(props: { tags: string[]; width: number }) {
       class="flex items-center gap-1.5 min-w-0 overflow-hidden"
       style={{ '-webkit-mask-image': mask(), 'mask-image': mask() }}
     >
-      {estimate().map((t) => (
-        <span class="shrink-0 px-1.5 py-0.5 rounded-md bg-surface-2 text-[11px] text-ink">{t}</span>
-      ))}
+      <For each={estimate()}>
+        {(t) => <span class="shrink-0 px-1.5 py-0.5 rounded-md bg-surface-2 text-[11px] text-ink">{t}</span>}
+      </For>
     </div>
   )
 }
