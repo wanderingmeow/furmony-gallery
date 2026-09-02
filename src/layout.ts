@@ -13,3 +13,22 @@ export const THUMB_ASPECT = 921 / 597
 // making the vertical card gap bigger than the horizontal 16px gap.
 // Keep it exact so rowHeight - cardHeight leaves a 16px vertical gap == horizontal gap.
 export const CARD_EXTRA_HEIGHT = 87.62
+
+// ---- waterfall geometry constants (single source) ----
+// Card padding around the scroller content; horizontal card gap; min card width for the
+// responsive column count; rows rendered beyond the visible window (overscan).
+export const VIEW_PAD = 16
+export const GAP = 16
+export const MIN_CARD = 280
+export const OVERSCAN_ROWS = 6
+
+// Copyright footer band height under the last row
+export const FOOTER_H = 72
+
+// Row-preview chip: height, idle time before fade-out, and fade duration
+export const PREVIEW_H = 36
+export const PREVIEW_IDLE_MS = 700
+export const FADE_MS = 400
+
+// Scroll-position persistence throttle (ms) — saves the top visible id at most this often
+export const SAVE_THROTTLE_MS = 2000

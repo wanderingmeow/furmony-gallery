@@ -28,13 +28,15 @@
   animation: var(--animate-spin);
 }
 
-/* Disable pinch-zoom & double-tap zoom page-wide. `touch-action: none` on the root
-   blocks ALL gestures including pinch — supported on iOS since 9, unlike
-   `pan-x pan-y` (iOS 12- can't parse those values, and Safari often ignores them on
-   <html> for document-level pinch). Scrolling is re-enabled ONLY on the real
-   scroll containers below via `pan-x pan-y` (which still excludes pinch). */
+/* The waterfall scrolls the DOCUMENT (html/body) — the only way iOS status-bar tap-to-top
+   and the PC Home key (both target the document's main scrollable) scroll it to top.
+   `pan-y` allows vertical document scrolling while still blocking pinch at the
+   touch-action level; the viewport meta (maximum-scale=1, user-scalable=no) already
+   disables pinch + double-tap zoom page-wide. overflow-anchor:none stops scroll anchoring
+   from fighting the virtualized content (which shifts as rows mount/unmount). */
 html, body {
-  touch-action: none;
+  touch-action: pan-y;
+  overflow-anchor: none;
   -webkit-tap-highlight-color: transparent;
 }
 
