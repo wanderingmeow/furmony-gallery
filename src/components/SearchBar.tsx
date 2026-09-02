@@ -25,7 +25,7 @@ export function SearchBar(props: { initial?: string }) {
   onCleanup(() => { if (timer) clearTimeout(timer) })
 
   return (
-    <div class="flex items-center gap-1.5 h-8 px-2 glass rounded-lg w-full min-w-0">
+    <div class="flex items-center gap-1.5 h-8 px-2 search-field rounded-lg w-full min-w-0">
       <AntIcon icon={SearchOutlined} class="text-faint shrink-0" />
       <input
         value={input()}

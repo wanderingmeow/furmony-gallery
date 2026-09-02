@@ -7,8 +7,12 @@ import { stableImageUrl } from '../image'
 import { StatusBadge } from './StatusBadge'
 
 function Row(props: { label: string; children: any }) {
+  // border-t on every info row (header has none) → divider between sections; mt/pt give
+  // the divider 6px above and below (not flush against content). Border spans the content
+  // width = card width minus left/right p-3. Left col (64px) matches the header so the
+  // labels align with the avatar column above.
   return (
-    <div class="grid grid-cols-[72px_1fr] gap-3">
+    <div class="grid grid-cols-[64px_1fr] gap-3 border-t border-border mt-1.5 pt-1.5">
       <span class="text-xs text-muted pt-1">{props.label}</span>
       <div class="min-w-0">{props.children}</div>
     </div>
@@ -30,7 +34,7 @@ function HeadImg(props: { url?: string }) {
           <img
             src={url()}
             alt=""
-            class="w-15 h-15 rounded-lg object-cover border border-border shadow"
+            class="w-15 h-15 rounded-lg object-cover border-2 border-border shadow"
             onLoad={() => setLoading(false)}
             onError={(e) => { setLoading(false); e.currentTarget.style.display = 'none' }}
           />
@@ -48,9 +52,10 @@ export function InfoTable(props: { listing: AdoptListing }) {
   const isDifferent = () => discount() > 0
 
   return (
-    <div class="rounded-xl bg-surface border border-border p-3 space-y-2.5">
-      {/* header */}
-      <div class="flex items-center gap-3">
+    <div class="rounded-xl bg-surface border border-border p-3">
+      {/* header — same 2-col grid as the info rows, so the avatar (left col) aligns with the
+          labels and the name/id/price (right col) aligns with the values */}
+      <div class="grid grid-cols-[64px_1fr] gap-3 items-start">
         <HeadImg url={stableImageUrl(l.adoptHeadPicture)} />
         <div class="min-w-0">
           <div class="flex items-baseline gap-2">
@@ -61,7 +66,7 @@ export function InfoTable(props: { listing: AdoptListing }) {
             <span class="text-lg font-bold text-orange-600">{formatPrice(non())}</span>
             <Show when={isDifferent()} fallback={<span class="text-sm text-faint">{formatPrice(all())}</span>}>
               <span class="text-sm text-faint line-through">{formatPrice(all())}</span>
-              <span class="px-1.5 py-0.5 rounded bg-red-600 text-white text-[11px] font-bold">
+              <span class="px-1.5 py-0.5 rounded-md bg-red-600 text-white text-[11px] font-bold">
                 {discount().toFixed(1)}折
               </span>
             </Show>

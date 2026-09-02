@@ -16,16 +16,20 @@ const MIN_CARD = 280
 const OVERSCAN_ROWS = 6
 const FOOTER_H = 72 // copyright footer under the last row
 
-export function Waterfall(props: { onOpen: (id: number) => void }) {
+export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () => number }) {
   let scroller!: HTMLDivElement
   const [viewportW, setViewportW] = createSignal(0)
   const [viewportH, setViewportH] = createSignal(0)
   const [scrollTop, setScrollTop] = createSignal(0)
 
-  // row preview chip shown while scrolling (replaces the old drag-thumb preview)
+  // row preview chip shown while scrolling. Fades OUT after ~700ms idle: leaving() →
+  // opacity-0 (transition); unmount only after the fade completes; new scroll cancels.
   const [preview, setPreview] = createSignal<{ label: string; top: number } | null>(null)
+  const [leaving, setLeaving] = createSignal(false)
   let hideTimer: number | null = null
+  let fadeTimer: number | null = null
   const PREVIEW_H = 36
+  const FADE_MS = 400
 
   // reset per-mount so scroll restores on return to `/`
   setRestored(false)
@@ -66,10 +70,23 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
     const isPrice = sortMode() === 'priceAsc' || sortMode() === 'priceDesc'
     const label = item ? (isPrice ? `¥${Math.round(displayPrice(item))}` : `#${item.adoptId}`) : ''
     setPreview({ label, top })
+    setLeaving(false) // cancel any pending fade-out — chip reappears on new scroll
+    if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null }
     if (hideTimer) clearTimeout(hideTimer)
-    hideTimer = setTimeout(() => setPreview(null), 700)
+    hideTimer = setTimeout(() => {
+      hideTimer = null
+      setLeaving(true) // fade out (opacity-0 via transition)
+      fadeTimer = setTimeout(() => {
+        fadeTimer = null
+        setPreview(null) // only now unmount — fade already done
+        setLeaving(false)
+      }, FADE_MS)
+    }, 700)
   }
-  onCleanup(() => { if (hideTimer) clearTimeout(hideTimer) })
+  onCleanup(() => {
+    if (hideTimer) clearTimeout(hideTimer)
+    if (fadeTimer) clearTimeout(fadeTimer)
+  })
 
   const items = filteredListings
 
@@ -87,7 +104,10 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
   const cardHeight = createMemo(() => cardWidth() / THUMB_ASPECT + CARD_EXTRA_HEIGHT)
   const rowHeight = createMemo(() => cardHeight() + GAP)
   const rowCount = createMemo(() => Math.ceil(items().length / cols()))
-  const contentHeight = createMemo(() => rowCount() * rowHeight() + VIEW_PAD + FOOTER_H)
+  // topPad = floating toolbar height + card padding — reserved at the top so cards start
+  // BELOW the bar (never hidden), while the scroller stays fullscreen.
+  const topPad = createMemo(() => props.topOffset() + VIEW_PAD)
+  const contentHeight = createMemo(() => rowCount() * rowHeight() + topPad() + FOOTER_H)
   const scrollHeight = createMemo(() => Math.max(0, contentHeight() - viewportH()))
 
   const firstRow = createMemo(() => Math.max(0, Math.floor(scrollTop() / rowHeight())))
@@ -103,7 +123,7 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
       setRestored(true)
       const idx = findIndex(items(), id, sortMode())
       const row = Math.floor(Math.max(0, idx) / cols())
-      const target = VIEW_PAD + row * rowHeight()
+      const target = topPad() + row * rowHeight()
       scroller.scrollTop = target
       setScrollTop(target)
     }
@@ -176,7 +196,7 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
       >
         {/* relative → the absolute footer anchors to the scroll content, not the viewport.
             no bottom padding so the copyright band reaches the very bottom (no gray strip) */}
-        <div class="relative" style={{ height: `${contentHeight()}px`, width: '100%', 'padding-top': `${VIEW_PAD}px`, 'padding-right': `${VIEW_PAD}px`, 'padding-bottom': '0', 'padding-left': `${VIEW_PAD}px` }}>
+        <div class="relative" style={{ height: `${contentHeight()}px`, width: '100%', 'padding-top': `${topPad()}px`, 'padding-right': `${VIEW_PAD}px`, 'padding-bottom': '0', 'padding-left': `${VIEW_PAD}px` }}>
           <div
             class="virtual-content"
             style={{
@@ -199,7 +219,7 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
           {/* copyright footer pinned below the last row */}
           <div
             class="absolute left-0 right-0 flex items-center justify-center text-center text-sm text-muted px-6 py-5 border-t border-border"
-            style={{ top: `${VIEW_PAD + rowCount() * rowHeight()}px` }}
+            style={{ top: `${topPad() + rowCount() * rowHeight()}px` }}
           >
             所有图片与文字素材均源自 Furmony（furmony.com），版权归原作者所有；本页面仅作浏览展示，不用于商业用途。
           </div>
@@ -210,8 +230,9 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
       <Show when={preview()}>
         {(p) => (
           <div
-            // right-4 (16px) == VIEW_PAD so the chip's right edge aligns with the cards'
-            class="absolute right-4 z-20 glass rounded-lg px-3 py-2 text-sm font-semibold shadow pointer-events-none"
+            // right-4 == VIEW_PAD; z-50 above the toolbar (z-40); opacity-0 = fade-out
+            class="absolute right-4 z-50 glass rounded-lg px-3 py-2 text-sm font-semibold shadow pointer-events-none transition-opacity duration-300"
+            classList={{ 'opacity-0': leaving() }}
             style={{ top: `${Math.min(p().top, viewportH() - PREVIEW_H)}px` }}
           >
             {p().label}
@@ -290,7 +311,7 @@ function BackToTop(props: { scrollTop: () => number; onTop: () => void }) {
   return (
     <Show when={show()}>
       <button
-        class="absolute bottom-4 right-4 z-10 w-10 h-10 rounded-full glass shadow flex items-center justify-center text-lg border border-border"
+        class="absolute bottom-4 right-4 z-10 w-12 h-12 rounded-full glass shadow flex items-center justify-center text-xl border border-border"
         onClick={() => {
           if (isRefresh()) loadData()
           else props.onTop()

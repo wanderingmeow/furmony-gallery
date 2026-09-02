@@ -1,4 +1,4 @@
-import { Show } from 'solid-js'
+import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import {
   dataReady, fetchFailed, errorMessage, setErrorMessage,
@@ -9,6 +9,21 @@ import { Waterfall } from '../components/Waterfall'
 export function Home() {
   const navigate = useNavigate()
 
+  // floating toolbar's bottom edge → waterfall reserves it at the top so cards start
+  // BELOW the bar. Measured live (ResizeObserver) for toolbar height changes.
+  // NOTE: measure in an EFFECT gated on dataReady — onMount fires while barWrap is
+  // still null (loader showing), so getBoundingClientRect() would throw.
+  const [topOffset, setTopOffset] = createSignal(0)
+  let barWrap!: HTMLDivElement
+  createEffect(() => {
+    if (!dataReady() && !fetchFailed()) return
+    const measure = () => setTopOffset(barWrap.getBoundingClientRect().bottom)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(barWrap)
+    onCleanup(() => ro.disconnect())
+  })
+
   // open detail — no URL query carry: filters/scroll state live in the in-memory store,
   // so nothing pollutes the browser history (every scroll/filter/search used to push a
   // new query entry and flooded the history stack).
@@ -17,17 +32,22 @@ export function Home() {
   // no cache → full-screen loader until first data arrives (cache → immediate render)
   return (
     <Show when={dataReady() || fetchFailed()} fallback={<Loader />}>
-      <div class="fixed inset-0 flex flex-col bg-canvas">
-        <Toolbar />
-        <div class="flex-1 min-h-0 relative">
-          <Show when={errorMessage()}>
-            <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 glass rounded-lg px-3 py-1.5 text-sm text-red-700 shadow flex items-center gap-2">
-              {errorMessage()}
-              <button class="text-xs text-muted" onClick={() => setErrorMessage(null)}>关闭</button>
-            </div>
-          </Show>
-          <Waterfall onOpen={onOpen} />
+      {/* toolbar floats over the fullscreen waterfall (no layout height); the scroller's
+          full-screen viewport includes the bar's overlay band */}
+      <div class="fixed inset-0 bg-canvas">
+        <div class="h-full w-full">
+          <Waterfall onOpen={onOpen} topOffset={topOffset} />
         </div>
+        {/* floating toolbar — absolute overlay, pointer-events pass through the wrapper */}
+        <div ref={barWrap} class="absolute top-0 inset-x-0 z-40 pointer-events-none">
+          <Toolbar />
+        </div>
+        <Show when={errorMessage()}>
+          <div class="absolute top-3 left-1/2 -translate-x-1/2 z-50 glass rounded-lg px-3 py-1.5 text-sm text-red-700 shadow flex items-center gap-2">
+            {errorMessage()}
+            <button class="text-xs text-muted" onClick={() => setErrorMessage(null)}>关闭</button>
+          </div>
+        </Show>
       </div>
     </Show>
   )

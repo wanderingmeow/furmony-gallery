@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from
 import { Portal } from 'solid-js/web'
 import { useParams } from '@solidjs/router'
 import { listings, isWishlisted, toggleWishlist, removeFromWishlist, isLoading, dataReady } from '../store'
-import { HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
+import { CloseOutlined, HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
 import { detailImages, isLocked } from '../domain'
 import { stableImageUrl } from '../image'
 import { AntIcon } from '../components/AntIcon'
@@ -62,14 +62,14 @@ export function Detail(props: { onClose: () => void }) {
   })
 
   return (
-    <div class="h-full w-full bg-surface flex flex-col">
+    <div class="h-full w-full bg-canvas flex flex-col">
       <button
-        class="absolute top-3 left-3 z-20 w-11 h-11 rounded-full glass shadow flex items-center justify-center text-xl border border-black/10"
+        class="absolute top-4 left-4 z-20 w-11 h-11 rounded-full glass flex items-center justify-center border border-border"
         onClick={props.onClose}
         aria-label="关闭"
         title="关闭"
       >
-        ✕
+        <AntIcon icon={CloseOutlined} size={22} />
       </button>
 
       {/* data-detail-scroll: the drag-to-dismiss gesture reads scrollTop here and only
@@ -107,7 +107,7 @@ export function Detail(props: { onClose: () => void }) {
       </div>
 
       {/* bottom toolbar: 前往官网 + wishlist button */}
-      <div class="border-t border-border bg-surface px-4 py-3">
+      <div class="border-t border-border bg-canvas px-4 py-3">
         <div class="flex items-center gap-4">
           <Show when={listing()}>
             {(l) => {
@@ -118,7 +118,7 @@ export function Detail(props: { onClose: () => void }) {
                 <>
                   <button
                     class="flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm"
-                    classList={{ 'bg-red-500/15 text-red-600': wishlisted(), 'bg-surface-2 text-ink': !wishlisted() }}
+                    classList={{ 'bg-red-500/15 text-red-600': wishlisted(), 'bg-surface text-ink': !wishlisted() }}
                     style={{ visibility: showHeart ? 'visible' : 'hidden' }}
                     onClick={() => {
                       if (wishlisted()) removeFromWishlist(item.adoptId)
