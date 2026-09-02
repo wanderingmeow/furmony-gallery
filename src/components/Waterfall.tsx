@@ -5,63 +5,62 @@ import {
   filteredListings, firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
   newContent, clearNewContent, fetchFailed, loadData, sortMode,
 } from '../store'
-import { CARD_EXTRA_HEIGHT, THUMB_ASPECT } from '../layout'
+import { CARD_EXTRA_HEIGHT, THUMB_ASPECT, FADE_MS, FOOTER_H, GAP, MIN_CARD, OVERSCAN_ROWS, PREVIEW_H, PREVIEW_IDLE_MS, SAVE_THROTTLE_MS, VIEW_PAD } from '../layout'
 import { displayPrice } from '../domain'
+import { findIndex } from '../scrollRestore'
 import { ListingCard } from './ListingCard'
 import { AntIcon } from './AntIcon'
 
-const VIEW_PAD = 16
-const GAP = 16
-const MIN_CARD = 280
-const OVERSCAN_ROWS = 6
-const FOOTER_H = 72 // copyright footer under the last row
-
 export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () => number }) {
-  let scroller!: HTMLDivElement
-  const [viewportW, setViewportW] = createSignal(0)
-  const [viewportH, setViewportH] = createSignal(0)
-  const [scrollTop, setScrollTop] = createSignal(0)
-
-  // row preview chip shown while scrolling. Fades OUT after ~700ms idle: leaving() →
-  // opacity-0 (transition); unmount only after the fade completes; new scroll cancels.
-  const [preview, setPreview] = createSignal<{ label: string; top: number } | null>(null)
-  const [leaving, setLeaving] = createSignal(false)
-  let hideTimer: number | null = null
-  let fadeTimer: number | null = null
-  const PREVIEW_H = 36
-  const FADE_MS = 400
+  // The waterfall scrolls the DOCUMENT (html/body), not an inner div — the only way to
+  // get iOS status-bar tap-to-top and the PC Home key (both target the document's main
+  // scrollable). scrollTop mirrors window.scrollY; viewport dims come from the window.
+  const [viewportW, setViewportW] = createSignal(document.documentElement.clientWidth)
+  const [viewportH, setViewportH] = createSignal(window.innerHeight)
+  const [scrollTop, setScrollTop] = createSignal(window.scrollY)
 
   // reset per-mount so scroll restores on return to `/`
   setRestored(false)
 
-  // ResizeObserver for container dims
-  onMount(() => {
-    const ro = new ResizeObserver(() => {
-      setViewportW(scroller.clientWidth)
-      setViewportH(scroller.clientHeight)
-    })
-    ro.observe(scroller)
-    setViewportW(scroller.clientWidth)
-    setViewportH(scroller.clientHeight)
-    onCleanup(() => ro.disconnect())
+  // ---- derived geometry (memoized; run once per dependency change) ----
+  const items = filteredListings
+  const cols = createMemo(() => {
+    const w = viewportW()
+    if (w <= 0) return 2
+    return Math.max(2, Math.floor((w - 2 * VIEW_PAD) / MIN_CARD))
   })
+  const cardWidth = createMemo(() => (viewportW() - 2 * VIEW_PAD - GAP * (cols() - 1)) / cols())
+  const cardHeight = createMemo(() => cardWidth() / THUMB_ASPECT + CARD_EXTRA_HEIGHT)
+  const rowHeight = createMemo(() => cardHeight() + GAP)
+  const rowCount = createMemo(() => Math.ceil(items().length / cols()))
+  // topPad = floating toolbar height + card padding — reserved at the top so cards start
+  // BELOW the bar (never hidden), while the toolbar stays a fixed overlay above.
+  const topPad = createMemo(() => props.topOffset() + VIEW_PAD)
+  const contentHeight = createMemo(() => rowCount() * rowHeight() + topPad() + FOOTER_H)
+  const maxScrollTop = createMemo(() => Math.max(0, contentHeight() - viewportH()))
 
-  // rAF-coalesced scroll handler: pointermove/scroll fire many times per frame;
-  // apply scrollTop once per frame so the reactive layout memos run once, not per event.
+  const firstRow = createMemo(() => Math.max(0, Math.floor(scrollTop() / rowHeight())))
+  const lastRow = createMemo(() => Math.min(rowCount(), Math.ceil((scrollTop() + viewportH()) / rowHeight())))
+  const renderStart = createMemo(() => Math.max(0, firstRow() - OVERSCAN_ROWS))
+  const renderEnd = createMemo(() => Math.min(rowCount(), lastRow() + OVERSCAN_ROWS))
+
+  // ---- row preview chip (encapsulated show/fade state machine) ----
+  const preview = createPreviewController()
   let raf = 0
+  // rAF-coalesced scroll handler: scroll fires many times per frame; apply scrollTop
+  // once per frame so the layout memos run once, not per event.
   const onScroll = () => {
     if (raf) return
     raf = requestAnimationFrame(() => {
       raf = 0
-      setScrollTop(scroller.scrollTop)
+      setScrollTop(window.scrollY)
       updatePreview()
     })
   }
-
-  // compute the current row's preview chip + vertical position, show it, then
-  // hide after ~700ms of no scrolling (idle). Called once per scroll frame.
+  // compute the current row's preview chip + vertical position, then show it (the
+  // controller fades it out after PREVIEW_IDLE_MS of no scrolling).
   const updatePreview = () => {
-    const s = scrollHeight()
+    const s = maxScrollTop()
     const h = viewportH()
     const top = s <= 0 ? 0 : (scrollTop() / s) * (h - PREVIEW_H)
     const row = Math.floor(Math.max(0, scrollTop()) / rowHeight())
@@ -69,170 +68,72 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     const item = items()[Math.max(0, idx)]
     const isPrice = sortMode() === 'priceAsc' || sortMode() === 'priceDesc'
     const label = item ? (isPrice ? `¥${Math.round(displayPrice(item))}` : `#${item.adoptId}`) : ''
-    setPreview({ label, top })
-    setLeaving(false) // cancel any pending fade-out — chip reappears on new scroll
-    if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null }
-    if (hideTimer) clearTimeout(hideTimer)
-    hideTimer = setTimeout(() => {
-      hideTimer = null
-      setLeaving(true) // fade out (opacity-0 via transition)
-      fadeTimer = setTimeout(() => {
-        fadeTimer = null
-        setPreview(null) // only now unmount — fade already done
-        setLeaving(false)
-      }, FADE_MS)
-    }, 700)
+    preview.update(label, top)
   }
-  onCleanup(() => {
-    if (hideTimer) clearTimeout(hideTimer)
-    if (fadeTimer) clearTimeout(fadeTimer)
-  })
 
-  const items = filteredListings
-
-  const cols = createMemo(() => {
-    const w = viewportW()
-    if (w <= 0) return 2
-    return Math.max(2, Math.floor((w - 2 * VIEW_PAD) / MIN_CARD))
-  })
-
-  const cardWidth = createMemo(() => {
-    const c = cols()
-    return (viewportW() - 2 * VIEW_PAD - GAP * (c - 1)) / c
-  })
-
-  const cardHeight = createMemo(() => cardWidth() / THUMB_ASPECT + CARD_EXTRA_HEIGHT)
-  const rowHeight = createMemo(() => cardHeight() + GAP)
-  const rowCount = createMemo(() => Math.ceil(items().length / cols()))
-  // topPad = floating toolbar height + card padding — reserved at the top so cards start
-  // BELOW the bar (never hidden), while the scroller stays fullscreen.
-  const topPad = createMemo(() => props.topOffset() + VIEW_PAD)
-  const contentHeight = createMemo(() => rowCount() * rowHeight() + topPad() + FOOTER_H)
-  const scrollHeight = createMemo(() => Math.max(0, contentHeight() - viewportH()))
-
-  const firstRow = createMemo(() => Math.max(0, Math.floor(scrollTop() / rowHeight())))
-  const lastRow = createMemo(() => Math.min(rowCount(), Math.ceil((scrollTop() + viewportH()) / rowHeight())))
-  const renderStart = createMemo(() => Math.max(0, firstRow() - OVERSCAN_ROWS))
-  const renderEnd = createMemo(() => Math.min(rowCount(), lastRow() + OVERSCAN_ROWS))
-
-  // ---- scroll restoration (once) ----
-  createEffect(() => {
-    const id = firstVisibleId()
-    const ready = cols() > 0 && rowHeight() > 0 && items().length > 0
-    if (ready && id != null && !restored()) {
-      setRestored(true)
-      const idx = findIndex(items(), id, sortMode())
-      const row = Math.floor(Math.max(0, idx) / cols())
-      const target = topPad() + row * rowHeight()
-      scroller.scrollTop = target
-      setScrollTop(target)
+  // document is the scroll container — window resize/scroll drive the signals
+  onMount(() => {
+    const onResize = () => {
+      setViewportW(document.documentElement.clientWidth)
+      setViewportH(window.innerHeight)
     }
+    window.addEventListener('resize', onResize)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onCleanup(() => {
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('scroll', onScroll)
+    })
   })
 
-  // ---- persist top visible id (throttled) ----
-  // depend on firstRow (changes only on row boundaries), not scrollTop, so the
-  // effect body doesn't re-run on every scroll frame. At the TOP (firstRow<=0) we
-  // DROP any saved position (firstVisibleId=null) so a refresh lands at the top
-  // instead of restoring the previous spot.
-  let saveTimer: number | null = null
-  createEffect(() => {
-    // reactive dependency: re-run on row boundaries (NOT scrollTop frames). Reading
-    // firstRow() here (void) keeps the effect alive; the ACTUAL value is read fresh
-    // inside the timer callback so a stale capture can never wrongly clear/save.
-    void firstRow()
-    if (saveTimer) return
-    saveTimer = setTimeout(() => {
-      saveTimer = null
-      // read CURRENT firstRow at fire time, not the captured one — otherwise a
-      // stale timer (e.g. started at top) could wrongly clear/save after scrolling
-      const row = firstRow()
-      if (row <= 0) {
-        if (firstVisibleId() != null) {
-          setFirstVisibleId(null)
-          persistSession()
-        }
-        return
-      }
-      const idx = Math.min(row * cols(), items().length - 1)
-      const item = items()[Math.max(0, idx)]
-      if (item) {
-        setFirstVisibleId(item.adoptId)
-        persistSession()
-      }
-    }, 2000)
-  })
-  onCleanup(() => { if (saveTimer) clearTimeout(saveTimer) })
-
-  // save scroll position when navigating away; at the top, drop it instead so a
-  // refresh lands at the top
-  onCleanup(() => {
-    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
-    const top = scrollTop()
-    const row = Math.floor(top / rowHeight())
-    if (row <= 0) {
-      if (firstVisibleId() != null) {
-        setFirstVisibleId(null)
-        persistSession()
-      }
-      return
-    }
-    if (items().length > 0) {
-      const idx = Math.min(row * cols(), items().length - 1)
-      const item = items()[Math.max(0, idx)]
-      if (item) {
-        setFirstVisibleId(item.adoptId)
-        persistSession()
-      }
-    }
+  // ---- scroll restoration (once) + top-visible-id persistence ----
+  createScrollRestore({
+    scrollToTop: (target) => window.scrollTo(0, target),
+    items, cols, rowHeight, setScrollTop, firstRow, scrollTop,
+    firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
   })
 
   return (
-    <div class="relative h-full w-full overflow-hidden">
-      <div
-        ref={scroller}
-        class="vscroll h-full w-full"
-        onScroll={onScroll}
-        style={{ 'overflow-anchor': 'none' }}
-      >
-        {/* relative → the absolute footer anchors to the scroll content, not the viewport.
-            no bottom padding so the copyright band reaches the very bottom (no gray strip) */}
-        <div class="relative" style={{ height: `${contentHeight()}px`, width: '100%', 'padding-top': `${topPad()}px`, 'padding-right': `${VIEW_PAD}px`, 'padding-bottom': '0', 'padding-left': `${VIEW_PAD}px` }}>
-          <div
-            class="virtual-content"
-            style={{
-              position: 'relative',
-              transform: `translateY(${renderStart() * rowHeight()}px)`,
-              width: `${cols() * cardWidth() + GAP * (cols() - 1)}px`,
-              height: `${(renderEnd() - renderStart()) * rowHeight()}px`,
-            }}
-          >
-            <VirtualCards
-              items={items}
-              start={renderStart}
-              end={renderEnd}
-              cols={cols}
-              cardWidth={cardWidth}
-              rowHeight={rowHeight}
-              onOpen={props.onOpen}
-            />
-          </div>
-          {/* copyright footer pinned below the last row */}
-          <div
-            class="absolute left-0 right-0 flex items-center justify-center text-center text-sm text-muted px-6 py-5 border-t border-border"
-            style={{ top: `${topPad() + rowCount() * rowHeight()}px` }}
-          >
-            所有图片与文字素材均源自 Furmony（furmony.com），版权归原作者所有；本页面仅作浏览展示，不用于商业用途。
-          </div>
+    <>
+      {/* content lives in normal document flow so the document (html/body) scrolls it — this
+          is what enables iOS status-bar tap-to-top + PC Home. padding-top (topPad) keeps the
+          cards below the fixed toolbar; the footer reaches the very bottom (no gray strip). */}
+      <div class="relative w-full" style={{ height: `${contentHeight()}px`, 'padding-top': `${topPad()}px`, 'padding-right': `${VIEW_PAD}px`, 'padding-bottom': '0', 'padding-left': `${VIEW_PAD}px` }}>
+        <div
+          class="virtual-content"
+          style={{
+            position: 'relative',
+            transform: `translateY(${renderStart() * rowHeight()}px)`,
+            width: `${cols() * cardWidth() + GAP * (cols() - 1)}px`,
+            height: `${(renderEnd() - renderStart()) * rowHeight()}px`,
+          }}
+        >
+          <VirtualCards
+            items={items}
+            start={renderStart}
+            end={renderEnd}
+            cols={cols}
+            cardWidth={cardWidth}
+            rowHeight={rowHeight}
+            onOpen={props.onOpen}
+          />
+        </div>
+        {/* copyright footer pinned below the last row */}
+        <div
+          class="absolute left-0 right-0 flex items-center justify-center text-center text-sm text-muted px-6 py-5 border-t border-border"
+          style={{ top: `${topPad() + rowCount() * rowHeight()}px` }}
+        >
+          所有图片与文字素材均源自 Furmony（furmony.com），版权归原作者所有；本页面仅作浏览展示，不用于商业用途。
         </div>
       </div>
 
-      {/* row preview chip — pointer-events-none so it never blocks scroll/drag */}
-      <Show when={preview()}>
+      {/* row preview chip — FIXED to the viewport (the document scrolls, so absolute would
+          scroll away); pointer-events-none so it never blocks scroll/drag */}
+      <Show when={preview.preview()}>
         {(p) => (
           <div
             // right-4 == VIEW_PAD; z-50 above the toolbar (z-40); opacity-0 = fade-out
-            class="absolute right-4 z-50 glass rounded-lg px-3 py-2 text-sm font-semibold shadow pointer-events-none transition-opacity duration-300"
-            classList={{ 'opacity-0': leaving() }}
+            class="fixed right-4 z-50 glass rounded-lg px-3 py-2 text-sm font-semibold shadow pointer-events-none transition-opacity duration-300"
+            classList={{ 'opacity-0': preview.leaving() }}
             style={{ top: `${Math.min(p().top, viewportH() - PREVIEW_H)}px` }}
           >
             {p().label}
@@ -243,14 +144,123 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
       <BackToTop
         scrollTop={scrollTop}
         onTop={() => {
-          // animated smooth scroll — scroll events drive scrollTop so the custom
-          // right-edge scrollbar/thumb follows the animation
-          scroller.scrollTo({ top: 0, behavior: 'smooth' })
+          // animated smooth scroll — window scroll events drive scrollTop so the preview
+          // chip follows the animation
+          window.scrollTo({ top: 0, behavior: 'smooth' })
           clearNewContent()
         }}
       />
-    </div>
+    </>
   )
+}
+
+// ---- Row-preview controller ----
+// Shows the `#id`/`¥price` chip while scrolling, fades it out after ~PREVIEW_IDLE_MS of
+// idle. Encapsulates the show/leaving/timer state machine so Waterfall only calls
+// update() on scroll frames. leaving() → opacity-0 (transition); unmount only after the
+// fade completes; a new scroll cancels the pending fade (no animation-restart blink).
+function createPreviewController() {
+  const [preview, setPreview] = createSignal<{ label: string; top: number } | null>(null)
+  const [leaving, setLeaving] = createSignal(false)
+  let hideTimer: number | null = null
+  let fadeTimer: number | null = null
+
+  const update = (label: string, top: number) => {
+    setPreview({ label, top })
+    setLeaving(false) // cancel any pending fade — chip reappears on new scroll
+    if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null }
+    if (hideTimer) clearTimeout(hideTimer)
+    hideTimer = setTimeout(() => {
+      hideTimer = null
+      setLeaving(true) // fade out
+      fadeTimer = setTimeout(() => {
+        fadeTimer = null
+        setPreview(null) // only now unmount — fade already done
+        setLeaving(false)
+      }, FADE_MS)
+    }, PREVIEW_IDLE_MS)
+  }
+  onCleanup(() => {
+    if (hideTimer) clearTimeout(hideTimer)
+    if (fadeTimer) clearTimeout(fadeTimer)
+  })
+  return { preview, leaving, update }
+}
+
+// ---- Scroll restoration + persistence ----
+// Restores the saved top-visible row once per mount; persists the current top row
+// (throttled) and on cleanup. Kept in a hook so the imperative timer/cleanup logic
+// doesn't sprawl in the component.
+function createScrollRestore(args: {
+  scrollToTop: (target: number) => void
+  items: () => AdoptListing[]
+  cols: () => number
+  rowHeight: () => number
+  setScrollTop: (v: number) => void
+  firstRow: () => number
+  scrollTop: () => number
+  firstVisibleId: () => number | null
+  setFirstVisibleId: (v: number | null) => void
+  persistSession: () => void
+  restored: () => boolean
+  setRestored: (v: boolean) => void
+}) {
+  // ---- restore (once) ----
+  createEffect(() => {
+    const id = args.firstVisibleId()
+    const ready = args.cols() > 0 && args.rowHeight() > 0 && args.items().length > 0
+    if (ready && id != null && !args.restored()) {
+      args.setRestored(true)
+      const idx = findIndex(args.items(), id)
+      const row = Math.floor(Math.max(0, idx) / args.cols())
+      // The saved row sat at viewport y=topPad when captured (the content's padding-top
+      // already offsets cards below the toolbar). Restoring to row*rowHeight — NO topPad —
+      // puts it back at y=topPad, visible below the bar; adding topPad would push it to
+      // y=0 (hidden behind the toolbar).
+      const target = row * args.rowHeight()
+      args.scrollToTop(target)
+      args.setScrollTop(target)
+    }
+  })
+
+  // save the current top-visible row. At the TOP (row<=0) DROP any saved position so a
+  // refresh lands at the top instead of restoring the previous spot.
+  const saveRow = (row: number) => {
+    if (row <= 0) {
+      if (args.firstVisibleId() != null) {
+        args.setFirstVisibleId(null)
+        args.persistSession()
+      }
+      return
+    }
+    const idx = Math.min(row * args.cols(), args.items().length - 1)
+    const item = args.items()[Math.max(0, idx)]
+    if (item) {
+      args.setFirstVisibleId(item.adoptId)
+      args.persistSession()
+    }
+  }
+
+  // ---- persist (throttled) ----
+  // Depend on firstRow (changes only on row boundaries), not scrollTop, so the effect
+  // body doesn't re-run on every scroll frame.
+  let saveTimer: number | null = null
+  createEffect(() => {
+    // reactive dependency: re-run on row boundaries. Reading firstRow() here (void) keeps
+    // the effect alive; the ACTUAL value is read fresh inside the timer callback so a
+    // stale capture can never wrongly clear/save.
+    void args.firstRow()
+    if (saveTimer) return
+    saveTimer = setTimeout(() => {
+      saveTimer = null
+      saveRow(args.firstRow())
+    }, SAVE_THROTTLE_MS)
+  })
+  onCleanup(() => {
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
+    // final save on exit — read the CURRENT scrollTop (the memo may be mid-disposal)
+    saveRow(Math.floor(args.scrollTop() / args.rowHeight()))
+  })
 }
 
 // Flat, identity-keyed card list with absolute positioning. Cards are keyed by
@@ -311,7 +321,7 @@ function BackToTop(props: { scrollTop: () => number; onTop: () => void }) {
   return (
     <Show when={show()}>
       <button
-        class="absolute bottom-4 right-4 z-10 w-12 h-12 rounded-full glass shadow flex items-center justify-center text-xl border border-border"
+        class="fixed bottom-4 right-4 z-10 w-12 h-12 rounded-full glass shadow flex items-center justify-center text-xl border border-border"
         onClick={() => {
           if (isRefresh()) loadData()
           else props.onTop()
@@ -327,22 +337,4 @@ function BackToTop(props: { scrollTop: () => number; onTop: () => void }) {
       </button>
     </Show>
   )
-}
-
-// find nearest index of targetId in filtered list (fallback nearest by sort key)
-function findIndex(items: AdoptListing[], targetId: number, sort: string): number {
-  const i = items.findIndex((l) => l.adoptId === targetId)
-  if (i >= 0) return i
-  const target = items.find((l) => l.adoptId === targetId)
-  if (!target) return 0
-  const isPrice = sort === 'priceAsc' || sort === 'priceDesc'
-  let best = 0
-  let bestD = Infinity
-  items.forEach((l, idx) => {
-    const d = isPrice
-      ? Math.abs(displayPrice(l) - displayPrice(target))
-      : Math.abs((l.createTime ? Date.parse(l.createTime) : 0) - (target.createTime ? Date.parse(target.createTime) : 0))
-    if (d < bestD) { bestD = d; best = idx }
-  })
-  return best
 }

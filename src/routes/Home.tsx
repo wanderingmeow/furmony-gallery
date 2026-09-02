@@ -32,23 +32,20 @@ export function Home() {
   // no cache → full-screen loader until first data arrives (cache → immediate render)
   return (
     <Show when={dataReady() || fetchFailed()} fallback={<Loader />}>
-      {/* toolbar floats over the fullscreen waterfall (no layout height); the scroller's
-          full-screen viewport includes the bar's overlay band */}
-      <div class="fixed inset-0 bg-canvas">
-        <div class="h-full w-full">
-          <Waterfall onOpen={onOpen} topOffset={topOffset} />
-        </div>
-        {/* floating toolbar — absolute overlay, pointer-events pass through the wrapper */}
-        <div ref={barWrap} class="absolute top-0 inset-x-0 z-40 pointer-events-none">
-          <Toolbar />
-        </div>
-        <Show when={errorMessage()}>
-          <div class="absolute top-3 left-1/2 -translate-x-1/2 z-50 glass rounded-lg px-3 py-1.5 text-sm text-red-700 shadow flex items-center gap-2">
-            {errorMessage()}
-            <button class="text-xs text-muted" onClick={() => setErrorMessage(null)}>关闭</button>
-          </div>
-        </Show>
+      {/* The waterfall scrolls the DOCUMENT (html/body) — this makes iOS status-bar tap
+          and the PC Home key scroll it to top. Toolbar + error chip are FIXED overlays
+          that stay pinned while the document (cards) scrolls beneath. */}
+      <Waterfall onOpen={onOpen} topOffset={topOffset} />
+      {/* floating toolbar — fixed overlay, pointer-events pass through the wrapper */}
+      <div ref={barWrap} class="fixed top-0 inset-x-0 z-40 pointer-events-none">
+        <Toolbar />
       </div>
+      <Show when={errorMessage()}>
+        <div class="fixed top-3 left-1/2 -translate-x-1/2 z-50 glass rounded-lg px-3 py-1.5 text-sm text-red-700 shadow flex items-center gap-2">
+          {errorMessage()}
+          <button class="text-xs text-muted" onClick={() => setErrorMessage(null)}>关闭</button>
+        </div>
+      </Show>
     </Show>
   )
 }
