@@ -41,6 +41,8 @@ html, body {
 body {
   margin: 0;
   background: var(--color-canvas);
+  /* Safari uses its own default (black) for inheriting text even in dark — follow ink */
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -54,6 +56,12 @@ body {
   touch-action: pan-x pan-y;
 }
 
+/* Search field inset — translucent overlay dimming the toolbar's backdrop (its own
+   backdrop-filter would be clipped inside .glass). Light: gray 192 @0.25; dark: black @0.25. */
+.search-field {
+  background: rgba(192, 192, 192, 0.25);
+}
+
 /* Glass toolbar background — blur + saturate + brightness lifts the backdrop.
    Android WebViews (older Chromium) don't support backdrop-filter, so the default
    here is a near-opaque fallback that stays readable WITHOUT blur; browsers that
@@ -62,7 +70,6 @@ body {
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
   -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
-  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 @supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
@@ -93,7 +100,9 @@ body {
     /* dark backdrop needs no brightness lift */
     backdrop-filter: blur(24px) saturate(200%);
     -webkit-backdrop-filter: blur(24px) saturate(200%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .search-field {
+    background: rgba(0, 0, 0, 0.25);
   }
 }
 

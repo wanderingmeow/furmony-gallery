@@ -3,36 +3,12 @@ import { HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
 import type { AdoptListing } from '../types'
 import {
   colorNames, displayPrice, formatDiscount, formatPrice, isLocked,
-  painterAvatar, painterName, raceName,
+  painterName, raceName,
 } from '../domain'
 import { THUMB_ASPECT } from '../layout'
 import { removeFromWishlist, toggleWishlist, isWishlisted } from '../store'
 import { onImageError, stableImageUrl } from '../image'
 import { AntIcon } from './AntIcon'
-
-
-function Avatar(props: { url?: string; alt: string }) {
-  let show = true
-  return (
-    <Show
-      when={props.url}
-      fallback={<span class="inline-block w-4.5 h-4.5 rounded-full bg-surface-2" />}
-    >
-      {(url) => (
-        <img
-          src={url()}
-          alt={props.alt}
-          loading="eager"
-          decoding="async"
-          class="w-4.5 h-4.5 rounded-full object-cover bg-surface-2"
-          onError={(e) => {
-            if (show) { show = false; e.currentTarget.style.display = 'none' }
-          }}
-        />
-      )}
-    </Show>
-  )
-}
 
 function Tags(props: { tags: string[]; width: number }) {
   // estimate visible tags that fit within card width
@@ -42,7 +18,7 @@ function Tags(props: { tags: string[]; width: number }) {
     let used = 0
     const out: string[] = []
     for (const t of props.tags) {
-      const w = t.length * 12 + 16
+      const w = t.length * 12 + 12
       if (used + w + spacing <= available) {
         out.push(t)
         used += w + spacing
@@ -70,7 +46,7 @@ function Tags(props: { tags: string[]; width: number }) {
       style={{ '-webkit-mask-image': mask(), 'mask-image': mask() }}
     >
       {estimate().map((t) => (
-        <span class="shrink-0 px-2 py-1 rounded-md bg-surface-2 text-[11px] text-ink">{t}</span>
+        <span class="shrink-0 px-1.5 py-0.5 rounded-md bg-surface-2 text-[11px] text-ink">{t}</span>
       ))}
     </div>
   )
@@ -103,10 +79,9 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
       class="rounded-xl bg-surface border border-border p-1.5 select-none"
       style={{ width: `${props.width}px`, opacity: locked ? 0.55 : 1 }}
     >
-      {/* painter row */}
       <div class="flex items-center gap-1.5 px-2 py-1.5">
-        <Avatar url={painterAvatar(l)} alt="画师" />
         <span class="text-[11px] text-muted truncate">{painterName(l) ?? `画师${l.paintersId}`}</span>
+        <span class="ml-auto shrink-0 text-[11px] text-faint">#{id}</span>
       </div>
 
       {/* thumbnail — spinner while loading */}
@@ -133,7 +108,6 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
       <div class="px-2 pt-1.5 pb-1.5 space-y-1">
         <div class="flex items-center gap-1.5">
           <span class="text-sm font-medium truncate">{l.adoptName ?? '未知'}</span>
-          <span class="text-[11px] text-faint shrink-0">#{id}</span>
           <button
             class="ml-auto shrink-0 text-lg leading-none"
             style={{ visibility: showHeart() ? 'visible' : 'hidden' }}

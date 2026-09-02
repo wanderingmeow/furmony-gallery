@@ -1,5 +1,5 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
-import { ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons-svg'
+import { CloseOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons-svg'
 import Panzoom from '@panzoom/panzoom'
 import { onImageError } from '../image'
 import { AntIcon } from './AntIcon'
@@ -70,10 +70,10 @@ export function FullScreenZoom(props: {
 
       {/* close */}
       <button
-        class="absolute top-4 left-4 w-11 h-11 rounded-full bg-black/40 text-white flex items-center justify-center text-xl hover:bg-black/70"
+        class="absolute top-4 left-4 w-11 h-11 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/70"
         onClick={props.onClose}
       >
-        ✕
+        <AntIcon icon={CloseOutlined} size={22} />
       </button>
 
       {/* zoom controls — bottom-right; blackened when the zoom limit is reached */}
