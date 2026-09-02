@@ -1,27 +1,10 @@
+// src/domain.ts — pure domain derivations for an AdoptListing.
+//
+// Named after the domain (race/color/painter/price/date/lock), not a generic "utils".
+// Only depends on the image-URL service (image.ts); it never touches the listings cache
+// or network layer, so domain logic stays off infrastructure.
 import type { AdoptListing } from './types'
-import { stableImageUrl } from './cache'
-
-// Thumbnail aspect ratio (921/597) — used for card height estimation
-export const THUMB_ASPECT = 921 / 597
-// Estimated text/extra height below the thumbnail in a card
-// Real card height = cardWidth / THUMB_ASPECT + this. Measured via Playwright WebKit
-// at several widths (186/326/280px card): actual ≈ cardWidth/THUMB_ASPECT + 87.62.
-// The thumbnail is inset 24px horizontally, so the old +100 over-reserved by ~12.4px,
-// making the vertical card gap bigger than the horizontal 16px gap.
-// Keep it exact so rowHeight - cardHeight leaves a 16px vertical gap == horizontal gap.
-export const CARD_EXTRA_HEIGHT = 87.62
-
-export type SortMode = 'timeDesc' | 'timeAsc' | 'priceAsc' | 'priceDesc'
-export type FilterTab = 'all' | 'unlocked' | 'locked' | 'wishlist'
-
-export const FILTER_TABS: FilterTab[] = ['all', 'unlocked', 'locked', 'wishlist']
-
-export const TAB_LABELS: Record<FilterTab, string> = {
-  all: '全部',
-  unlocked: '未锁定',
-  locked: '已锁定',
-  wishlist: '心愿单',
-}
+import { stableImageUrl } from './image'
 
 // Static race-name dictionary (mirrors Swift raceNamesMap)
 const RACE_NAMES: Record<number, string> = {
@@ -63,10 +46,6 @@ export function isAdopted(listing: AdoptListing): boolean {
 
 export function isLocked(listing: AdoptListing): boolean {
   return listing.isLock === 2
-}
-
-export function isDimmed(listing: AdoptListing): boolean {
-  return isAdopted(listing) || isLocked(listing)
 }
 
 // Static cached Date parsing (createTime "yyyy-MM-dd HH:mm:ss")

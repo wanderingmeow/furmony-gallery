@@ -1,5 +1,5 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
-import { onImageError } from '../cache'
+import { onImageError } from '../image'
 
 export function Gallery(props: {
   images: string[]; index: () => number; setIndex: (i: number) => void; onOpenFull: () => void

@@ -4,12 +4,12 @@ import type { AdoptListing } from '../types'
 import {
   colorNames, displayPrice, formatDiscount, formatPrice, isLocked,
   painterAvatar, painterName, raceName,
-} from '../utils'
+} from '../domain'
+import { THUMB_ASPECT } from '../layout'
 import { removeFromWishlist, toggleWishlist, isWishlisted } from '../store'
-import { onImageError, stableImageUrl } from '../cache'
+import { onImageError, stableImageUrl } from '../image'
 import { AntIcon } from './AntIcon'
 
-const THUMB_ASPECT = 921 / 597
 
 function Avatar(props: { url?: string; alt: string }) {
   let show = true

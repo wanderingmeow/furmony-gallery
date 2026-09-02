@@ -2,10 +2,11 @@ import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show }
 import { ArrowUpOutlined, SyncOutlined } from '@ant-design/icons-svg'
 import type { AdoptListing } from '../types'
 import {
-  filteredListings, lastVisibleId, setLastVisibleId, persistSession, restored, setRestored,
+  filteredListings, firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
   newContent, clearNewContent, fetchFailed, loadData, sortMode,
 } from '../store'
-import { CARD_EXTRA_HEIGHT, THUMB_ASPECT, displayPrice } from '../utils'
+import { CARD_EXTRA_HEIGHT, THUMB_ASPECT } from '../layout'
+import { displayPrice } from '../domain'
 import { ListingCard } from './ListingCard'
 import { AntIcon } from './AntIcon'
 
@@ -96,7 +97,7 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
 
   // ---- scroll restoration (once) ----
   createEffect(() => {
-    const id = lastVisibleId()
+    const id = firstVisibleId()
     const ready = cols() > 0 && rowHeight() > 0 && items().length > 0
     if (ready && id != null && !restored()) {
       setRestored(true)
@@ -111,10 +112,14 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
   // ---- persist top visible id (throttled) ----
   // depend on firstRow (changes only on row boundaries), not scrollTop, so the
   // effect body doesn't re-run on every scroll frame. At the TOP (firstRow<=0) we
-  // DROP any saved position (lastVisibleId=null) so a refresh lands at the top
+  // DROP any saved position (firstVisibleId=null) so a refresh lands at the top
   // instead of restoring the previous spot.
   let saveTimer: number | null = null
   createEffect(() => {
+    // reactive dependency: re-run on row boundaries (NOT scrollTop frames). Reading
+    // firstRow() here (void) keeps the effect alive; the ACTUAL value is read fresh
+    // inside the timer callback so a stale capture can never wrongly clear/save.
+    void firstRow()
     if (saveTimer) return
     saveTimer = setTimeout(() => {
       saveTimer = null
@@ -122,8 +127,8 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
       // stale timer (e.g. started at top) could wrongly clear/save after scrolling
       const row = firstRow()
       if (row <= 0) {
-        if (lastVisibleId() != null) {
-          setLastVisibleId(null)
+        if (firstVisibleId() != null) {
+          setFirstVisibleId(null)
           persistSession()
         }
         return
@@ -131,7 +136,7 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
       const idx = Math.min(row * cols(), items().length - 1)
       const item = items()[Math.max(0, idx)]
       if (item) {
-        setLastVisibleId(item.adoptId)
+        setFirstVisibleId(item.adoptId)
         persistSession()
       }
     }, 2000)
@@ -145,8 +150,8 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
     const top = scrollTop()
     const row = Math.floor(top / rowHeight())
     if (row <= 0) {
-      if (lastVisibleId() != null) {
-        setLastVisibleId(null)
+      if (firstVisibleId() != null) {
+        setFirstVisibleId(null)
         persistSession()
       }
       return
@@ -155,7 +160,7 @@ export function Waterfall(props: { onOpen: (id: number) => void }) {
       const idx = Math.min(row * cols(), items().length - 1)
       const item = items()[Math.max(0, idx)]
       if (item) {
-        setLastVisibleId(item.adoptId)
+        setFirstVisibleId(item.adoptId)
         persistSession()
       }
     }

@@ -1,58 +1,18 @@
-import { createEffect, Show } from 'solid-js'
-import { useLocation, useNavigate, useSearchParams } from '@solidjs/router'
+import { Show } from 'solid-js'
+import { useNavigate } from '@solidjs/router'
 import {
-  tab, setTab, sortMode, setSortMode, selectedColors, setSelectedColors,
-  selectedRaces, setSelectedRaces, searchText, setSearchText, errorMessage, setErrorMessage,
-  dataReady, fetchFailed, lastVisibleId, setLastVisibleId,
+  dataReady, fetchFailed, errorMessage, setErrorMessage,
 } from '../store'
-import type { FilterTab, SortMode } from '../utils'
 import { Toolbar } from '../components/Toolbar'
 import { Waterfall } from '../components/Waterfall'
 
-const TABS: FilterTab[] = ['all', 'unlocked', 'locked', 'wishlist']
-const SORTS: SortMode[] = ['timeDesc', 'timeAsc', 'priceAsc', 'priceDesc']
-
 export function Home() {
-  const loc = useLocation()
   const navigate = useNavigate()
-  const [, setSP] = useSearchParams()
 
-  // Apply URL params → store on route mount (URL is source of truth)
-  const q = loc.query
-  const urlTab = q.tab as string | undefined
-  const urlSort = q.sort as string | undefined
-  const urlColors = (q.colors as string | undefined)?.split(',').filter(Boolean) ?? []
-  const urlRaces = (q.races as string | undefined)?.split(',').filter(Boolean) ?? []
-  const urlQ = q.q as string | undefined
-  const urlLast = q.lastVisible as string | undefined
-
-  if (urlTab && (TABS as string[]).includes(urlTab)) setTab(urlTab as FilterTab)
-  if (urlSort && (SORTS as string[]).includes(urlSort)) setSortMode(urlSort as SortMode)
-  if (urlColors.length) setSelectedColors(new Set(urlColors))
-  if (urlRaces.length) setSelectedRaces(new Set(urlRaces))
-  if (urlQ != null) setSearchText(urlQ)
-  if (urlLast) setLastVisibleId(Number(urlLast))
-
-  // Store → URL (replace, no history spam). Depends on pathname too so the query
-  // survives route switches: opening detail writes it onto the detail URL, closing
-  // restores it onto `/`.
-  createEffect(() => {
-    const p: Record<string, string> = {}
-    p.tab = tab()
-    p.sort = sortMode()
-    p.colors = selectedColors().size > 0 ? [...selectedColors()].join(',') : ''
-    p.races = selectedRaces().size > 0 ? [...selectedRaces()].join(',') : ''
-    p.q = searchText()
-    p.lastVisible = lastVisibleId() != null ? String(lastVisibleId()) : ''
-    void loc.pathname // re-run on route change so the query is preserved on both URLs
-    setSP(p, { replace: true })
-  })
-
-  // open detail: carry the current query onto the detail URL for shareability
-  const onOpen = (id: number) => {
-    const qs = new URLSearchParams(loc.query as Record<string, string>).toString()
-    navigate(`/detail/${id}${qs ? '?' + qs : ''}`)
-  }
+  // open detail — no URL query carry: filters/scroll state live in the in-memory store,
+  // so nothing pollutes the browser history (every scroll/filter/search used to push a
+  // new query entry and flooded the history stack).
+  const onOpen = (id: number) => navigate(`/detail/${id}`)
 
   // no cache → full-screen loader until first data arrives (cache → immediate render)
   return (

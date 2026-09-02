@@ -1,7 +1,7 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons-svg'
 import Panzoom from '@panzoom/panzoom'
-import { onImageError } from '../cache'
+import { onImageError } from '../image'
 import { AntIcon } from './AntIcon'
 
 export function FullScreenZoom(props: {

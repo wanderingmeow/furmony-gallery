@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from 'solid-js'
 import { getNotifications, removeNotification, openDetail } from '../store'
-import { onImageError, stableImageUrl } from '../cache'
+import { onImageError, stableImageUrl } from '../image'
 import type { LockChange } from '../store'
 
 // Collapsed notification center (top-right):
