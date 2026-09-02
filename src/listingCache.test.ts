@@ -1,52 +1,21 @@
-// Functional tests for the IndexedDB cache layer (cache.ts). No network, no rendering.
+// Functional tests for the listings cache (listingCache.ts). No network, no rendering.
 // fake-indexeddb provides a real-ish IndexedDB; localStorage comes from jsdom.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AdoptListing } from './types'
 
-type CacheModule = typeof import('./cache')
+type CacheModule = typeof import('./listingCache')
 
 function makeListing(overrides: Partial<AdoptListing> = {}): AdoptListing {
   return { adoptId: 1, paintersId: 1, productId: 1, ...overrides }
 }
 
-// fresh module per test → module-level imageUrlMap/dirtyPaths state is isolated
+// fresh module per test → module-level state is isolated; DB is a shared fake-indexeddb
+// global, so reset the table between tests
 let mod: CacheModule
 beforeEach(async () => {
   vi.resetModules()
-  mod = await import('./cache')
-  await mod.clearListings() // DB is a shared fake-indexeddb global — reset the table
-})
-
-describe('stableImageUrl (img_url_map)', () => {
-  it('maps a signed URL (with ?) and remembers the first-seen URL', () => {
-    const first = mod.stableImageUrl('https://a.jpg?sig=1')
-    // same path with a different signature returns the remembered one
-    expect(mod.stableImageUrl('https://a.jpg?sig=999')).toBe('https://a.jpg?sig=1')
-    expect(first).toBe('https://a.jpg?sig=1')
-  })
-
-  it('bypasses no-query URLs entirely (nothing stored, raw returned)', () => {
-    expect(mod.stableImageUrl('https://plain.jpg')).toBe('https://plain.jpg')
-  })
-
-  it('passes undefined through', () => {
-    expect(mod.stableImageUrl(undefined)).toBeUndefined()
-  })
-
-  it('persists dirty entries to IndexedDB and reloads them on a fresh module', async () => {
-    mod.stableImageUrl('https://a.jpg?x=1')
-    await mod.flushImageUrlMap()
-    // seed a stale legacy localStorage copy that init should remove
-    localStorage.setItem('furmony_image_url_map', '{"https://a.jpg":"https://a.jpg?legacy=1"}')
-
-    vi.resetModules()
-    mod = await import('./cache')
-    await mod.initImageUrlMap()
-
-    // remembered URL from DB wins over the fresh signature
-    expect(mod.stableImageUrl('https://a.jpg?y=2')).toBe('https://a.jpg?x=1')
-    expect(localStorage.getItem('furmony_image_url_map')).toBeNull()
-  })
+  mod = await import('./listingCache')
+  await mod.clearListings()
 })
 
 describe('listings cache (adoptId-keyed table + order record)', () => {

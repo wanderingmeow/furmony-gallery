@@ -1,5 +1,5 @@
-import { createSignal, onCleanup } from 'solid-js'
-import { SearchOutlined } from '@ant-design/icons-svg'
+import { createSignal, onCleanup, Show } from 'solid-js'
+import { CloseOutlined, SearchOutlined } from '@ant-design/icons-svg'
 import { searchText, setSearchText } from '../store'
 import { AntIcon } from './AntIcon'
 
@@ -14,17 +14,35 @@ export function SearchBar(props: { initial?: string }) {
     timer = setTimeout(() => setSearchText(v), 300)
   }
 
+  // clear immediately: reset local input + debounce timer + store search
+  const onClear = () => {
+    setInput('')
+    if (timer) clearTimeout(timer)
+    timer = null
+    setSearchText('')
+  }
+
   onCleanup(() => { if (timer) clearTimeout(timer) })
 
   return (
     <div class="flex items-center gap-1.5 h-8 px-2 glass rounded-lg w-full min-w-0">
-      <AntIcon icon={SearchOutlined} class="text-faint" />
+      <AntIcon icon={SearchOutlined} class="text-faint shrink-0" />
       <input
         value={input()}
         onInput={onInput}
         placeholder="搜索名称/描述/ID"
         class="bg-transparent outline-none text-sm w-full"
       />
+      {/* circular clear button — only when there's input */}
+      <Show when={input().length > 0}>
+        <button
+          class="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-faint hover:text-ink transition-colors"
+          onClick={onClear}
+          aria-label="清除搜索"
+        >
+          <AntIcon icon={CloseOutlined} size={10} />
+        </button>
+      </Show>
     </div>
   )
 }

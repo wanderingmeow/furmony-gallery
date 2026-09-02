@@ -1,7 +1,7 @@
 import { createEffect, onMount } from 'solid-js'
 import { Router, Route, useMatch, useNavigate } from '@solidjs/router'
 import { initStore, setNavigator } from './store'
-import { flushImageUrlMap, initImageUrlMap } from './cache'
+import { flushImageUrlMap, initImageUrlMap } from './image'
 import { Home } from './routes/Home'
 import { DetailSheet } from './components/DetailSheet'
 import { NotificationCenter } from './components/NotificationCenter'

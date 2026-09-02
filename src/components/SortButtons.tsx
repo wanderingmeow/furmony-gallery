@@ -1,5 +1,5 @@
 import { ArrowDownOutlined, ArrowUpOutlined, ClockCircleOutlined, DollarOutlined } from '@ant-design/icons-svg'
-import type { SortMode } from '../utils'
+import type { SortMode } from '../filter'
 import { sortMode, setSortMode } from '../store'
 import { AntIcon } from './AntIcon'
 

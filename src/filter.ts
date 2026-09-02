@@ -1,9 +1,23 @@
 // Pure filtering/sorting layer (no reactivity, no I/O) — unit-testable in isolation.
+// Also owns the filter-domain vocabulary (tabs, sort modes, labels) so consumers import
+// these from the filter domain rather than a generic utils module.
 import type { AdoptListing } from './types'
-import type { FilterTab, SortMode } from './utils'
 import {
   colorNames, displayPrice, isLocked, isSelfCommission, publishDate, raceName,
-} from './utils'
+} from './domain'
+
+export type SortMode = 'timeDesc' | 'timeAsc' | 'priceAsc' | 'priceDesc'
+export type FilterTab = 'all' | 'unlocked' | 'locked' | 'wishlist'
+
+export const FILTER_TABS: FilterTab[] = ['all', 'unlocked', 'locked', 'wishlist']
+export const SORT_MODES: SortMode[] = ['timeDesc', 'timeAsc', 'priceAsc', 'priceDesc']
+
+export const TAB_LABELS: Record<FilterTab, string> = {
+  all: '全部',
+  unlocked: '未锁定',
+  locked: '已锁定',
+  wishlist: '心愿单',
+}
 
 export function compute(
   listings: AdoptListing[],

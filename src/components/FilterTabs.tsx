@@ -1,6 +1,5 @@
 import { createSignal, onCleanup, onMount } from 'solid-js'
-import { FILTER_TABS, TAB_LABELS } from '../utils'
-import type { FilterTab } from '../utils'
+import { FILTER_TABS, TAB_LABELS, type FilterTab } from '../filter'
 import {
   tab, setTab, countAll, countUnlocked, countLocked, wishlistUnlockedCount, wishlistLockedCount,
 } from '../store'
