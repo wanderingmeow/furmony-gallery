@@ -1,7 +1,7 @@
-import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
+import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { JSXElement } from 'solid-js'
 import { Portal } from 'solid-js/web'
-import { BgColorsOutlined, FilterOutlined } from '@ant-design/icons-svg'
+import { BgColorsOutlined, FilterFilled, FilterOutlined } from '@ant-design/icons-svg'
 import {
   availableColors, availableRaces, selectedColors, setSelectedColors, selectedRaces, setSelectedRaces,
 } from '../store'
@@ -45,7 +45,6 @@ function Column(props: {
   iconOf?: (v: string) => string
 }) {
   // per-column search inputs removed — the toolbar search bar already covers it
-  const filtered = () => props.items
   return (
     <div class="w-37.5 sm:w-55 flex flex-col">
       <div class="flex items-center px-1.5 pt-0.5">
@@ -54,26 +53,28 @@ function Column(props: {
       </div>
       <div class="max-h-60 overflow-y-auto px-1">
         <Show
-          when={filtered().length > 0}
+          when={props.items.length > 0}
           fallback={<div class="text-xs text-faint px-1.5 py-2">无匹配</div>}
         >
-          {filtered().map((v) => {
-            const sel = () => props.selected.has(v)
-            return (
-              <button
-                class="w-full flex items-center gap-1.5 px-1.5 py-2 rounded text-xs"
-                classList={{ 'bg-blue-500/15': sel() }}
-                onClick={() => props.toggle(v)}
-              >
-                <span class={sel() ? 'text-blue-600' : 'text-faint'}>{sel() ? '✓' : '○'}</span>
-                <Show when={props.iconOf}><span class="w-4 text-center">{props.iconOf!(v)}</span></Show>
-                <Show when={props.dot}>
-                  <span class={`w-2.5 h-2.5 rounded-full shrink-0 border border-border/50 ${props.dot!(v)}`} />
-                </Show>
-                <span>{v}</span>
-              </button>
-            )
-          })}
+          <For each={props.items}>
+            {(v) => {
+              const sel = () => props.selected.has(v)
+              return (
+                <button
+                  class="w-full flex items-center gap-1.5 px-1.5 py-2 rounded text-xs"
+                  classList={{ 'bg-blue-500/15': sel() }}
+                  onClick={() => props.toggle(v)}
+                >
+                  <span class={sel() ? 'text-blue-600' : 'text-faint'}>{sel() ? '✓' : '○'}</span>
+                  <Show when={props.iconOf}><span class="w-4 text-center">{props.iconOf!(v)}</span></Show>
+                  <Show when={props.dot}>
+                    <span class={`w-2.5 h-2.5 rounded-full shrink-0 border border-border/50 ${props.dot!(v)}`} />
+                  </Show>
+                  <span>{v}</span>
+                </button>
+              )
+            }}
+          </For>
         </Show>
       </div>
     </div>
@@ -123,19 +124,19 @@ export function ColorRacePicker() {
   return (
     <div class="relative" ref={wrap}>
       <button
-        class="h-8 px-2 rounded-lg text-sm flex items-center gap-1"
+        class="relative w-8 h-8 rounded-lg flex items-center justify-center"
         classList={{
-          'bg-blue-600 text-white shadow-sm': open(),
-          'bg-orange-500 text-white shadow-sm': !open() && active(),
+          'bg-orange-500/45 text-orange-700 dark:text-orange-300': open(),
+          'bg-orange-500/35 text-orange-700 dark:text-orange-300': !open() && active(),
           'bg-surface-2 text-ink': !open() && !active(),
         }}
         onClick={() => setOpen((o) => !o)}
         aria-label="筛选"
         title="筛选"
       >
-        <AntIcon icon={FilterOutlined} />
+        <AntIcon icon={active() ? FilterFilled : FilterOutlined} />
         <Show when={active()}>
-          <span class="min-w-3.5 h-4 px-1 rounded-full bg-white text-orange-600 text-[10px] font-bold flex items-center justify-center">
+          <span class="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-surface text-orange-600 dark:text-orange-400 text-[9px] font-bold flex items-center justify-center border border-border">
             {count()}
           </span>
         </Show>

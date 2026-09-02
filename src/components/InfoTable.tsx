@@ -1,4 +1,4 @@
-import { createSignal, Show } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js'
 import type { AdoptListing } from '../types'
 import {
   colorNames, formatDiscount, formatPrice, isAdopted, isLocked, painterAvatar, painterName, raceName,
@@ -95,9 +95,9 @@ export function InfoTable(props: { listing: AdoptListing }) {
       <Show when={colorNames(l).length > 0}>
         <Row label="颜色">
           <div class="flex flex-wrap gap-1">
-            {colorNames(l).map((c) => (
-              <span class="px-2 py-0.5 rounded-md bg-surface-2 text-[11px] text-ink">{c}</span>
-            ))}
+            <For each={colorNames(l)}>
+              {(c) => <span class="px-2 py-0.5 rounded-md bg-surface-2 text-[11px] text-ink">{c}</span>}
+            </For>
           </div>
         </Row>
       </Show>

@@ -52,7 +52,7 @@ body {
    sheet, notification list, color/race popup, filter tabs) — pan-x pan-y keeps
    panning but still excludes pinch-zoom. */
 .vscroll,
-[data-detail-scroll],
+[data-sheet-scroll],
 .overflow-y-auto,
 .overflow-x-auto {
   touch-action: pan-x pan-y;
@@ -144,4 +144,26 @@ body {
 .overlay-fade-out {
   animation: overlay-fade-out 0.28s ease-in;
   animation-fill-mode: forwards;
+}
+
+/* Scroll-progress clock ring on the back-to-top button.
+   A conic-gradient arc clipped to a thin ring via a radial mask, driven by a custom-property angle (turn unit).
+   The arc starts at 12 o'clock and sweeps clockwise (clock-style);
+   the faint track is the button's border color, the progress arc is the orange brand accent. */
+.float-progress {
+  position: relative;
+  --float-btn-progress: 0turn;
+}
+.float-progress::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: conic-gradient(
+    #f97316 var(--float-btn-progress),
+    var(--color-border) var(--float-btn-progress)
+  );
+  -webkit-mask: radial-gradient(circle farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(circle farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  pointer-events: none;
 }

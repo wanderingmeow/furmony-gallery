@@ -11,11 +11,10 @@ export function FullScreenZoom(props: {
   let img!: HTMLImageElement
   let pz: ReturnType<typeof Panzoom> | null = null
   const [scale, setScale] = createSignal(1)
-  const atMax = () => scale() >= MAX_SCALE - 0.01
-  const atMin = () => scale() <= MIN_SCALE + 0.01
-
   const MIN_SCALE = 1
   const MAX_SCALE = 5
+  const atMax = () => scale() >= MAX_SCALE - 0.01
+  const atMin = () => scale() <= MIN_SCALE + 0.01
 
   createEffect(() => {
     const url = props.imageUrl

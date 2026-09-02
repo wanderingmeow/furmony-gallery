@@ -72,9 +72,9 @@ export function Detail(props: { onClose: () => void }) {
         <AntIcon icon={CloseOutlined} size={22} />
       </button>
 
-      {/* data-detail-scroll: the drag-to-dismiss gesture reads scrollTop here and only
+      {/* data-sheet-scroll: the drag-to-dismiss gesture reads scrollTop here and only
            engages when the content is at its top (so it never mixes with content scroll) */}
-      <div data-detail-scroll class="flex-1 min-h-0 overflow-y-auto px-4 pt-16 pb-4">
+      <div data-sheet-scroll class="flex-1 min-h-0 overflow-y-auto px-4 pt-16 pb-4">
         <Show
           when={listing()}
           fallback={

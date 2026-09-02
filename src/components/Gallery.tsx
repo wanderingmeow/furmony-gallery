@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { onImageError } from '../image'
 
 export function Gallery(props: {
@@ -110,11 +110,13 @@ export function Gallery(props: {
             {props.index() + 1} / {count}
           </span>
         </div>
-        {/* thumbnail strip */}
+        {/* thumbnail strip — keyed For so thumbnails reconcile by index (not rebuilt) */}
         <div class="flex gap-1.5 justify-center mt-2">
-          {props.images.map((url, i) => (
-            <SelectorThumb url={url} active={i === props.index()} onSelect={() => props.setIndex(i)} />
-          ))}
+          <For each={props.images}>
+            {(url, i) => (
+              <SelectorThumb url={url} active={i() === props.index()} onSelect={() => props.setIndex(i())} />
+            )}
+          </For>
         </div>
       </div>
     </Show>

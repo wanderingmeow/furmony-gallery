@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, onMount } from 'solid-js'
+import { createSignal, For, onCleanup, onMount } from 'solid-js'
 import { FILTER_TABS, TAB_LABELS, type FilterTab } from '../filter'
 import {
   tab, setTab, countAll, countUnlocked, countLocked, wishlistUnlockedCount, wishlistLockedCount,
@@ -56,25 +56,27 @@ export function FilterTabs() {
       class="flex items-center gap-1.5 overflow-x-auto pr-2"
       style={{ '-webkit-mask-image': mask(), 'mask-image': mask() }}
     >
-      {FILTER_TABS.map((t) => {
-        const selected = () => tab() === t
-        const count = () => COUNT_FOR[t]()
-        const warn = () => t === 'wishlist' && wishlistLockedCount() > 0
-        return (
-          <button
-            class="h-8 px-3 rounded-lg text-sm whitespace-nowrap"
-            classList={{
-              'bg-blue-600 text-white': selected(),
-              'bg-surface-2 text-ink': !selected() && !warn(),
-              'bg-red-600 text-white': !selected() && warn(),
-            }}
-            onClick={() => setTab(t)}
-          >
-            {TAB_LABELS[t]}
-            <span class={selected() ? 'text-white/70' : 'text-muted'}> ({count()})</span>
-          </button>
-        )
-      })}
+      <For each={FILTER_TABS}>
+        {(t) => {
+          const selected = () => tab() === t
+          const count = () => COUNT_FOR[t]()
+          const warn = () => t === 'wishlist' && wishlistLockedCount() > 0
+          return (
+            <button
+              class="h-8 px-3 rounded-lg text-sm whitespace-nowrap"
+              classList={{
+                'bg-orange-500 text-white': selected(),
+                'bg-surface-2 text-ink': !selected() && !warn(),
+                'bg-red-600 text-white': !selected() && warn(),
+              }}
+              onClick={() => setTab(t)}
+            >
+              {TAB_LABELS[t]}
+              <span class={selected() ? 'text-white/70' : 'text-muted'}> ({count()})</span>
+            </button>
+          )
+        }}
+      </For>
     </div>
   )
 }

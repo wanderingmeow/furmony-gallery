@@ -1,5 +1,6 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
-import { ArrowUpOutlined, SyncOutlined } from '@ant-design/icons-svg'
+import { ArrowUpOutlined, BarChartOutlined, SyncOutlined } from '@ant-design/icons-svg'
+import { useNavigate } from '@solidjs/router'
 import type { AdoptListing } from '../types'
 import {
   filteredListings, firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
@@ -141,7 +142,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
         )}
       </Show>
 
-      <BackToTop
+      <FloatingActions
         scrollTop={scrollTop}
         onTop={() => {
           // animated smooth scroll — window scroll events drive scrollTop so the preview
@@ -314,27 +315,47 @@ function CardSlot(props: {
   )
 }
 
-// ---- Bottom-right back-to-top / refresh button ----
-function BackToTop(props: { scrollTop: () => number; onTop: () => void }) {
-  const show = () => props.scrollTop() > 600 || fetchFailed()
+// ---- Bottom-right floating action group: back-to-top / refresh (above) + stats entry (always) ----
+function FloatingActions(props: { scrollTop: () => number; onTop: () => void }) {
+  // show the to-top button whenever the page is not at the top (screen-size aware,
+  // not a fixed px — any scroll away from the top shows it); the stats entry stays.
+  const show = () => props.scrollTop() > 0 || fetchFailed()
   const isRefresh = fetchFailed
+  const navigate = useNavigate()
+  // Scroll progress (0..1) for the back-to-top clock ring — top / total scrollable.
+  const progress = createMemo(() => {
+    const top = props.scrollTop()
+    const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
+    return Math.min(1, Math.max(0, top / max))
+  })
   return (
-    <Show when={show()}>
+    <div class="fixed bottom-4 right-4 z-10 flex flex-col items-center gap-2">
+      <Show when={show()}>
+        <button
+          class="float-progress cursor-pointer w-12 h-12 rounded-full bg-surface shadow shadow-neutral-600/40 flex items-center justify-center text-xl border border-border"
+          style={{ '--float-btn-progress': `${progress()}turn` }}
+          onClick={() => {
+            if (isRefresh()) loadData()
+            else props.onTop()
+          }}
+          title={isRefresh() ? '刷新' : '回到顶部'}
+        >
+          <span class="relative flex items-center justify-center">
+            <AntIcon icon={() => (isRefresh() ? SyncOutlined : ArrowUpOutlined)} />
+            <Show when={newContent()}>
+              <span class="absolute -top-1 -right-2 w-2.5 h-2.5 rounded-full bg-red-500" />
+            </Show>
+          </span>
+        </button>
+      </Show>
+      {/* stats entry — always visible, opens /stats (lazy chunk) */}
       <button
-        class="fixed bottom-4 right-4 z-10 w-12 h-12 rounded-full glass shadow flex items-center justify-center text-xl border border-border"
-        onClick={() => {
-          if (isRefresh()) loadData()
-          else props.onTop()
-        }}
-        title={isRefresh() ? '刷新' : '回到顶部'}
+        class="cursor-pointer w-12 h-12 rounded-full shadow shadow-orange-500/40 flex items-center justify-center bg-orange-500 text-white border border-orange-600/40"
+        onClick={() => navigate('/stats', { scroll: false })}
+        title="数据统计"
       >
-        <span class="relative flex items-center justify-center">
-          <AntIcon icon={() => (isRefresh() ? SyncOutlined : ArrowUpOutlined)} />
-          <Show when={newContent()}>
-            <span class="absolute -top-1 -right-2 w-2.5 h-2.5 rounded-full bg-red-500" />
-          </Show>
-        </span>
+        <AntIcon icon={BarChartOutlined} />
       </button>
-    </Show>
+    </div>
   )
 }

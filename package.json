@@ -11,9 +11,11 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
+    "@dschz/solid-uplot": "^0.5.2",
     "@panzoom/panzoom": "^4.6.2",
     "@solidjs/router": "^1.0.0",
-    "solid-js": "^1.9.15"
+    "solid-js": "^1.9.15",
+    "uplot": "^1.6.32"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

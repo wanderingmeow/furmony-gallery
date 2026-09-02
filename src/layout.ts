@@ -19,7 +19,7 @@ export const CARD_EXTRA_HEIGHT = 87.62
 // responsive column count; rows rendered beyond the visible window (overscan).
 export const VIEW_PAD = 16
 export const GAP = 16
-export const MIN_CARD = 280
+export const MIN_CARD = 236
 export const OVERSCAN_ROWS = 6
 
 // Copyright footer band height under the last row
