@@ -58,6 +58,13 @@ body {
   touch-action: pan-x pan-y;
 }
 
+/* Sheet scroller: never chain its scroll to the page behind the sheet (iOS Safari
+   keeps scrolling the viewport once an inner scroller hits its edge). `contain`
+   keeps the sheet's own overscroll bounce but stops it propagating upward. */
+[data-sheet-scroll] {
+  overscroll-behavior: contain;
+}
+
 /* Search field inset — translucent overlay dimming the toolbar's backdrop (its own
    backdrop-filter would be clipped inside .glass). Light: gray 192 @0.25; dark: black @0.25. */
 .search-field {
@@ -70,12 +77,17 @@ body {
    DO support it drop to the translucent 0.75 + full filter stack (blur/saturate/brightness). */
 .glass {
   background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
   -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
 }
 
-@supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
+/* The UNPREFIXED backdrop-filter lives in its own @supports block (not adjacent
+   to the -webkit- declaration). The build (Lightning CSS) otherwise strips it as
+   "redundant", leaving only the prefixed one — Android WebView supports only the
+   unprefixed property, so the blur disappears in production builds. Keeping it
+   in a separate rule preserves it. */
+@supports (backdrop-filter: blur(0)) {
   .glass {
+    backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
     background: rgba(255, 255, 255, 0.75);
   }
 }
@@ -100,8 +112,12 @@ body {
   .glass {
     background: rgba(30, 30, 30, 0.85);
     /* dark backdrop needs no brightness lift */
-    backdrop-filter: blur(24px) saturate(200%);
     -webkit-backdrop-filter: blur(24px) saturate(200%);
+  }
+  @supports (backdrop-filter: blur(0)) {
+    .glass {
+      backdrop-filter: blur(24px) saturate(200%);
+    }
   }
   .search-field {
     background: rgba(0, 0, 0, 0.25);

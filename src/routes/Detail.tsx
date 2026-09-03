@@ -62,7 +62,9 @@ export function Detail(props: { onClose: () => void }) {
   })
 
   return (
-    <div class="h-full w-full bg-canvas flex flex-col">
+    <div class="min-h-full w-full bg-canvas flex flex-col">
+      {/* floating close button — detail has no header bar, just the X; it floats over
+          the content, which spans the full sheet and scrolls under it */}
       <button
         class="absolute top-4 left-4 z-20 w-11 h-11 rounded-full glass flex items-center justify-center border border-border"
         onClick={props.onClose}
@@ -72,9 +74,8 @@ export function Detail(props: { onClose: () => void }) {
         <AntIcon icon={CloseOutlined} size={22} />
       </button>
 
-      {/* data-sheet-scroll: the drag-to-dismiss gesture reads scrollTop here and only
-           engages when the content is at its top (so it never mixes with content scroll) */}
-      <div data-sheet-scroll class="flex-1 min-h-0 overflow-y-auto px-4 pt-16 pb-4">
+      {/* body — full-sheet content (pt-16 keeps the first row clear of the floating X) */}
+      <div class="flex-1 min-h-0 px-4 pt-16 pb-4">
         <Show
           when={listing()}
           fallback={
@@ -106,8 +107,8 @@ export function Detail(props: { onClose: () => void }) {
         </Show>
       </div>
 
-      {/* bottom toolbar: 前往官网 + wishlist button */}
-      <div class="border-t border-border bg-canvas px-4 py-3">
+      {/* bottom toolbar: 前往官网 + wishlist button — sticky so it stays reachable */}
+      <div class="sticky bottom-0 border-t border-border bg-canvas px-4 py-3">
         <div class="flex items-center gap-4">
           <Show when={listing()}>
             {(l) => {

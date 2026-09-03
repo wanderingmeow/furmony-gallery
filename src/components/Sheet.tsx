@@ -19,6 +19,10 @@ import { scrollLock } from '../scrollLock'
 export function Sheet(props: {
   open: () => boolean
   onDismiss: () => void
+  // optional fixed header — passed by the content (stats) so it sits ABOVE the
+  // scroller (outside the scroll container) and never gets covered by the body;
+  // a sheet without a header (detail) leaves it out entirely
+  header?: (dismiss: () => void) => JSX.Element
   children: (dismiss: () => void) => JSX.Element
 }) {
   const [closing, setClosing] = createSignal(false)
@@ -30,18 +34,20 @@ export function Sheet(props: {
   const SAMPLES: { t: number; y: number }[] = []
 
   // Limit background scroll: while open, pin the document so scroll events only
-  // reach the sheet's own scroller ([data-sheet-scroll]). Only lock on our own
-  // closed→open and unlock on our own open→closed transitions — never on another
-  // sheet's state (both sheets stay mounted; the stats sheet is open while the
-  // detail sheet's open is false).
-  let wasOpen = false
+  // reach the sheet's own scroller ([data-sheet-scroll]). `acquire` returns an
+  // idempotent `release` (ref-counted in the module), so each open pairs exactly
+  // one acquire with one release via onCleanup — never lock/unlock another sheet's
+  // state (both sheets stay mounted; only one is open at a time).
   createEffect(() => {
-    const open = props.open()
-    if (open && !wasOpen) { wasOpen = true; scrollLock.lock(document) }
-    else if (!open && wasOpen) { wasOpen = false; scrollLock.unlock(document) }
+    if (!props.open()) return
+    // getter (not a fixed element) so the scroller is resolved at touch time — the
+    // sheet content may mount lazily (StatsLazy), after the lock is taken
+    const release = scrollLock.acquire({
+      document,
+      getScrollable: () => sheetEl?.querySelector('[data-sheet-scroll]') ?? null,
+    })
+    onCleanup(release)
   })
-  // Solid effects don't run on unmount — release the lock if we unmount while open.
-  onCleanup(() => { if (wasOpen) scrollLock.unlock(document) })
 
   // open: snap off-screen then slide in next frame. Force a reflow (offsetHeight)
   // after mounting at translateY(100%) so the follow-up setPos(0) TRANSITIONS —
@@ -63,13 +69,18 @@ export function Sheet(props: {
   }
 
   // ---- drag-to-dismiss gesture (touch) ----------------------------------
-  function setSheet(el: HTMLDivElement | null) {
-    if (!el) { sheetEl = el; return }
-    sheetEl = el
+  // The drag-to-dismiss gesture lives on the SHEET's own scroller, not the
+  // full-screen layer — dragging the backdrop must never dismiss the sheet.
+  function setScroller(el: HTMLDivElement | null) {
+    if (!el) return
     el.addEventListener('touchstart', onStart, { passive: true })
     el.addEventListener('touchmove', onMove, { passive: false }) // need preventDefault
     el.addEventListener('touchend', onEnd, { passive: true })
     el.addEventListener('touchcancel', onCancel, { passive: true })
+  }
+
+  function setSheet(el: HTMLDivElement | null) {
+    sheetEl = el
   }
 
   function onStart(e: TouchEvent) {
@@ -135,8 +146,18 @@ export function Sheet(props: {
             transition: dragging() ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
           }}
         >
-          <div class="relative w-full h-full bg-canvas overflow-hidden sm:max-w-190 sm:h-[calc(100vh-3rem)] sm:rounded-2xl sm:shadow-2xl">
-            {props.children(dismiss)}
+          <div class="relative w-full h-full bg-canvas overflow-hidden sm:max-w-190 sm:h-[calc(100vh-3rem)] sm:rounded-2xl sm:shadow-2xl flex flex-col">
+            {/* optional fixed header — outside the scroller so body content never
+                paints over it (stats) */}
+            {props.header && (
+              <div class="shrink-0">{props.header(dismiss)}</div>
+            )}
+            {/* The Sheet owns the scroll container, so the scroll-lock and the
+                drag-to-dismiss gesture resolve the sheet's own scroller — the
+                content no longer needs to tag its own inner div. */}
+            <div data-sheet-scroll ref={setScroller} class="flex-1 min-h-0 overflow-y-auto">
+              {props.children(dismiss)}
+            </div>
           </div>
         </div>
       </div>
