@@ -54,7 +54,8 @@ export async function loadData(): Promise<void> {
 
   if (changed) {
     setListings(newRows)
-    markNewContent()
+    // new content means changed since a prior visit
+    if (oldRows.length > 0) markNewContent()
     // notification diff — first visit has empty oldRows, so nothing to diff; that
     // also serves as the "visited" check, no need for a separate hasVisited flag
     notifyLockChanges(oldRows, newRows)
