@@ -4,7 +4,7 @@ import { useNavigate } from '@solidjs/router'
 import type { AdoptListing } from '../types'
 import {
   filteredListings, firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
-  newContent, clearNewContent, fetchFailed, loadData, sortMode,
+  newContent, clearNewContent, fetchFailed, loadData, sortMode, setOnFilterChange,
 } from '../store'
 import { CARD_EXTRA_HEIGHT, THUMB_ASPECT, FADE_MS, FOOTER_H, GAP, MIN_CARD, OVERSCAN_ROWS, PREVIEW_H, PREVIEW_IDLE_MS, SAVE_THROTTLE_MS, VIEW_PAD } from '../layout'
 import { displayPrice } from '../domain'
@@ -60,6 +60,9 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   }
   // compute the current row's preview chip + vertical position, then show it (the
   // controller fades it out after PREVIEW_IDLE_MS of no scrolling).
+  // lastTopId = the id at the top visible row, tracked on scroll — a sort change uses it to
+  // stay on the previously-visible card (not jump to top).
+  let lastTopId: number | null = null
   const updatePreview = () => {
     const s = maxScrollTop()
     const h = viewportH()
@@ -67,6 +70,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     const row = Math.floor(Math.max(0, scrollTop()) / rowHeight())
     const idx = Math.min(row * cols(), items().length - 1)
     const item = items()[Math.max(0, idx)]
+    lastTopId = item ? item.adoptId : null
     const isPrice = sortMode() === 'priceAsc' || sortMode() === 'priceDesc'
     const label = item ? (isPrice ? `¥${Math.round(displayPrice(item))}` : `#${item.adoptId}`) : ''
     preview.update(label, top)
@@ -92,6 +96,24 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     items, cols, rowHeight, setScrollTop, firstRow, scrollTop,
     firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
   })
+
+  // scroll on query change: top for set-changing filters, last-visible id for sort
+  setOnFilterChange((kind) => {
+    if (kind === 'sort') {
+      const id = lastTopId
+      if (id != null) {
+        const idx = findIndex(items(), id)
+        const row = Math.floor(Math.max(0, idx) / cols())
+        const target = row * rowHeight()
+        window.scrollTo(0, target)
+        setScrollTop(target)
+      }
+      return
+    }
+    window.scrollTo(0, 0)
+    setScrollTop(0)
+  })
+  onCleanup(() => setOnFilterChange(null))
 
   return (
     <>

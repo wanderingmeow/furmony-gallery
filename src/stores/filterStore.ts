@@ -28,12 +28,17 @@ function persistFilters(): void {
   } catch { /* ignore */ }
 }
 
+export type FilterChangeKind = 'tab' | 'sort' | 'search' | 'colors' | 'races'
+let onFilterChange: ((kind: FilterChangeKind) => void) | null = null
+export function setOnFilterChange(fn: ((kind: FilterChangeKind) => void) | null): void { onFilterChange = fn }
+function notify(kind: FilterChangeKind): void { onFilterChange?.(kind) }
+
 // Explicit setters — mutate the signal AND persist in the same call (no hidden effect).
-export function setTab(v: FilterTab): void { setTabSignal(v); persistFilters() }
-export function setSortMode(v: SortMode): void { setSortModeSignal(v); persistFilters() }
-export function setSelectedColors(v: Set<string>): void { setSelectedColorsSignal(v); persistFilters() }
-export function setSelectedRaces(v: Set<string>): void { setSelectedRacesSignal(v); persistFilters() }
-export function setSearchText(v: string): void { setSearchTextSignal(v); persistFilters() }
+export function setTab(v: FilterTab): void { setTabSignal(v); persistFilters(); notify('tab') }
+export function setSortMode(v: SortMode): void { setSortModeSignal(v); persistFilters(); notify('sort') }
+export function setSelectedColors(v: Set<string>): void { setSelectedColorsSignal(v); persistFilters(); notify('colors') }
+export function setSelectedRaces(v: Set<string>): void { setSelectedRacesSignal(v); persistFilters(); notify('races') }
+export function setSearchText(v: string): void { setSearchTextSignal(v); persistFilters(); notify('search') }
 
 export { tab, sortMode, selectedColors, selectedRaces, searchText }
 
