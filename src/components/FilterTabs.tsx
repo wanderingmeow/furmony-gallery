@@ -1,14 +1,14 @@
 import { createSignal, For, onCleanup, onMount } from 'solid-js'
 import { FILTER_TABS, TAB_LABELS, type FilterTab } from '../filter'
 import {
-  tab, setTab, countAll, countUnlocked, countLocked, wishlistUnlockedCount, wishlistLockedCount,
+  tab, setTab, countAll, countUnlocked, countLocked, wishlistCount,
 } from '../store'
 
 const COUNT_FOR: Record<FilterTab, () => number> = {
   all: countAll,
   unlocked: countUnlocked,
   locked: countLocked,
-  wishlist: wishlistUnlockedCount,
+  wishlist: wishlistCount,
 }
 
 export function FilterTabs() {
@@ -51,7 +51,7 @@ export function FilterTabs() {
   return (
     <div
       ref={scroller}
-      // pr-2 keeps a gap between the last tab (心愿单) and the picker button even
+      // pr-2 keeps a gap between the last tab (收藏) and the picker button even
       // when the bar is scrolled to its far right (otherwise they'd touch)
       class="flex items-center gap-1.5 overflow-x-auto pr-2"
       style={{ '-webkit-mask-image': mask(), 'mask-image': mask() }}
@@ -60,14 +60,12 @@ export function FilterTabs() {
         {(t) => {
           const selected = () => tab() === t
           const count = () => COUNT_FOR[t]()
-          const warn = () => t === 'wishlist' && wishlistLockedCount() > 0
           return (
             <button
               class="h-8 px-3 rounded-lg text-sm whitespace-nowrap"
               classList={{
                 'bg-orange-500 text-white': selected(),
-                'bg-surface-2 text-ink': !selected() && !warn(),
-                'bg-red-600 text-white': !selected() && warn(),
+                'bg-surface-2 text-ink': !selected(),
               }}
               onClick={() => setTab(t)}
             >

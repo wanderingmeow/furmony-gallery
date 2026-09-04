@@ -1,7 +1,6 @@
 // src/stores/wishlistStore.ts — wishlist state + localStorage persistence.
 import { createSignal } from 'solid-js'
 import type { AdoptListing } from '../types'
-import { isLocked } from '../domain'
 
 const WISH_KEY = 'furmony_wishlist'
 
@@ -17,7 +16,7 @@ export function toggleWishlist(listing: AdoptListing): void {
   const next = new Map(cur)
   if (cur.has(id)) {
     next.delete(id)
-  } else if (!isLocked(listing)) {
+  } else {
     next.set(id, Date.now())
   }
   setWishlist(next)

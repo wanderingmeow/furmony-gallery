@@ -2,7 +2,7 @@ import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-j
 import { HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
 import type { AdoptListing } from '../types'
 import {
-  colorNames, displayPrice, formatDiscount, formatPrice, isLocked,
+  colorNames, displayPrice, formatPrice, isLocked,
   painterName, raceName,
 } from '../domain'
 import { THUMB_ASPECT } from '../layout'
@@ -59,8 +59,6 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
   // reactive: isWishlisted reads the wishlist() signal, so the card's heart updates
   // the moment you favorite/unfavorite (no need to wait for a re-render on scroll)
   const wishlisted = createMemo(() => isWishlisted(id))
-  const showHeart = () => !locked || wishlisted()
-  const discount = formatDiscount(l)
   const tags = [
     ...(raceName(l) ? [raceName(l)!] : []),
     ...colorNames(l),
@@ -68,8 +66,11 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
 
   const onHeart = (e: MouseEvent) => {
     e.stopPropagation()
-    if (wishlisted()) removeFromWishlist(id)
-    else if (!locked) toggleWishlist(l)
+    if (wishlisted()) {
+      removeFromWishlist(id)
+    } else {
+      toggleWishlist(l)
+    }
   }
 
   const [thumbLoading, setThumbLoading] = createSignal(true)
@@ -77,7 +78,7 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
   return (
     <div
       class="rounded-xl bg-surface border border-border p-1.5 select-none"
-      style={{ width: `${props.width}px`, opacity: locked ? 0.55 : 1 }}
+      style={{ width: `${props.width}px` }}
     >
       <div class="flex items-center gap-1.5 px-2 py-1.5">
         <span class="text-[11px] text-muted truncate">{painterName(l) ?? `画师${l.paintersId}`}</span>
@@ -110,11 +111,10 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
           <span class="text-sm font-medium truncate">{l.adoptName ?? '未知'}</span>
           <button
             class="ml-auto shrink-0 text-lg leading-none"
-            style={{ visibility: showHeart() ? 'visible' : 'hidden' }}
             onClick={onHeart}
             aria-label="收藏"
           >
-            <span class={wishlisted() ? 'text-red-500' : locked ? 'text-faint' : 'text-ink'}>
+            <span class={wishlisted() ? 'text-red-500' : 'text-ink'}>
               <AntIcon icon={wishlisted() ? HeartFilled : HeartOutlined} />
             </span>
           </button>
@@ -123,11 +123,8 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
         <div class="flex items-center gap-1.5">
           <Tags tags={tags} width={props.width} />
           <div class="ml-auto shrink-0 flex items-center gap-1">
-            <Show when={discount > 0}>
-              {/* 折扣只在桌面端显示，移动端隐藏 */}
-              <span class="hidden sm:inline-block px-1 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold">
-                {discount.toFixed(1)}折
-              </span>
+            <Show when={locked}>
+              <span class="px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold">已锁定</span>
             </Show>
             <span class="text-sm font-bold text-orange-600">{formatPrice(displayPrice(l))}</span>
           </div>

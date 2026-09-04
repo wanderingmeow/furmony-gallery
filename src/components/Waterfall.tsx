@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
-import { ArrowUpOutlined, BarChartOutlined, SyncOutlined } from '@ant-design/icons-svg'
+import { BarChartOutlined, SyncOutlined, VerticalAlignTopOutlined } from '@ant-design/icons-svg'
 import { useNavigate } from '@solidjs/router'
 import type { AdoptListing } from '../types'
 import {
@@ -363,7 +363,7 @@ function FloatingActions(props: { scrollTop: () => number; onTop: () => void }) 
           title={isRefresh() ? '刷新' : '回到顶部'}
         >
           <span class="relative flex items-center justify-center">
-            <AntIcon icon={() => (isRefresh() ? SyncOutlined : ArrowUpOutlined)} />
+            <AntIcon icon={() => (isRefresh() ? SyncOutlined : VerticalAlignTopOutlined)} />
             <Show when={newContent()}>
               <span class="absolute -top-1 -right-2 w-2.5 h-2.5 rounded-full bg-red-500" />
             </Show>
