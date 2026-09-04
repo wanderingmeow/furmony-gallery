@@ -2,6 +2,7 @@
 // Also owns the filter-domain vocabulary (tabs, sort modes, labels) so consumers import
 // these from the filter domain rather than a generic utils module.
 import type { AdoptListing } from './types'
+import type { SocialSearchEntry } from './socials'
 import {
   colorNames, displayPrice, isLocked, isSelfCommission, publishDate, raceName,
 } from './domain'
@@ -16,30 +17,35 @@ export const TAB_LABELS: Record<FilterTab, string> = {
   all: '全部',
   unlocked: '未锁定',
   locked: '已锁定',
-  wishlist: '心愿单',
+  wishlist: '收藏',
 }
 
-export function compute(
-  listings: AdoptListing[],
-  tab: FilterTab,
-  sortMode: SortMode,
-  selectedColors: Set<string>,
-  selectedRaces: Set<string>,
-  searchText: string,
-  wishlist: Map<number, number>,
-): AdoptListing[] {
-  let result = listings.filter((l) => !isSelfCommission(l))
+export interface ComputeOptions {
+  rows: AdoptListing[]
+  tab: FilterTab
+  sort: SortMode
+  colors: Set<string>
+  races: Set<string>
+  query: string
+  wishlist: Map<number, number>
+  // owner/account search text, keyed by adoptId
+  socials?: Map<number, SocialSearchEntry>
+}
 
-  if (selectedColors.size > 0) {
+export function compute(o: ComputeOptions): AdoptListing[] {
+  const { rows, tab, sort, colors, races, query, wishlist, socials } = o
+  let result = rows.filter((l) => !isSelfCommission(l))
+
+  if (colors.size > 0) {
     result = result.filter((l) => {
       const cols = colorNames(l)
-      return cols.length > 0 && cols.some((c) => selectedColors.has(c))
+      return cols.length > 0 && cols.some((c) => colors.has(c))
     })
   }
-  if (selectedRaces.size > 0) {
+  if (races.size > 0) {
     result = result.filter((l) => {
       const r = raceName(l)
-      return !!r && selectedRaces.has(r)
+      return !!r && races.has(r)
     })
   }
 
@@ -54,23 +60,32 @@ export function compute(
     case 'all': break
   }
 
-  switch (sortMode) {
+  switch (sort) {
     case 'timeDesc': result.sort((a, b) => (publishDate(a)?.getTime() ?? 0) > (publishDate(b)?.getTime() ?? 0) ? -1 : 1); break
     case 'timeAsc': result.sort((a, b) => (publishDate(a)?.getTime() ?? 0) < (publishDate(b)?.getTime() ?? 0) ? -1 : 1); break
     case 'priceAsc': result.sort((a, b) => displayPrice(a) - displayPrice(b)); break
     case 'priceDesc': result.sort((a, b) => displayPrice(b) - displayPrice(a)); break
   }
 
-  if (searchText) {
-    const q = searchText.trim().toLowerCase()
+  if (query) {
+    const q = query.trim().toLowerCase()
+    const socialText = (l: AdoptListing) => {
+      const s = socials?.get(l.adoptId)
+      return s ? `${s.ownerName} ${s.searchables.join(' ')}`.toLowerCase() : ''
+    }
+    const uidPrefix = (l: AdoptListing) => {
+      const s = socials?.get(l.adoptId)
+      return s ? s.uidPrefixes.some((u) => u.toLowerCase().startsWith(q)) : false
+    }
     const byText = (l: AdoptListing) =>
       (l.adoptName?.toLowerCase().includes(q) ?? false) ||
-      (l.detailDescription?.toLowerCase().includes(q) ?? false)
-    // digits-only input → union of id substring match AND name/description match
-    // (e.g. "3" also finds a listing whose description mentions "L3D")
+      (l.detailDescription?.toLowerCase().includes(q) ?? false) ||
+      socialText(l).includes(q)
+    // digits-only input: adoptId PREFIX match, plus text match (name/description + owner/handles,
+    // substring) plus numeric social-uid PREFIX match (bilibili/douyin/xiaohongshu).
     const isDigit = /^\d+$/.test(q);
     if (isDigit) {
-      result = result.filter((l) => String(l.adoptId).includes(q) || byText(l))
+      result = result.filter((l) => String(l.adoptId).startsWith(q) || byText(l) || uidPrefix(l))
     } else {
       result = result.filter(byText)
     }

@@ -1,11 +1,12 @@
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import { useParams } from '@solidjs/router'
-import { listings, isWishlisted, toggleWishlist, removeFromWishlist, isLoading, dataReady } from '../store'
-import { CloseOutlined, HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
-import { detailImages, isLocked } from '../domain'
+import { listings, isLoading, dataReady } from '../store'
+import { CloseOutlined } from '@ant-design/icons-svg'
+import { detailImages } from '../domain'
 import { stableImageUrl } from '../image'
 import { AntIcon } from '../components/AntIcon'
+import { DetailToolbar } from '../components/DetailToolbar'
 import { Gallery } from '../components/Gallery'
 import { FullScreenZoom } from '../components/FullScreenZoom'
 import { InfoTable } from '../components/InfoTable'
@@ -31,8 +32,6 @@ export function Detail(props: { onClose: () => void }) {
     const i = Math.min(index(), Math.max(0, imgs.length - 1))
     return imgs.length > 0 ? imgs[i] : stableImageUrl(listing()?.adoptHeadPicture)
   }
-
-  const wishlisted = () => listing() ? isWishlisted(listing()!.adoptId) : false
 
   // Esc closes the detail sheet. When the fullscreen zoom is open it owns Esc
   // (closes zoom) — detail defers so a single Esc never closes both at once.
@@ -107,45 +106,10 @@ export function Detail(props: { onClose: () => void }) {
         </Show>
       </div>
 
-      {/* bottom toolbar: 前往官网 + wishlist button — sticky so it stays reachable */}
-      <div class="sticky bottom-0 border-t border-border bg-canvas px-4 py-3">
-        <div class="flex items-center gap-4">
-          <Show when={listing()}>
-            {(l) => {
-              const item = l()
-              const locked = isLocked(item)
-              const showHeart = !locked || wishlisted()
-              return (
-                <>
-                  <button
-                    class="flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm"
-                    classList={{ 'bg-red-500/15 text-red-600': wishlisted(), 'bg-surface text-ink': !wishlisted() }}
-                    style={{ visibility: showHeart ? 'visible' : 'hidden' }}
-                    onClick={() => {
-                      if (wishlisted()) removeFromWishlist(item.adoptId)
-                      else toggleWishlist(item)
-                    }}
-                  >
-                    <span class={wishlisted() ? 'text-red-500' : 'text-muted'}>
-                      <AntIcon icon={wishlisted() ? HeartFilled : HeartOutlined} size={18} />
-                    </span>
-                    <span>{wishlisted() ? '已收藏' : '收藏'}</span>
-                  </button>
-                  <div class="flex-1" />
-                  <a
-                    href={`https://www.furmony.com/product/detail?id=${item.adoptId}&type=LYWT`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold"
-                  >
-                    前往官网 ↗
-                  </a>
-                </>
-              )
-            }}
-          </Show>
-        </div>
-      </div>
+      {/* bottom toolbar (收藏 + social chips + 前往官网) — sticky so it stays reachable */}
+      <Show when={listing()}>
+        {(l) => <DetailToolbar item={l()} />}
+      </Show>
 
       {/* fullscreen zoom — rendered to body so it escapes the sheet's overflow/transform */}
       <Show when={full()}>

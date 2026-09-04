@@ -8,16 +8,19 @@ export * from './stores/wishlistStore'
 export * from './stores/sessionStore'
 export * from './stores/notificationStore'
 export * from './stores/listingsStore'
+export * from './stores/socialsStore'
 export * from './stores/derivedStore'
 
 import { loadFilters } from './stores/filterStore'
 import { loadSession } from './stores/sessionStore'
 import { loadWishlist } from './stores/wishlistStore'
 import { loadData } from './stores/listingsStore'
+import { loadSocials } from './stores/socialsStore'
 
 export function initStore(): void {
   loadSession()
   loadWishlist()
   loadFilters()
   loadData()
+  loadSocials()
 }
