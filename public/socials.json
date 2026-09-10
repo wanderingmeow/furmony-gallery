@@ -91,10 +91,22 @@
       }
     }
   },
+  "891": {
+    "ownerName": "清荷",
+    "platforms": {
+      "x": "QingHeYanMao"
+    }
+  },
   "972": {
     "ownerName": "Popo",
     "platforms": {
       "x": "Popogaima"
+    }
+  },
+  "919": {
+    "ownerName": "伯里奥 Borio",
+    "platforms": {
+      "x": "borio_sheriff"
     }
   },
   "984": {
@@ -110,6 +122,18 @@
     "ownerName": "타이겐 タイゲン",
     "platforms": {
       "x": "TAIGEN_FUR"
+    }
+  },
+  "1238": {
+    "ownerName": "KOU 煌",
+    "platforms": {
+      "x": "KOU_FUR"
+    }
+  },
+  "1277": {
+    "ownerName": "Kiri・切利",
+    "platforms": {
+      "x": "furkiri"
     }
   },
   "1336": {
@@ -131,6 +155,18 @@
     "ownerName": "皮诺可(pinoco)",
     "platforms": {
       "x": "pinoco20260403"
+    }
+  },
+  "1726": {
+    "ownerName": "うるたくん",
+    "platforms": {
+      "x": "urutakuns"
+    }
+  },
+  "2117": {
+    "ownerName": "KAZ",
+    "platforms": {
+      "x": "KazkunFurry"
     }
   },
   "2277": {

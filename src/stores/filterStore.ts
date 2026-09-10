@@ -14,6 +14,10 @@ const [sortMode, setSortModeSignal] = createSignal<SortMode>('timeDesc')
 const [selectedColors, setSelectedColorsSignal] = createSignal<Set<string>>(new Set())
 const [selectedRaces, setSelectedRacesSignal] = createSignal<Set<string>>(new Set())
 const [searchText, setSearchTextSignal] = createSignal('')
+// Debug/tracking aid: show only listings with NO social account. Driven by the URL
+// query (?nosocial=1) - deliberately NOT persisted to localStorage (it must never
+// leak into normal browsing).
+const [noSocialOnly, setNoSocialOnlySignal] = createSignal(false)
 
 function persistFilters(): void {
   const f = {
@@ -39,8 +43,10 @@ export function setSortMode(v: SortMode): void { setSortModeSignal(v); persistFi
 export function setSelectedColors(v: Set<string>): void { setSelectedColorsSignal(v); persistFilters(); notify('colors') }
 export function setSelectedRaces(v: Set<string>): void { setSelectedRacesSignal(v); persistFilters(); notify('races') }
 export function setSearchText(v: string): void { setSearchTextSignal(v); persistFilters(); notify('search') }
+// no persistence — pure URL-driven debug flag
+export function setNoSocialOnly(v: boolean): void { setNoSocialOnlySignal(v) }
 
-export { tab, sortMode, selectedColors, selectedRaces, searchText }
+export { tab, sortMode, selectedColors, selectedRaces, searchText, noSocialOnly }
 
 export function loadFilters(): void {
   try {

@@ -159,8 +159,8 @@ describe('compute — search', () => {
 describe('compute — socials search', () => {
   // fake data — tests must never reference real owner names/handles from production
   const SOCIALS = new Map<number, SocialSearchEntry>([
-    [1, { ownerName: 'TestOwnerOne', searchables: ['TestHandleOne'], uidPrefixes: [] }],
-    [2, { ownerName: 'TestOwnerTwo', searchables: [], uidPrefixes: ['12345678'] }],
+    [1, { ownerName: 'TestOwnerOne', searchables: ['TestHandleOne'], uidPrefixes: [], hasSocial: true }],
+    [2, { ownerName: 'TestOwnerTwo', searchables: [], uidPrefixes: ['12345678'], hasSocial: true }],
   ])
   const rows = [listing(1), listing(2)]
 
@@ -183,5 +183,29 @@ describe('compute — socials search', () => {
 
   it('absent socials map leaves behavior unchanged', () => {
     expect(ids(compute({ rows, tab: 'all', sort: 'timeDesc', colors: EMPTY, races: EMPTY, query: 'TestOwnerOne', wishlist: EMPTY_MAP }))).toEqual([])
+  })
+})
+
+describe('compute — noSocial filter', () => {
+  // fake data: 1/2 have a processable platform (hasSocial), 3 has an entry but zero
+  // platforms (also no-social), 4 has no entry at all
+  const SOCIALS = new Map<number, SocialSearchEntry>([
+    [1, { ownerName: 'TestOwnerOne', searchables: ['TestHandleOne'], uidPrefixes: [], hasSocial: true }],
+    [2, { ownerName: 'TestOwnerTwo', searchables: [], uidPrefixes: ['12345678'], hasSocial: true }],
+    [3, { ownerName: 'TestOwnerThree', searchables: ['TestOwnerThree'], uidPrefixes: [], hasSocial: false }],
+  ])
+  const rows = [listing(1), listing(2), listing(3), listing(4)]
+
+  it('keeps only listings with no social (absent entry OR zero-platform entry)', () => {
+    expect(ids(compute({ rows, tab: 'all', sort: 'timeDesc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP, socials: SOCIALS, noSocial: true }))).toEqual([3, 4])
+  })
+
+  it('applies within the locked tab', () => {
+    const locked = [listing(1, { isLock: 2 }), listing(4, { isLock: 2 })]
+    expect(ids(compute({ rows: locked, tab: 'locked', sort: 'timeDesc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP, socials: SOCIALS, noSocial: true }))).toEqual([4])
+  })
+
+  it('noSocial absent → unchanged', () => {
+    expect(ids(compute({ rows, tab: 'all', sort: 'timeDesc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP, socials: SOCIALS }))).toEqual([1, 2, 3, 4])
   })
 })
