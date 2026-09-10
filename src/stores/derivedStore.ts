@@ -4,7 +4,7 @@ import type { AdoptListing } from '../types'
 import { compute } from '../filter'
 import { colorNames, isLocked, isSelfCommission, raceName } from '../domain'
 import { listings } from './listingsStore'
-import { tab, sortMode, selectedColors, selectedRaces, searchText } from './filterStore'
+import { tab, sortMode, selectedColors, selectedRaces, searchText, noSocialOnly } from './filterStore'
 import { wishlist } from './wishlistStore'
 import { socialSearch } from './socialsStore'
 
@@ -29,6 +29,7 @@ createRoot(() => {
       query: searchText(),
       wishlist: wishlist(),
       socials: socialSearch(),
+      noSocial: noSocialOnly(),
     })
   })
 

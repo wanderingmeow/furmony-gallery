@@ -23,10 +23,13 @@ export interface SocialEntry {
 // Slim form handed to the pure filter.
 // searchables  = substring-match text (ownerName + x/tiktok handles)
 // uidPrefixes  = prefix-match numeric ids (bilibili mid + douyin.uid + xiaohongshu.uid)
+// hasSocial    = entry has at least one processable platform (empty-platform entries count
+//                as NO social — e.g. a douyin missing sec_uid)
 export interface SocialSearchEntry {
   ownerName: string
   searchables: string[]
   uidPrefixes: string[]
+  hasSocial: boolean
 }
 
 // Fixed render order for the detail-sheet chips (JSON order is irrelevant).
@@ -128,7 +131,12 @@ export function uidPrefixes(entry: SocialEntry): string[] {
 export function toSearchMap(entries: Map<number, SocialEntry>): Map<number, SocialSearchEntry> {
   const out = new Map<number, SocialSearchEntry>()
   for (const [id, entry] of entries) {
-    out.set(id, { ownerName: entry.ownerName, searchables: searchables(entry), uidPrefixes: uidPrefixes(entry) })
+    out.set(id, {
+      ownerName: entry.ownerName,
+      searchables: searchables(entry),
+      uidPrefixes: uidPrefixes(entry),
+      hasSocial: PLATFORM_ORDER.some((k) => entry.platforms[k] != null),
+    })
   }
   return out
 }

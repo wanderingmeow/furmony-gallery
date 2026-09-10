@@ -1,6 +1,6 @@
 import { createEffect, createSignal, lazy, onMount, Suspense } from 'solid-js'
-import { Router, Route, useMatch, useNavigate } from '@solidjs/router'
-import { initStore, setNavigator } from './store'
+import { Router, Route, useMatch, useNavigate, useSearchParams } from '@solidjs/router'
+import { initStore, setNavigator, setNoSocialOnly } from './store'
 import { flushImageUrlMap, initImageUrlMap } from './image'
 import { Home } from './routes/Home'
 import { DetailSheet } from './components/DetailSheet'
@@ -31,6 +31,10 @@ function Shell() {
   // Lock filter state — lives here so StatsSheet (header, top-right) and the
   // stats content share the same filter; persists across open/close.
   const [mode, setMode] = createSignal<LockFilter>('all')
+  // Debug/tracking aid: ?nosocial=1 filters the list to settings with NO social account
+  // (so we can spot which adoptIds still need a socials.json entry). URL-driven only.
+  const [searchParams] = useSearchParams()
+  createEffect(() => setNoSocialOnly(searchParams.nosocial === '1'))
 
   onMount(() => {
     // Load persisted image URLs before listings to preserve cache hits.

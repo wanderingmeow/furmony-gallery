@@ -30,11 +30,18 @@ export interface ComputeOptions {
   wishlist: Map<number, number>
   // owner/account search text, keyed by adoptId
   socials?: Map<number, SocialSearchEntry>
+  // debug/tracking aid: show only listings with NO social account (URL ?nosocial=1)
+  noSocial?: boolean
 }
 
 export function compute(o: ComputeOptions): AdoptListing[] {
-  const { rows, tab, sort, colors, races, query, wishlist, socials } = o
+  const { rows, tab, sort, colors, races, query, wishlist, socials, noSocial } = o
   let result = rows.filter((l) => !isSelfCommission(l))
+
+  // no-social filter applies to the base set BEFORE tab/sort/search so it holds for
+  // every tab (including the wishlist early-return). An entry with zero processable
+  // platforms counts as no-social too.
+  if (noSocial) result = result.filter((l) => !(socials?.get(l.adoptId)?.hasSocial))
 
   if (colors.size > 0) {
     result = result.filter((l) => {

@@ -90,7 +90,17 @@ describe('toSearchMap', () => {
   it('maps entries to SocialSearchEntry for the filter', () => {
     const entries = new Map<number, SocialEntry>([[1063, { ownerName: 'FakeOwnerA', platforms: { x: 'FakeHandleX' } }]])
     const out = toSearchMap(entries)
-    expect(out.get(1063)).toEqual({ ownerName: 'FakeOwnerA', searchables: ['FakeOwnerA', 'FakeHandleX'], uidPrefixes: [] })
+    expect(out.get(1063)).toEqual({ ownerName: 'FakeOwnerA', searchables: ['FakeOwnerA', 'FakeHandleX'], uidPrefixes: [], hasSocial: true })
+  })
+
+  it('hasSocial is true when a processable platform exists, false for empty platforms', () => {
+    const entries = new Map<number, SocialEntry>([
+      [1, { ownerName: 'FakeOwnerA', platforms: { x: 'FakeHandleX' } }],
+      [2, { ownerName: 'FakeOwnerB', platforms: {} }],
+    ])
+    const out = toSearchMap(entries)
+    expect(out.get(1)?.hasSocial).toBe(true)
+    expect(out.get(2)?.hasSocial).toBe(false)
   })
 
   it('empty input → empty map', () => {
