@@ -67,6 +67,15 @@
       "x": "SorenBGB"
     }
   },
+  "789": {
+    "ownerName": "泷麟Taki",
+    "platforms": {
+      "douyin": {
+        "uid": "longlinTaki5",
+        "sec_uid": "MS4wLjABAAAAjfPae9hTJcvOkQRnLa16cHpz_BJdQ1UIhWgicaSZ9vE"
+      }
+    }
+  },
   "799": {
     "ownerName": "润记(Arun)",
     "platforms": {
@@ -86,6 +95,15 @@
     "ownerName": "Popo",
     "platforms": {
       "x": "Popogaima"
+    }
+  },
+  "984": {
+    "ownerName": "弥阙",
+    "platforms": {
+      "douyin": {
+        "uid": "FCYRMFQQ",
+        "sec_uid": "MS4wLjABAAAAsT1BEBsFwwV7mImwcyEuLKYPMttMIGCkS0-SecSoRniGOUhFVpGhdXLXRcrUEYWW"
+      }
     }
   },
   "1063": {
@@ -113,6 +131,15 @@
     "ownerName": "皮诺可(pinoco)",
     "platforms": {
       "x": "pinoco20260403"
+    }
+  },
+  "2277": {
+    "ownerName": "岁sui",
+    "platforms": {
+      "douyin": {
+        "uid": "dyvs7nvl7g3s",
+        "sec_uid": "MS4wLjABAAAAeueDCMPu97mpp5TYL7MxUy3vUJMmxb9A46syojp8RfJB00opvTd4_GK6Brd_b3Cp"
+      }
     }
   }
 }

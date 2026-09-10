@@ -4,6 +4,7 @@ import {
   colorNames, formatDiscount, formatPrice, isAdopted, isLocked, painterAvatar, painterName, raceName,
 } from '../domain'
 import { stableImageUrl } from '../image'
+import { socials } from '../store'
 import { StatusBadge } from './StatusBadge'
 
 function Row(props: { label: string; children: any }) {
@@ -73,6 +74,15 @@ export function InfoTable(props: { listing: AdoptListing }) {
           </div>
         </div>
       </div>
+
+      {/* owner (委托主) — from the runtime socials map, only when known */}
+      <Show when={socials().get(l.adoptId)?.ownerName}>
+        {(ownerName) => (
+          <Row label="主人">
+            <span>{ownerName()}</span>
+          </Row>
+        )}
+      </Show>
 
       {/* painter */}
       <Show when={l.harmonyPainterVo}>

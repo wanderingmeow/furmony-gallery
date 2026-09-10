@@ -1,4 +1,4 @@
-import { createEffect, createSignal, lazy, onMount } from 'solid-js'
+import { createEffect, createSignal, lazy, onMount, Suspense } from 'solid-js'
 import { Router, Route, useMatch, useNavigate } from '@solidjs/router'
 import { initStore, setNavigator } from './store'
 import { flushImageUrlMap, initImageUrlMap } from './image'
@@ -50,11 +50,27 @@ function Shell() {
           an iOS-style sheet; uplot + solid-uplot load lazily only when /stats opens. */}
       <Home />
       <StatsSheet open={isStats} onDismiss={() => navigate('/', { scroll: false })} mode={mode} setMode={setMode}>
-        {(dismiss) => <StatsLazy mode={mode} onClose={dismiss} />}
+        {(dismiss) => (
+          // Suspense fallback = loading spinner while the uplot chunk is fetched, so
+          // clicking /stats shows the sheet UI immediately instead of a blank sheet.
+          <Suspense fallback={<StatsLoading />}>
+            <StatsLazy mode={mode} onClose={dismiss} />
+          </Suspense>
+        )}
       </StatsSheet>
       <DetailSheet open={isDetail} onDismiss={() => navigate('/', { scroll: false })} />
       <NotificationCenter />
     </>
+  )
+}
+
+// Loading spinner for the lazy stats chunk — shown as Suspense fallback so the
+// sheet chrome appears instantly on click, then charts fill in when loaded.
+function StatsLoading() {
+  return (
+    <div class="h-72 rounded-xl bg-surface border border-border flex items-center justify-center">
+      <div class="w-6 h-6 rounded-full border-[3px] border-transparent border-t-blue-500 animate-spin" />
+    </div>
   )
 }
 
