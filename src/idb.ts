@@ -6,7 +6,6 @@ export const DB_VERSION = 2
 export const IMG_URL_STORE = 'img_url_map'
 export const LISTINGS_STORE = 'listings'
 export const ORDER_KEY = 'order'
-export const LEGACY_IMAGE_KEY = 'furmony_image_url_map'
 
 export function openDb(): Promise<IDBDatabase> {
   return new Promise((res, rej) => {

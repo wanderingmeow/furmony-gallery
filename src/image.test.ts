@@ -30,8 +30,6 @@ describe('stableImageUrl (img_url_map)', () => {
   it('persists dirty entries to IndexedDB and reloads them on a fresh module', async () => {
     img.stableImageUrl('https://a.jpg?x=1')
     await img.flushImageUrlMap()
-    // seed a stale legacy localStorage copy that init should remove
-    localStorage.setItem('furmony_image_url_map', '{"https://a.jpg":"https://a.jpg?legacy=1"}')
 
     vi.resetModules()
     img = await import('./image')
@@ -39,6 +37,5 @@ describe('stableImageUrl (img_url_map)', () => {
 
     // remembered URL from DB wins over the fresh signature
     expect(img.stableImageUrl('https://a.jpg?y=2')).toBe('https://a.jpg?x=1')
-    expect(localStorage.getItem('furmony_image_url_map')).toBeNull()
   })
 })

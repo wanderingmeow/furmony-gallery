@@ -33,9 +33,20 @@ function Shell() {
   const [mode, setMode] = createSignal<LockFilter>('all')
 
   onMount(() => {
-    initImageUrlMap()
-    initStore()
-    window.addEventListener('beforeunload', flushImageUrlMap)
+    // Load persisted image URLs before listings to preserve cache hits.
+    initImageUrlMap().then(() => initStore())
+
+    // pagehide is more reliable than beforeunload on mobile Safari.
+    // Persist the signed-URL map on page exit when possible.
+    // flushImageUrlMap must be idempotent and should not rely on awaited async work.
+    let flushed = false
+    function flushOnce() {
+      if (flushed) return
+      flushed = true
+      flushImageUrlMap()
+    }
+    window.addEventListener('beforeunload', flushOnce)
+    window.addEventListener('pagehide', flushOnce)
   })
   // navigate with scroll:false — @solidjs/router's navigate DEFAULTS scroll:true, which
   // makes it window.scrollTo(0,0) on EVERY navigation. Clicking a card (or a notification)
