@@ -8,7 +8,7 @@
 // This module is imported by the domain helpers (domain.ts) and components — NOT the
 // listings cache. That keeps the pure domain layer off the infrastructure cache layer:
 // listingCache.ts stays a leaf for listings only.
-import { IMG_URL_STORE, LEGACY_IMAGE_KEY, putMany, readAll } from './idb'
+import { IMG_URL_STORE, putMany, readAll } from './idb'
 
 let imageUrlMap: Map<string, string> | null = null
 let recentRaw = new Map<string, string>() // path -> freshest signed URL (for error retry)
@@ -48,9 +48,6 @@ export async function initImageUrlMap(): Promise<void> {
     const dbMap = await readAll<string, string>(IMG_URL_STORE)
     for (const [path, url] of dbMap) imageUrlMap!.set(path, url)
   } catch { /* IndexedDB unavailable — memory-only */ }
-
-  // migrate: drop the old localStorage copy so listings/session writes stay under quota
-  try { localStorage.removeItem(LEGACY_IMAGE_KEY) } catch { /* ignore */ }
 }
 
 // Returns a stable URL for `raw`. Only URLs with a `?` (signed) are mapped — no-query
