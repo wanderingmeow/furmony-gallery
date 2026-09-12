@@ -32,11 +32,13 @@ function Shell() {
   // stats content share the same filter; persists across open/close.
   const [mode, setMode] = createSignal<LockFilter>('all')
   // Debug/tracking aid: ?nosocial=1 filters the list to settings with NO social account
-  // (so we can spot which adoptIds still need a socials.json entry). URL-driven only.
+  // (so we can spot which adoptIds still need a socials.json entry).
+  // The URL is an ENTRY GATE, read once at load; the flag then lives as session store state.
+  // ✕ in the toolbar is the exit (setNoSocialOnly(false)).
   const [searchParams] = useSearchParams()
-  createEffect(() => setNoSocialOnly(searchParams.nosocial === '1'))
 
   onMount(() => {
+    setNoSocialOnly(searchParams.nosocial === '1')
     // Load persisted image URLs before listings to preserve cache hits.
     initImageUrlMap().then(() => initStore())
 

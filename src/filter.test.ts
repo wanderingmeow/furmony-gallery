@@ -1,6 +1,6 @@
 // Functional tests for the pure filtering/sorting layer (filter.ts). No reactivity, no I/O.
 import { describe, expect, it } from 'vitest'
-import { compute } from './filter'
+import { compute, countLockedRemaining, isNoSocial } from './filter'
 import type { SocialSearchEntry } from './socials'
 import type { AdoptListing } from './types'
 
@@ -207,5 +207,38 @@ describe('compute — noSocial filter', () => {
 
   it('noSocial absent → unchanged', () => {
     expect(ids(compute({ rows, tab: 'all', sort: 'timeDesc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP, socials: SOCIALS }))).toEqual([1, 2, 3, 4])
+  })
+})
+
+describe('isNoSocial', () => {
+  it('true when entry absent or has no processable platform', () => {
+    const SOCIALS = new Map<number, SocialSearchEntry>([
+      [1, { ownerName: 'TestOwnerOne', searchables: ['TestHandleOne'], uidPrefixes: [], hasSocial: true }],
+      [2, { ownerName: 'TestOwnerTwo', searchables: ['TestOwnerTwo'], uidPrefixes: [], hasSocial: false }],
+    ])
+    expect(isNoSocial(1, SOCIALS)).toBe(false)
+    expect(isNoSocial(2, SOCIALS)).toBe(true)
+    expect(isNoSocial(99, SOCIALS)).toBe(true)
+    expect(isNoSocial(1)).toBe(true) // absent socials map
+  })
+})
+
+describe('countLockedRemaining', () => {
+  const SOCIALS = new Map<number, SocialSearchEntry>([
+    [1, { ownerName: 'TestOwnerOne', searchables: ['TestHandleOne'], uidPrefixes: [], hasSocial: true }],
+  ])
+  const rows = [
+    listing(1, { isLock: 2 }),                 // locked + has social → not remaining
+    listing(2, { isLock: 2 }),                 // locked + no social → remaining
+    listing(3, { isLock: 1 }),                 // unlocked (isLock=1) → excluded
+    listing(4, { harmonyPainterVo: { painterid: 1, painterName: '自设委托' }, isLock: 2 }), // self-commission → excluded
+  ]
+
+  it('counts locked non-self listings with no social, ignoring unlock status', () => {
+    expect(countLockedRemaining(rows, SOCIALS)).toBe(1)
+  })
+
+  it('absent socials map → every locked non-self listing counts as remaining', () => {
+    expect(countLockedRemaining(rows)).toBe(2)
   })
 })

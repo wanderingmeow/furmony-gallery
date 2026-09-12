@@ -1,4 +1,4 @@
-// Pure filtering/sorting layer (no reactivity, no I/O) — unit-testable in isolation.
+// Pure filtering/sorting layer (no reactivity, no I/O) - unit-testable in isolation.
 // Also owns the filter-domain vocabulary (tabs, sort modes, labels) so consumers import
 // these from the filter domain rather than a generic utils module.
 import type { AdoptListing } from './types'
@@ -41,7 +41,7 @@ export function compute(o: ComputeOptions): AdoptListing[] {
   // no-social filter applies to the base set BEFORE tab/sort/search so it holds for
   // every tab (including the wishlist early-return). An entry with zero processable
   // platforms counts as no-social too.
-  if (noSocial) result = result.filter((l) => !(socials?.get(l.adoptId)?.hasSocial))
+  if (noSocial) result = result.filter((l) => isNoSocial(l.adoptId, socials))
 
   if (colors.size > 0) {
     result = result.filter((l) => {
@@ -98,4 +98,17 @@ export function compute(o: ComputeOptions): AdoptListing[] {
     }
   }
   return result
+}
+
+// "no social" predicate - single definition shared by compute() filtering and the
+// remainingLocked count so the two never drift. An entry with zero processable
+// platforms counts as no-social too.
+export function isNoSocial(id: number, socials?: Map<number, SocialSearchEntry>): boolean {
+  return !(socials?.get(id)?.hasSocial)
+}
+
+// Locked listings still needing a social entry (locked ∧ not self-commission ∧ no-social).
+// Pure + unfiltered (ignores color/race/search) - used by the locked-tab progress badge.
+export function countLockedRemaining(rows: AdoptListing[], socials?: Map<number, SocialSearchEntry>): number {
+  return rows.filter((l) => isLocked(l) && !isSelfCommission(l) && isNoSocial(l.adoptId, socials)).length
 }
