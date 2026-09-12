@@ -1,6 +1,6 @@
 import { Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
-import { noSocialOnly } from '../store'
+import { noSocialOnly, setNoSocialOnly } from '../store'
 import { SearchBar } from './SearchBar'
 import { SortButtons } from './SortButtons'
 import { FilterTabs } from './FilterTabs'
@@ -35,7 +35,11 @@ function NoSocialBadge() {
       无社媒
       <button
         class="-ml-0.5 px-0.5 hover:text-orange-900"
-        onClick={() => navigate('/', { scroll: false, replace: true })}
+        onClick={() => {
+          // exit the debug mode (session flag) + drop the URL query so a refresh doesn't re-enable
+          setNoSocialOnly(false)
+          navigate('/', { scroll: false, replace: true })
+        }}
         title="关闭无社媒筛选"
         aria-label="关闭无社媒筛选"
       >✕</button>

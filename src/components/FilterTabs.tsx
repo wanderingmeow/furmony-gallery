@@ -2,6 +2,7 @@ import { createSignal, For, onCleanup, onMount } from 'solid-js'
 import { FILTER_TABS, TAB_LABELS, type FilterTab } from '../filter'
 import {
   tab, setTab, countAll, countUnlocked, countLocked, wishlistCount,
+  noSocialOnly, remainingLocked,
 } from '../store'
 
 const COUNT_FOR: Record<FilterTab, () => number> = {
@@ -59,7 +60,11 @@ export function FilterTabs() {
       <For each={FILTER_TABS}>
         {(t) => {
           const selected = () => tab() === t
-          const count = () => COUNT_FOR[t]()
+          // While the no-social debug filter is active, the locked tab shows annotation
+          // progress as 剩余/总数 (remaining no-social locked / total locked). Unfiltered.
+          const count = () => (t === 'locked' && noSocialOnly()
+            ? `${remainingLocked()}/${countLocked()}`
+            : COUNT_FOR[t]())
           return (
             <button
               class="h-8 px-3 rounded-lg text-sm whitespace-nowrap"

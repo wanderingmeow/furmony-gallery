@@ -19,7 +19,7 @@ function renderNode(node: IconNode): any {
   )
 }
 
-export function AntIcon(props: { icon: IconDefinition | (() => IconDefinition); class?: string; size?: number }) {
+export function AntIcon(props: { icon: IconDefinition | (() => IconDefinition); class?: string; size?: string | number }) {
   return (
     <svg
       viewBox="64 64 896 896"

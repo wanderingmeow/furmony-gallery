@@ -363,7 +363,7 @@ function FloatingActions(props: { scrollTop: () => number; onTop: () => void }) 
           title={isRefresh() ? '刷新' : '回到顶部'}
         >
           <span class="relative flex items-center justify-center">
-            <AntIcon icon={() => (isRefresh() ? SyncOutlined : VerticalAlignTopOutlined)} />
+            <AntIcon icon={() => (isRefresh() ? SyncOutlined : VerticalAlignTopOutlined)} size={"1.25em"} />
             <Show when={newContent()}>
               <span class="absolute -top-1 -right-2 w-2.5 h-2.5 rounded-full bg-red-500" />
             </Show>
@@ -376,7 +376,7 @@ function FloatingActions(props: { scrollTop: () => number; onTop: () => void }) 
         onClick={() => navigate('/stats', { scroll: false })}
         title="数据统计"
       >
-        <AntIcon icon={BarChartOutlined} />
+        <AntIcon icon={BarChartOutlined} size={"1.5em"} />
       </button>
     </div>
   )
