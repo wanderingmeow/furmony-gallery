@@ -89,6 +89,8 @@ export function Detail(props: { onClose: () => void }) {
             const item = l()
             return (
               <>
+                {/* spinner gate: reveal the gallery only once the first image is ready;
+                    the Gallery itself fades its main image in on load (no abrupt pop) */}
                 <Show when={ready()} fallback={<ImageLoading />}>
                   <Gallery
                     images={images()}

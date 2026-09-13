@@ -4,7 +4,7 @@
 // they survive a refresh. Persistence is explicit: every setter writes immediately, so
 // there is no hidden global effect (no module-level createEffect). Internal only —
 // never touches the URL/history.
-import { createSignal } from 'solid-js'
+import { batch, createSignal } from 'solid-js'
 import { FILTER_TABS, SORT_MODES, type FilterTab, type SortMode } from '../filter'
 
 const FILTER_KEY = 'furmony_filter'
@@ -38,11 +38,24 @@ export function setOnFilterChange(fn: ((kind: FilterChangeKind) => void) | null)
 function notify(kind: FilterChangeKind): void { onFilterChange?.(kind) }
 
 // Explicit setters — mutate the signal AND persist in the same call (no hidden effect).
-export function setTab(v: FilterTab): void { setTabSignal(v); persistFilters(); notify('tab') }
+//
+// Set-changing setters (tab/search/colors/races) run in one `batch()` so the store change
+// + waterfall scroll-reset (notify → setScrollTop) land in a SINGLE render pass (else: new
+// items at old scrollTop, then re-render on reset ≈ 2× DOM). sort stays unbatched: its
+// scroll target derives from the NEW order, so notify must run after the signal.
+export function setTab(v: FilterTab): void {
+  batch(() => { setTabSignal(v); persistFilters(); notify('tab') })
+}
 export function setSortMode(v: SortMode): void { setSortModeSignal(v); persistFilters(); notify('sort') }
-export function setSelectedColors(v: Set<string>): void { setSelectedColorsSignal(v); persistFilters(); notify('colors') }
-export function setSelectedRaces(v: Set<string>): void { setSelectedRacesSignal(v); persistFilters(); notify('races') }
-export function setSearchText(v: string): void { setSearchTextSignal(v); persistFilters(); notify('search') }
+export function setSelectedColors(v: Set<string>): void {
+  batch(() => { setSelectedColorsSignal(v); persistFilters(); notify('colors') })
+}
+export function setSelectedRaces(v: Set<string>): void {
+  batch(() => { setSelectedRacesSignal(v); persistFilters(); notify('races') })
+}
+export function setSearchText(v: string): void {
+  batch(() => { setSearchTextSignal(v); persistFilters(); notify('search') })
+}
 // no persistence — pure URL-driven debug flag
 export function setNoSocialOnly(v: boolean): void { setNoSocialOnlySignal(v) }
 

@@ -12,6 +12,8 @@ export function Gallery(props: {
   const [displayed, setDisplayed] = createSignal(current())
   const [incoming, setIncoming] = createSignal<string | null>(null)
   const [ready, setReady] = createSignal(false)
+  // main image fades in on load (opacity 0 → 1) instead of popping
+  const [mainLoaded, setMainLoaded] = createSignal(false)
 
   // explicit main-image height (px) so aspect-ratio changes on thumbnail switch
   // animate smoothly instead of jumping: 0 = auto (first load), then px + transition
@@ -81,11 +83,15 @@ export function Gallery(props: {
               class="w-full max-h-100 object-contain rounded-xl bg-surface"
               style={{
                 height: hPx() ? `${hPx()}px` : 'auto',
-                transition: 'height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                transition: 'height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s',
+                opacity: mainLoaded() ? 1 : 0,
               }}
               onClick={props.onOpenFull}
-              onLoad={(e) => { if (hPx() === 0) setHPx(e.currentTarget.offsetHeight) }}
-              onError={onImageError}
+              onLoad={(e) => {
+                setMainLoaded(true)
+                if (hPx() === 0) setHPx(e.currentTarget.offsetHeight)
+              }}
+              onError={(e) => { setMainLoaded(true); onImageError(e) }} // show fallback, faded in
             />
           </Show>
           <Show when={incoming()}>
@@ -98,8 +104,9 @@ export function Gallery(props: {
               onError={onImageError}
             />
           </Show>
-          {/* spinner while the target preloads */}
-          <Show when={incoming() && !ready()}>
+          {/* spinner while an image decodes (first open or thumbnail switch) — mutually
+              exclusive: first open has incoming=null, switches have mainLoaded already true */}
+          <Show when={(incoming() && !ready()) || (displayed() && !mainLoaded())}>
             <div class="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-black/40 rounded-xl">
               <div class="spinner w-6 h-6" />
             </div>
