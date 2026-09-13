@@ -70,11 +70,7 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
   const monthlyPriceSummary = createHoverSummary(
     monthlyPrice, monthlyPriceHover,
     (s) => `${fmtMonth(s.label)}: ¥${Math.round(s.avg)}`,
-    (es) => {
-      const ps = prices()
-      const avg = ps.length ? Math.round(ps.reduce((a, p) => a + p, 0) / ps.length) : 0
-      return `共 ${es.length} 个月 | 总均值 ¥${avg}`
-    },
+    (es) => `共 ${es.length} 个月`,
   )
 
   // ---- monthly count (bars) ----

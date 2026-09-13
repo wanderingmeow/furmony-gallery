@@ -10,43 +10,13 @@ import { removeFromWishlist, toggleWishlist, isWishlisted } from '../store'
 import { onImageError, stableImageUrl } from '../image'
 import { AntIcon } from './AntIcon'
 
-function Tags(props: { tags: string[]; width: number }) {
-  // estimate visible tags that fit within card width
-  const estimate = (): string[] => {
-    const available = props.width - 16
-    const spacing = 6
-    let used = 0
-    const out: string[] = []
-    for (const t of props.tags) {
-      const w = t.length * 12 + 12
-      if (used + w + spacing <= available) {
-        out.push(t)
-        used += w + spacing
-      } else break
-    }
-    return out
-  }
-
-  // right-edge fade only when tags genuinely overflow (estimate can be slightly off)
-  let el!: HTMLDivElement
-  const [overflow, setOverflow] = createSignal(false)
-  onMount(() => {
-    const check = () => setOverflow(el.scrollWidth > el.clientWidth + 1)
-    check()
-    const ro = new ResizeObserver(check)
-    ro.observe(el)
-    onCleanup(() => ro.disconnect())
-  })
-  const mask = () => (overflow() ? 'linear-gradient(to right, black 92%, transparent)' : undefined)
-
+function Tags(props: { tags: string[] }) {
+  // Pure CSS: flex-wrap sends non-fitting tags to a 2nd row, clipped by the one-row-tall
+  // overflow-hidden box → fully hidden, no sliver. Fixed chip height = deterministic row.
   return (
-    <div
-      ref={el}
-      class="flex items-center gap-1.5 min-w-0 overflow-hidden"
-      style={{ '-webkit-mask-image': mask(), 'mask-image': mask() }}
-    >
-      <For each={estimate()}>
-        {(t) => <span class="shrink-0 px-1.5 py-0.5 rounded-md bg-surface-2 text-[11px] text-ink">{t}</span>}
+    <div class="flex flex-wrap items-center gap-1.5 min-w-0 overflow-hidden h-[18px]">
+      <For each={props.tags}>
+        {(t) => <span class="shrink-0 px-1.5 h-[18px] leading-[18px] rounded-md bg-surface-2 text-[10px] text-ink">{t}</span>}
       </For>
     </div>
   )
@@ -73,7 +43,19 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
     }
   }
 
-  const [thumbLoading, setThumbLoading] = createSignal(true)
+  // Hidden until decoded, then fades in (quiet per-card reveal); aspect-ratio box keeps
+  // layout stable.
+  const [loaded, setLoaded] = createSignal(false)
+
+  // Defer img.src to the next frame: mounting a tab must not kick all loads/decodes
+  // synchronously (209-card switch ~1-2s → ~20-50ms DOM-only); images then fade in
+  // in the background.
+  let imgRef!: HTMLImageElement
+  let raf = 0
+  onMount(() => {
+    raf = requestAnimationFrame(() => { imgRef.src = stableImageUrl(l.adoptPicture) ?? '' })
+    onCleanup(() => { if (raf) cancelAnimationFrame(raf) })
+  })
 
   return (
     <div
@@ -85,22 +67,19 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
         <span class="ml-auto shrink-0 text-[11px] text-faint">#{id}</span>
       </div>
 
-      {/* thumbnail — spinner while loading */}
+      {/* thumbnail — hidden until decoded, then fades in */}
       <div class="px-1.5">
         <div class="relative card-img w-full rounded-lg bg-surface overflow-hidden" style={{ 'aspect-ratio': String(THUMB_ASPECT) }}>
-          <Show when={thumbLoading()}>
-            <div class="absolute inset-0 flex items-center justify-center">
-              <div class="spinner w-5 h-5" />
-            </div>
-          </Show>
           <img
-            src={stableImageUrl(l.adoptPicture)}
+            ref={imgRef}
+            // src set lazily in onMount → next frame (see above)
             alt={l.adoptName ?? '设定'}
             loading="eager"
             decoding="async"
-            class="w-full h-full object-cover rounded-lg"
-            onLoad={() => setThumbLoading(false)}
-            onError={(e) => { setThumbLoading(false); onImageError(e) }}
+            class="w-full h-full object-cover rounded-lg transition-opacity duration-300"
+            classList={{ 'opacity-0': !loaded() }}
+            onLoad={() => setLoaded(true)}
+            onError={(e) => { setLoaded(true); onImageError(e) }}
           />
         </div>
       </div>
@@ -121,10 +100,10 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
         </div>
 
         <div class="flex items-center gap-1.5">
-          <Tags tags={tags} width={props.width} />
+          <Tags tags={tags} />
           <div class="ml-auto shrink-0 flex items-center gap-1">
             <Show when={locked}>
-              <span class="px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold">已锁定</span>
+              <span class="px-1.5 py-0.5 rounded bg-red-600 text-white text-[10px]">已锁定</span>
             </Show>
             <span class="text-sm font-bold text-orange-600">{formatPrice(displayPrice(l))}</span>
           </div>
