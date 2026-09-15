@@ -85,26 +85,25 @@ export function Detail(props: { onClose: () => void }) {
             </div>
           }
         >
-          {(l) => {
-            const item = l()
-            return (
-              <>
-                {/* spinner gate: reveal the gallery only once the first image is ready;
-                    the Gallery itself fades its main image in on load (no abrupt pop) */}
-                <Show when={ready()} fallback={<ImageLoading />}>
-                  <Gallery
-                    images={images()}
-                    index={index}
-                    setIndex={setIndex}
-                    onOpenFull={() => setFull(true)}
-                  />
-                </Show>
-                <div class="mt-4">
-                  <InfoTable listing={item} />
-                </div>
-              </>
-            )
-          }}
+          {(l) => (
+            <>
+              {/* spinner gate: reveal the gallery only once the first image is ready;
+                  the Gallery itself fades its main image in on load (no abrupt pop) */}
+              <Show when={ready()} fallback={<ImageLoading />}>
+                <Gallery
+                  images={images()}
+                  index={index}
+                  setIndex={setIndex}
+                  onOpenFull={() => setFull(true)}
+                />
+              </Show>
+              <div class="mt-4">
+                {/* l() is the non-keyed accessor — read it reactively inline (do NOT
+                    capture into a const, or the detail stays stale when the id changes) */}
+                <InfoTable listing={l()} />
+              </div>
+            </>
+          )}
         </Show>
       </div>
 

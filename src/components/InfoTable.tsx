@@ -46,10 +46,13 @@ function HeadImg(props: { url?: string }) {
 }
 
 export function InfoTable(props: { listing: AdoptListing }) {
-  const l = props.listing
-  const non = () => l.nonrecurringExpense ?? 0
-  const all = () => l.allcost ?? 0
-  const discount = () => formatDiscount(l)
+  // l is a reactive ACCESSOR, not a captured value: Solid components don't re-run their
+  // body on prop changes, so reading props.listing inline (l()) lets each row update when
+  // the detail switches A→B. Capturing `const l = props.listing` would freeze the table.
+  const l = () => props.listing
+  const non = () => l().nonrecurringExpense ?? 0
+  const all = () => l().allcost ?? 0
+  const discount = () => formatDiscount(l())
   const isDifferent = () => discount() > 0
 
   return (
@@ -57,11 +60,11 @@ export function InfoTable(props: { listing: AdoptListing }) {
       {/* header — same 2-col grid as the info rows, so the avatar (left col) aligns with the
           labels and the name/id/price (right col) aligns with the values */}
       <div class="grid grid-cols-[64px_1fr] gap-3 items-start">
-        <HeadImg url={stableImageUrl(l.adoptHeadPicture)} />
+        <HeadImg url={stableImageUrl(l().adoptHeadPicture)} />
         <div class="min-w-0">
           <div class="flex items-baseline gap-2">
-            <h2 class="text-xl font-bold truncate">{l.adoptName ?? '未知'}</h2>
-            <span class="text-sm text-muted shrink-0">#{l.adoptId}</span>
+            <h2 class="text-xl font-bold truncate">{l().adoptName ?? '未知'}</h2>
+            <span class="text-sm text-muted shrink-0">#{l().adoptId}</span>
           </div>
           <div class="flex items-center gap-1.5 mt-1">
             <span class="text-lg font-bold text-orange-600">{formatPrice(non())}</span>
@@ -76,7 +79,7 @@ export function InfoTable(props: { listing: AdoptListing }) {
       </div>
 
       {/* owner (委托主) — from the runtime socials map, only when known */}
-      <Show when={socials().get(l.adoptId)?.ownerName}>
+      <Show when={socials().get(l().adoptId)?.ownerName}>
         {(ownerName) => (
           <Row label="主人">
             <span>{ownerName()}</span>
@@ -85,27 +88,27 @@ export function InfoTable(props: { listing: AdoptListing }) {
       </Show>
 
       {/* painter */}
-      <Show when={l.harmonyPainterVo}>
+      <Show when={l().harmonyPainterVo}>
         <Row label="画师">
           <div class="flex items-center gap-1.5">
-            <Show when={painterAvatar(l)} fallback={<span class="w-6 h-6 rounded-full bg-surface-2" />}>
+            <Show when={painterAvatar(l())} fallback={<span class="w-6 h-6 rounded-full bg-surface-2" />}>
               {(url) => <img src={url()} alt="画师" class="w-6 h-6 rounded-full object-cover" />}
             </Show>
-            <span>{painterName(l) ?? '未知'}</span>
+            <span>{painterName(l()) ?? '未知'}</span>
           </div>
         </Row>
       </Show>
 
       {/* race */}
-      <Show when={raceName(l)}>
-        <Row label="种族">{raceName(l)}</Row>
+      <Show when={raceName(l())}>
+        <Row label="种族">{raceName(l())}</Row>
       </Show>
 
       {/* colors */}
-      <Show when={colorNames(l).length > 0}>
+      <Show when={colorNames(l()).length > 0}>
         <Row label="颜色">
           <div class="flex flex-wrap gap-1">
-            <For each={colorNames(l)}>
+            <For each={colorNames(l())}>
               {(c) => <span class="px-2 py-0.5 rounded-md bg-surface-2 text-[11px] text-ink">{c}</span>}
             </For>
           </div>
@@ -117,32 +120,32 @@ export function InfoTable(props: { listing: AdoptListing }) {
         <div class="flex gap-1.5">
           {/* isLock: 2=locked, 1=锁定中(未付定金), 0=unlocked — show 锁定中 for 1 */}
           <StatusBadge
-            text={l.isLock === 1 ? '锁定中' : (isLocked(l) ? '已锁定' : '未锁定')}
-            color={l.isLock === 1 ? 'amber' : (isLocked(l) ? 'red' : 'green')}
+            text={l().isLock === 1 ? '锁定中' : (isLocked(l()) ? '已锁定' : '未锁定')}
+            color={l().isLock === 1 ? 'amber' : (isLocked(l()) ? 'red' : 'green')}
           />
-          <StatusBadge text={isAdopted(l) ? '已领养' : '未领养'} color={isAdopted(l) ? 'purple' : 'blue'} />
+          <StatusBadge text={isAdopted(l()) ? '已领养' : '未领养'} color={isAdopted(l()) ? 'purple' : 'blue'} />
         </div>
       </Row>
 
       {/* earnest */}
-      <Row label="定金">{formatPrice(l.earnest ?? 0)}</Row>
+      <Row label="定金">{formatPrice(l().earnest ?? 0)}</Row>
 
       {/* times */}
-      <Show when={l.createTime}>
-        <Row label="创建时间">{l.createTime}</Row>
+      <Show when={l().createTime}>
+        <Row label="创建时间">{l().createTime}</Row>
       </Show>
-      <Show when={l.updateTime}>
-        <Row label="更新时间">{l.updateTime}</Row>
+      <Show when={l().updateTime}>
+        <Row label="更新时间">{l().updateTime}</Row>
       </Show>
 
       {/* remark */}
-      <Show when={l.remark && l.remark!.length > 0}>
-        <Row label="备注"><span class="whitespace-pre-wrap">{l.remark}</span></Row>
+      <Show when={l().remark && l().remark!.length > 0}>
+        <Row label="备注"><span class="whitespace-pre-wrap">{l().remark}</span></Row>
       </Show>
 
       {/* description */}
-      <Show when={l.detailDescription && l.detailDescription!.length > 0}>
-        <Row label="详细描述"><span class="whitespace-pre-wrap">{l.detailDescription}</span></Row>
+      <Show when={l().detailDescription && l().detailDescription!.length > 0}>
+        <Row label="详细描述"><span class="whitespace-pre-wrap">{l().detailDescription}</span></Row>
       </Show>
     </div>
   )
