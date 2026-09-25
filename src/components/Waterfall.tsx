@@ -4,7 +4,7 @@ import { useNavigate } from '@solidjs/router'
 import type { AdoptListing } from '../types'
 import {
   filteredListings, firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
-  newContent, clearNewContent, fetchFailed, loadData, sortMode, setOnFilterChange,
+  fetchFailed, loadData, sortMode, setOnFilterChange,
 } from '../store'
 import { CARD_EXTRA_HEIGHT, THUMB_ASPECT, FADE_MS, FOOTER_H, GAP, MIN_CARD, OVERSCAN_ROWS, PREVIEW_H, PREVIEW_IDLE_MS, SAVE_THROTTLE_MS, VIEW_PAD } from '../layout'
 import { displayPrice } from '../domain'
@@ -170,7 +170,6 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
           // animated smooth scroll — window scroll events drive scrollTop so the preview
           // chip follows the animation
           window.scrollTo({ top: 0, behavior: 'smooth' })
-          clearNewContent()
         }}
       />
     </>
@@ -362,12 +361,7 @@ function FloatingActions(props: { scrollTop: () => number; onTop: () => void }) 
           }}
           title={isRefresh() ? '刷新' : '回到顶部'}
         >
-          <span class="relative flex items-center justify-center">
-            <AntIcon icon={() => (isRefresh() ? SyncOutlined : VerticalAlignTopOutlined)} size={"1.25em"} />
-            <Show when={newContent()}>
-              <span class="absolute -top-1 -right-2 w-2.5 h-2.5 rounded-full bg-red-500" />
-            </Show>
-          </span>
+          <AntIcon icon={() => (isRefresh() ? SyncOutlined : VerticalAlignTopOutlined)} size={"1.25em"} />
         </button>
       </Show>
       {/* stats entry — always visible, opens /stats (lazy chunk) */}
