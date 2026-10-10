@@ -40,6 +40,12 @@
       "x": "dtmlnt"
     }
   },
+  "428": {
+    "ownerName": "fih",
+    "platforms": {
+      "x": "thefishnl"
+    }
+  },
   "411": {
     "ownerName": "雷恩",
     "platforms": {
@@ -187,10 +193,22 @@
       "x": "inugami_31"
     }
   },
+  "916": {
+    "ownerName": "スモリバ",
+    "platforms": {
+      "x": "sumoriver"
+    }
+  },
   "919": {
     "ownerName": "伯里奥 Borio",
     "platforms": {
       "x": "borio_sheriff"
+    }
+  },
+  "933": {
+    "ownerName": "Raelen",
+    "platforms": {
+      "x": "Raelen1221"
     }
   },
   "945": {
@@ -224,6 +242,12 @@
         "uid": "benxiaohaibi34",
         "sec_uid": "MS4wLjABAAAAA_r_TtFb8xd53YUCrzMX1lWAiDeeZ--vEcvKskhpqto"
       }
+    }
+  },
+  "1062": {
+    "ownerName": "コストコ(COST-CO)",
+    "platforms": {
+      "x": "costoco_yanko"
     }
   },
   "1063": {
@@ -289,6 +313,21 @@
       "x": "KIRUTO_mof"
     }
   },
+  "1551": {
+    "ownerName": "流蛍",
+    "platforms": {
+      "x": "kt_Liuying"
+    }
+  },
+  "1552": {
+    "ownerName": "骨渊",
+    "platforms": {
+      "douyin": {
+        "uid": "61116040384",
+        "sec_uid": "MS4wLjABAAAA804NHZdrik9TZZWIIg6JtdT9qAhFdQT00CNSbAblVFPZ"
+      }
+    }
+  },
   "1619": {
     "ownerName": "皮诺可(pinoco)",
     "platforms": {
@@ -299,6 +338,12 @@
     "ownerName": "うるたくん",
     "platforms": {
       "x": "urutakuns"
+    }
+  },
+  "1818": {
+    "ownerName": "Rocky",
+    "platforms": {
+      "x": "maotianzhong"
     }
   },
   "1972": {

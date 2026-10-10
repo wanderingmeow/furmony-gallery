@@ -1,5 +1,5 @@
 // Functional tests for the signed-image URL map (image.ts). No network, no rendering.
-// fake-indexeddb provides a real-ish IndexedDB; localStorage comes from jsdom.
+// fake-indexeddb provides a real-ish IndexedDB; localStorage comes from the testSetup shim.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 type ImageModule = typeof import('./image')
