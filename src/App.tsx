@@ -1,6 +1,6 @@
-import { createEffect, createSignal, lazy, onMount, Suspense } from 'solid-js'
+import { createSignal, lazy, onMount, Suspense } from 'solid-js'
 import { Router, Route, useMatch, useNavigate, useSearchParams } from '@solidjs/router'
-import { initStore, setNavigator, setNoSocialOnly } from './store'
+import { initStore, setNoSocialOnly } from './store'
 import { flushImageUrlMap, initImageUrlMap } from './image'
 import { Home } from './routes/Home'
 import { DetailSheet } from './components/DetailSheet'
@@ -54,12 +54,6 @@ function Shell() {
     window.addEventListener('beforeunload', flushOnce)
     window.addEventListener('pagehide', flushOnce)
   })
-  // navigate with scroll:false — @solidjs/router's navigate DEFAULTS scroll:true, which
-  // makes it window.scrollTo(0,0) on EVERY navigation. Clicking a card (or a notification)
-  // to open the sheet must NOT yank the waterfall to top; only the initial-load scroll
-  // restore (createScrollRestore) is allowed to scroll.
-  createEffect(() => setNavigator((p: string) => navigate(p, { scroll: false })))
-
   return (
     <>
       {/* Home stays mounted behind the sheets so the backdrop can blur it and its

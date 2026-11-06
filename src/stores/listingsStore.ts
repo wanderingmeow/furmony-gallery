@@ -2,9 +2,9 @@
 import { createSignal } from 'solid-js'
 import type { AdoptListing } from '../types'
 import { loadListings, mergeListings } from '../listingCache'
-import { fetchWithRetry } from '../api'
+import { fetchAllListings } from '../api'
 import { cleanStaleWishlist } from './wishlistStore'
-import { notifyLockChanges } from './notificationStore'
+import { notifyListingChanges } from './notificationStore'
 
 export const [listings, setListings] = createSignal<AdoptListing[]>([])
 export const [isLoading, setIsLoading] = createSignal(false)
@@ -26,7 +26,7 @@ export async function loadData(): Promise<void> {
 
   let newRows: AdoptListing[]
   try {
-    newRows = await fetchWithRetry(3)
+    newRows = await fetchAllListings()
   } catch (e) {
     console.error('[api] fetch failed after retries', e)
     setFetchFailed(true)
@@ -52,7 +52,7 @@ export async function loadData(): Promise<void> {
     setListings(newRows)
     // notification diff — first visit has empty oldRows, so nothing to diff; that
     // also serves as the "visited" check, no need for a separate hasVisited flag
-    notifyLockChanges(oldRows, newRows)
+    notifyListingChanges(oldRows, newRows)
   }
   setDataReady(true)
 
