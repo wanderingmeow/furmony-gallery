@@ -1,7 +1,8 @@
 import { defineConfig } from 'vitest/config'
 
-// Functional-layer tests only (no rendering): cache.ts + filter.ts.
-// happy-dom provides localStorage + IndexedDB; API/network is mocked in tests.
+// Pure-logic tests: no rendering. happy-dom supplies localStorage and IndexedDB, and the
+// tests mock the API instead of calling the site. Each test sits next to the file it
+// covers, so the include pattern is recursive.
 export default defineConfig({
   test: {
     environment: 'happy-dom',

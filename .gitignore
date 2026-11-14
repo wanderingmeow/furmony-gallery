@@ -17,6 +17,9 @@ dist-ssr
 agent/
 package-lock.json
 
+# embedding experiments: scripts, vectors, annotations, cover thumbnails
+embedding/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

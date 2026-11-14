@@ -1,11 +1,11 @@
 import { createMemo, createSignal, onCleanup, onMount, Show, type JSX } from 'solid-js'
 import { listings } from '../store'
-import { StatBarChart, StatHistChart, StatLineChart } from '../components/StatChart'
+import { StatBarChart, StatHistChart, StatLineChart } from '../components/stats/StatChart'
 import {
   filterByLock, priceBins, priceEdges, colorCounts, raceCounts, monthlyPriceStats, monthlyCounts,
   fmtMonth, medianPrice, type LockFilter,
-} from '../statistics'
-import { displayPrice } from '../domain'
+} from '../model/statistics'
+import { displayPrice } from '../model/domain'
 
 // Swift palette per chart: 价格蓝 / 颜色 mint / 物种绿 / 每月橙
 const PRICE_BLUE = '#3b82f6'
