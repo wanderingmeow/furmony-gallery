@@ -1,8 +1,8 @@
 // src/stores/listingsStore.ts — listings + loading state, data loading.
 import { createSignal } from 'solid-js'
-import type { AdoptListing } from '../types'
-import { loadListings, mergeListings } from '../listingCache'
-import { fetchAllListings } from '../api'
+import type { AdoptListing } from '../model/types'
+import { loadListings, mergeListings } from '../data/listingCache'
+import { fetchAllListings } from '../data/api'
 import { cleanStaleWishlist } from './wishlistStore'
 import { notifyListingChanges } from './notificationStore'
 

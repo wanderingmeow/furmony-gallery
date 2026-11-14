@@ -1,8 +1,8 @@
 // src/stores/derivedStore.ts - derived memos combining listings + filters + wishlist.
 import { createMemo, createRoot } from 'solid-js'
-import type { AdoptListing } from '../types'
-import { compute, countLockedRemaining } from '../filter'
-import { colorNames, isLocked, isSelfCommission, raceName } from '../domain'
+import type { AdoptListing } from '../model/types'
+import { compute, countLockedRemaining } from '../model/filter'
+import { colorNames, isLocked, isSelfCommission, raceName } from '../model/domain'
 import { listings } from './listingsStore'
 import { tab, sortMode, selectedColors, selectedRaces, searchText, noSocialOnly } from './filterStore'
 import { wishlist } from './wishlistStore'

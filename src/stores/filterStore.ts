@@ -5,7 +5,7 @@
 // there is no hidden global effect (no module-level createEffect). Internal only —
 // never touches the URL/history.
 import { batch, createSignal } from 'solid-js'
-import { FILTER_TABS, SORT_MODES, type FilterTab, type SortMode } from '../filter'
+import { FILTER_TABS, SORT_MODES, type FilterTab, type SortMode } from '../model/filter'
 
 const FILTER_KEY = 'furmony_filter'
 

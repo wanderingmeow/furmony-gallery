@@ -1,7 +1,7 @@
 // src/stores/notificationStore.ts — change notifications (top-right toast stack).
 import { createSignal } from 'solid-js'
-import type { AdoptListing } from '../types'
-import { displayPrice, isLocked } from '../domain'
+import type { AdoptListing } from '../model/types'
+import { displayPrice, isLocked } from '../model/domain'
 
 export type ListingChange =
   | { uid: number; id: number; name: string; headPicture?: string; kind: 'lock'; isLocked: boolean }

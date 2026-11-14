@@ -1,52 +1,86 @@
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
-import { useParams } from '@solidjs/router'
-import { listings, isLoading, dataReady } from '../store'
-import { CloseOutlined } from '@ant-design/icons-svg'
-import { detailImages } from '../domain'
-import { stableImageUrl } from '../image'
-import { AntIcon } from '../components/AntIcon'
-import { DetailToolbar } from '../components/DetailToolbar'
-import { Gallery } from '../components/Gallery'
-import { FullScreenZoom } from '../components/FullScreenZoom'
-import { InfoTable } from '../components/InfoTable'
+import { useParams, useNavigate } from '@solidjs/router'
+import { ArrowLeftOutlined, CloseOutlined } from '@ant-design/icons-svg'
+import {
+  listings, isLoading, dataReady, canGoBack, clearDetailHistory, onDetailShow, popBack,
+} from '../store'
+import { detailImages } from '../model/domain'
+import { DETAIL_PAD_X } from '../draw/layout'
+import { stableImageUrl } from '../data/image'
+import { AntIcon } from '../components/ui/AntIcon'
+import { AnimatedHeight } from '../components/ui/AnimatedHeight'
+import { SheetFab } from '../components/ui/SheetFab'
+import { Gallery } from '../components/detail/Gallery'
+import { FullScreenZoom } from '../components/detail/FullScreenZoom'
+import { InfoTable } from '../components/detail/InfoTable'
+import { RelatedRow } from '../components/detail/RelatedRow'
+import { scrollSheetToTop } from '../components/sheet/Sheet'
 
 export function Detail(props: { onClose: () => void }) {
   const params = useParams()
+  const navigate = useNavigate()
   const listing = createMemo(() => listings().find((l) => l.adoptId === Number(params.id)))
 
   const [index, setIndex] = createSignal(0)
   const [full, setFull] = createSignal(false)
 
-  // document.title follows the router: home stays "Furmony Gallery", a detail
-  // sheet shows "#ID NAME - Furmony Gallery". Reset on close/unmount.
+  createEffect(() => {
+    params.id
+    // Which trail this hop belongs to (related row, ←, or a new one from the grid) is
+    // the store's question: see stores/detailHistory.
+    if (params.id) onDetailShow(params.id)
+    setIndex(0) // how far the old setting was paged through says nothing about this one
+    // A related tap navigates detail → detail and leaves this component mounted, so
+    // without this the reader stays where the old setting left them. The scroll is
+    // animated: the new cover should arrive as travel, not as a cut.
+    scrollSheetToTop()
+  })
+
+  const close = () => {
+    clearDetailHistory() // closing ends the trail
+    props.onClose()
+  }
+
+  const goBack = () => {
+    const to = popBack()
+    if (!to) return
+    navigate(`/detail/${to}`, { replace: true, scroll: false })
+  }
+
+  // The title follows the sheet: a detail reads "#ID NAME - Furmony Gallery".
   createEffect(() => {
     const l = listing()
     if (l) document.title = `#${l.adoptId} ${l.adoptName ?? ''} - Furmony Gallery`
   })
   onCleanup(() => { document.title = 'Furmony Gallery' })
 
-  const images = createMemo(() => listing() ? detailImages(listing()!) : [])
+  const images = createMemo(() => {
+    const l = listing()
+    return l ? detailImages(l) : []
+  })
   const current = () => {
     const imgs = images()
     const i = Math.min(index(), Math.max(0, imgs.length - 1))
     return imgs.length > 0 ? imgs[i] : stableImageUrl(listing()?.adoptHeadPicture)
   }
+  // A setting without detail pictures shows its head picture, so the zoom counter
+  // starts at 1 there instead of 0.
+  const zoomCount = () => images().length || (listing()?.adoptHeadPicture ? 1 : 0)
 
-  // Esc closes the detail sheet. When the fullscreen zoom is open it owns Esc
-  // (closes zoom) — detail defers so a single Esc never closes both at once.
+  // Esc closes the sheet. While the zoom is open it takes Esc, so a single press
+  // closes one layer instead of both.
   onMount(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !full()) props.onClose()
+      if (e.key === 'Escape' && !full()) close()
     }
     document.addEventListener('keydown', handler)
     onCleanup(() => document.removeEventListener('keydown', handler))
   })
 
-  // image preload gate: reveal the gallery only once the FIRST image is loaded.
-  // Switching thumbnails must NOT re-gate — the Gallery already crossfades each
-  // switch on its own, so resetting ready() here would hide the whole gallery and
-  // spin again on every index change even for cached images.
+  // Wait for the first image before showing the gallery. Later index changes do not
+  // re-gate: the Gallery fades each swap itself, and gating again would hide the whole
+  // gallery behind a spinner even for a cached image.
   const [ready, setReady] = createSignal(false)
   let firstLoadDone = false
   createEffect(() => {
@@ -56,39 +90,41 @@ export function Detail(props: { onClose: () => void }) {
     setReady(false)
     const img = new Image()
     img.onload = () => { setReady(true); firstLoadDone = true }
-    img.onerror = () => { setReady(true); firstLoadDone = true } // never block: show fallback
+    img.onerror = () => { setReady(true); firstLoadDone = true } // a broken image still shows
     img.src = src
   })
 
   return (
     <div class="min-h-full w-full bg-canvas flex flex-col">
-      {/* floating close button — detail has no header bar, just the X; it floats over
-          the content, which spans the full sheet and scrolls under it */}
-      <button
-        class="absolute top-4 left-4 z-20 w-11 h-11 rounded-full glass flex items-center justify-center border border-border"
-        onClick={props.onClose}
-        aria-label="关闭"
-        title="关闭"
-      >
-        <AntIcon icon={CloseOutlined} size={22} />
-      </button>
+      {/* Detail has no header bar: these float over content that spans the sheet and
+          scrolls under them. ✕ always closes to the grid. The ← appears only after a
+          related tap, and covers "the one I just looked at" — pressing ← never turns ✕
+          into a back action. */}
+      <div class="absolute top-4 left-4 z-20 flex items-center gap-2">
+        <SheetFab label="关闭" onClick={close}>
+          <AntIcon icon={CloseOutlined} size={22} />
+        </SheetFab>
+        <Show when={canGoBack()}>
+          <SheetFab label="返回上一个设定" onClick={goBack}>
+            <AntIcon icon={ArrowLeftOutlined} size={20} />
+          </SheetFab>
+        </Show>
+      </div>
 
-      {/* body — full-sheet content (pt-16 keeps the first row clear of the floating X) */}
-      <div class="flex-1 min-h-0 px-4 pt-16 pb-4">
+      {/* pt-16 keeps the first row clear of the floating buttons */}
+      <div class="flex-1 min-h-0 pt-16 pb-4" style={{ 'padding-left': `${DETAIL_PAD_X}px`, 'padding-right': `${DETAIL_PAD_X}px` }}>
         <Show
           when={listing()}
           fallback={
             <div class="py-20 text-center text-muted">
-              {/* deep-link: data not loaded yet (cache read or fetch in flight) → loading;
-                  only after dataReady do we know the id truly doesn't exist → not found */}
+              {/* A deep link is not a missing id until the data has had its chance:
+                  loading while the cache read or fetch is still running. */}
               {(!dataReady() || isLoading()) ? '加载中…' : '未找到该设定'}
             </div>
           }
         >
           {(l) => (
             <>
-              {/* spinner gate: reveal the gallery only once the first image is ready;
-                  the Gallery itself fades its main image in on load (no abrupt pop) */}
               <Show when={ready()} fallback={<ImageLoading />}>
                 <Gallery
                   images={images()}
@@ -98,26 +134,24 @@ export function Detail(props: { onClose: () => void }) {
                 />
               </Show>
               <div class="mt-4">
-                {/* l() is the non-keyed accessor — read it reactively inline (do NOT
-                    capture into a const, or the detail stays stale when the id changes) */}
-                <InfoTable listing={l()} />
+                {/* l() is an accessor: read it inline. Copying it into a const freezes
+                    the table on the first setting. */}
+                <AnimatedHeight>
+                  <InfoTable listing={l()} />
+                </AnimatedHeight>
               </div>
+              <RelatedRow item={l()} />
             </>
           )}
         </Show>
       </div>
 
-      {/* bottom toolbar (收藏 + social chips + 前往官网) — sticky so it stays reachable */}
-      <Show when={listing()}>
-        {(l) => <DetailToolbar item={l()} />}
-      </Show>
-
-      {/* fullscreen zoom — rendered to body so it escapes the sheet's overflow/transform */}
+      {/* The zoom goes to the body, so the sheet's overflow and transform cannot clip it */}
       <Show when={full()}>
         <Portal>
           <FullScreenZoom
             imageUrl={current() ?? ''}
-            count={Math.max(images().length, listing()?.adoptHeadPicture ? 1 : 0)}
+            count={zoomCount()}
             index={index}
             onClose={() => setFull(false)}
           />
@@ -127,7 +161,8 @@ export function Detail(props: { onClose: () => void }) {
   )
 }
 
-// iOS-style centered loading spinner while the detail image preloads
+/** The round buttons at the top left: same size, glass, and shadow. */
+/** iOS-style spinner in the gallery's place while the first image loads. */
 function ImageLoading() {
   return (
     <div class="h-72 rounded-xl bg-surface-2 flex items-center justify-center">

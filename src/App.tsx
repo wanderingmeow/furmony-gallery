@@ -1,12 +1,12 @@
 import { createSignal, lazy, onMount, Suspense } from 'solid-js'
 import { Router, Route, useMatch, useNavigate, useSearchParams } from '@solidjs/router'
 import { initStore, setNoSocialOnly } from './store'
-import { flushImageUrlMap, initImageUrlMap } from './image'
+import { flushImageUrlMap, initImageUrlMap } from './data/image'
 import { Home } from './routes/Home'
-import { DetailSheet } from './components/DetailSheet'
-import { StatsSheet } from './components/StatsSheet'
-import type { LockFilter } from './statistics'
-import { NotificationCenter } from './components/NotificationCenter'
+import { DetailSheet } from './components/sheet/DetailSheet'
+import { StatsSheet } from './components/stats/StatsSheet'
+import type { LockFilter } from './model/statistics'
+import { NotificationCenter } from './components/ui/NotificationCenter'
 
 // Stats page + uplot/@dschz/solid-uplot load ONLY when /stats is opened (code-split chunk).
 const StatsLazy = lazy(() => import('./routes/Stats').then((m) => ({ default: m.Stats })))

@@ -1,4 +1,10 @@
 {
+  "164": {
+    "ownerName": "奶斯 Necesse",
+    "platforms": {
+      "x": "NaiceNya"
+    }
+  },
   "182": {
     "ownerName": "Tt是只摩羯龙",
     "platforms": {
@@ -8,10 +14,28 @@
       }
     }
   },
+  "201": {
+    "ownerName": "ナズ",
+    "platforms": {
+      "x": "furmony_nz"
+    }
+  },
   "208": {
     "ownerName": "西奥多",
     "platforms": {
       "x": "Theodore900909"
+    }
+  },
+  "289": {
+    "ownerName": "Tao",
+    "platforms": {
+      "x": "555_show"
+    }
+  },
+  "316": {
+    "ownerName": "ゆきと",
+    "platforms": {
+      "x": "yukizukiookami"
     }
   },
   "318": {
@@ -40,16 +64,16 @@
       "x": "dtmlnt"
     }
   },
-  "428": {
-    "ownerName": "fih",
-    "platforms": {
-      "x": "thefishnl"
-    }
-  },
   "411": {
     "ownerName": "雷恩",
     "platforms": {
       "x": "Leoon_furry"
+    }
+  },
+  "428": {
+    "ownerName": "fih",
+    "platforms": {
+      "x": "thefishnl"
     }
   },
   "435": {
@@ -59,6 +83,12 @@
         "uid": "doudoubudouw",
         "sec_uid": "MS4wLjABAAAARhIBK9cChS4W0WGzNrte7E6ArejHFzliUUryIQYxfDkFG2bcYqQpusv0MO9gzW5O"
       }
+    }
+  },
+  "443": {
+    "ownerName": "臻糖《コウトウ》",
+    "platforms": {
+      "x": "koutou_fur"
     }
   },
   "457": {
@@ -71,6 +101,12 @@
     "ownerName": "瑞鈴Misuzu",
     "platforms": {
       "x": "m1suzu_322"
+    }
+  },
+  "520": {
+    "ownerName": "MetCarl_卡爾大狗勾",
+    "platforms": {
+      "x": "metcarl_CJ0124"
     }
   },
   "534": {
@@ -92,6 +128,12 @@
         "uid": "LforikYc",
         "sec_uid": "MS4wLjABAAAAG_XLUocM6XmqQnnAixmWVGTZjHvmiN_oI7q8yvz9tOQ"
       }
+    }
+  },
+  "646": {
+    "ownerName": "Tidal",
+    "platforms": {
+      "x": "TidalWyrm"
     }
   },
   "659": {
@@ -119,6 +161,12 @@
     "ownerName": "Soren",
     "platforms": {
       "x": "SorenBGB"
+    }
+  },
+  "777": {
+    "ownerName": "赤耀wlemo",
+    "platforms": {
+      "x": "zhi_de27317"
     }
   },
   "789": {
@@ -163,6 +211,12 @@
       }
     }
   },
+  "853": {
+    "ownerName": "Kirpyu",
+    "platforms": {
+      "x": "kirpyu"
+    }
+  },
   "854": {
     "ownerName": "栗川Piko",
     "platforms": {
@@ -181,6 +235,12 @@
       }
     }
   },
+  "885": {
+    "ownerName": "Damon",
+    "platforms": {
+      "x": "Damonqwq"
+    }
+  },
   "891": {
     "ownerName": "清荷",
     "platforms": {
@@ -197,6 +257,12 @@
     "ownerName": "スモリバ",
     "platforms": {
       "x": "sumoriver"
+    }
+  },
+  "917": {
+    "ownerName": "VizionXM",
+    "platforms": {
+      "x": "VizionXM"
     }
   },
   "919": {
@@ -235,6 +301,12 @@
       }
     }
   },
+  "996": {
+    "ownerName": "菲利斯-フィリス-",
+    "platforms": {
+      "x": "phyllis_Fursuit"
+    }
+  },
   "1025": {
     "ownerName": "枫野",
     "platforms": {
@@ -242,6 +314,24 @@
         "uid": "benxiaohaibi34",
         "sec_uid": "MS4wLjABAAAAA_r_TtFb8xd53YUCrzMX1lWAiDeeZ--vEcvKskhpqto"
       }
+    }
+  },
+  "1033": {
+    "ownerName": "6号（ロクゴウ）",
+    "platforms": {
+      "x": "006gou"
+    }
+  },
+  "1038": {
+    "ownerName": "桃乐丝Lesley",
+    "platforms": {
+      "x": "Lesley_OwO_"
+    }
+  },
+  "1040": {
+    "ownerName": "ドリィ",
+    "platforms": {
+      "x": "dory_focus"
     }
   },
   "1062": {
@@ -254,6 +344,18 @@
     "ownerName": "타이겐 タイゲン",
     "platforms": {
       "x": "TAIGEN_FUR"
+    }
+  },
+  "1194": {
+    "ownerName": "Eternity",
+    "platforms": {
+      "x": "sj58wbz"
+    }
+  },
+  "1236": {
+    "ownerName": "Riffrain",
+    "platforms": {
+      "x": "X_Riffrain"
     }
   },
   "1238": {
@@ -292,19 +394,44 @@
       }
     }
   },
+  "1362": {
+    "ownerName": "騎士アルド",
+    "platforms": {
+      "x": "AEtONRPGDo57832"
+    }
+  },
   "1384": {
     "ownerName": "沧牙",
     "platforms": {
+      "x": "Cyanar12138",
       "douyin": {
         "uid": "196136192",
         "sec_uid": "MS4wLjABAAAAD6URKoSVn-Xo0qGhAVS40mSl1uczjmezl5WQ0A_tBwk"
       }
     }
   },
+  "1404": {
+    "ownerName": "ウメ",
+    "platforms": {
+      "x": "ume__mo_om"
+    }
+  },
   "1405": {
     "ownerName": "噭星 コウセイ 코세이",
     "platforms": {
       "x": "Kose1_furry"
+    }
+  },
+  "1494": {
+    "ownerName": "はむ",
+    "platforms": {
+      "x": "hamchan_01"
+    }
+  },
+  "1497": {
+    "ownerName": "雫月",
+    "platforms": {
+      "x": "siduku"
     }
   },
   "1522": {
@@ -334,6 +461,48 @@
       "x": "pinoco20260403"
     }
   },
+  "1620": {
+    "ownerName": "Draxus",
+    "platforms": {
+      "x": "DraxusG"
+    }
+  },
+  "1632": {
+    "ownerName": "羽幻鳞",
+    "platforms": {
+      "x": "Yuhuanlino"
+    }
+  },
+  "1635": {
+    "ownerName": "Zeph",
+    "platforms": {
+      "x": "Zeph_SR"
+    }
+  },
+  "1654": {
+    "ownerName": "霜骸・零式",
+    "platforms": {
+      "x": "SougaiDerg"
+    }
+  },
+  "1655": {
+    "ownerName": "RynMaroon",
+    "platforms": {
+      "x": "rynmaroon"
+    }
+  },
+  "1669": {
+    "ownerName": "小菊发w",
+    "platforms": {
+      "x": "030FaFa"
+    }
+  },
+  "1724": {
+    "ownerName": "けろっぐ",
+    "platforms": {
+      "x": "kelloggF7"
+    }
+  },
   "1726": {
     "ownerName": "うるたくん",
     "platforms": {
@@ -344,6 +513,18 @@
     "ownerName": "Rocky",
     "platforms": {
       "x": "maotianzhong"
+    }
+  },
+  "1887": {
+    "ownerName": "こん",
+    "platforms": {
+      "x": "kon3_mf"
+    }
+  },
+  "1890": {
+    "ownerName": "鸿鱗(Kolin)",
+    "platforms": {
+      "x": "Furryninaretayo"
     }
   },
   "1972": {

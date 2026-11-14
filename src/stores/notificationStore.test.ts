@@ -1,7 +1,7 @@
 // Tests for notifyListingChanges. No network, no rendering: a signal can be read outside a
 // component, so the diff can be called directly.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AdoptListing } from '../types'
+import type { AdoptListing } from '../model/types'
 
 let mod: typeof import('./notificationStore')
 beforeEach(async () => {

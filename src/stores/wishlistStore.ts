@@ -1,6 +1,6 @@
 // src/stores/wishlistStore.ts — wishlist state + localStorage persistence.
 import { createSignal } from 'solid-js'
-import type { AdoptListing } from '../types'
+import type { AdoptListing } from '../model/types'
 
 const WISH_KEY = 'furmony_wishlist'
 
@@ -19,14 +19,6 @@ export function toggleWishlist(listing: AdoptListing): void {
   } else {
     next.set(id, Date.now())
   }
-  setWishlist(next)
-  persistWishlist(next)
-}
-
-export function removeFromWishlist(id: number): void {
-  const cur = wishlist()
-  const next = new Map(cur)
-  next.delete(id)
   setWishlist(next)
   persistWishlist(next)
 }

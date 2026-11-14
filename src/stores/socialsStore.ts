@@ -4,7 +4,7 @@
 // fetched once at init. Failure degrades gracefully: the app still works, search just
 // doesn't match owner/accounts and the detail social section stays hidden until it loads.
 import { createSignal } from 'solid-js'
-import { parseSocials, toSearchMap, type SocialEntry, type SocialSearchEntry } from '../socials'
+import { parseSocials, toSearchMap, type SocialEntry, type SocialSearchEntry } from '../data/socials'
 
 const [socials, setSocials] = createSignal<Map<number, SocialEntry>>(new Map())
 const [socialSearch, setSocialSearch] = createSignal<Map<number, SocialSearchEntry>>(new Map())
@@ -23,7 +23,7 @@ export async function loadSocials(): Promise<void> {
     setSocials(entries)
     setSocialSearch(toSearchMap(entries))
   } catch (err) {
-    console.error('加载社交账号数据失败', err)
+    console.error('[socials] load failed', err)
     setSocials(new Map())
     setSocialSearch(new Map())
   }

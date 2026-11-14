@@ -3,8 +3,8 @@ import { useNavigate } from '@solidjs/router'
 import {
   dataReady, fetchFailed, errorMessage, setErrorMessage,
 } from '../store'
-import { Toolbar } from '../components/Toolbar'
-import { Waterfall } from '../components/Waterfall'
+import { Toolbar } from '../components/toolbar/Toolbar'
+import { Waterfall } from '../components/cards/Waterfall'
 
 export function Home() {
   const navigate = useNavigate()
