@@ -266,3 +266,47 @@ describe('askPicture', () => {
     expect(await going).toBeNull()
   })
 })
+
+/** The module keeps one flag for the whole page — that is the point of it — so each test here
+ *  needs its own copy of the module rather than a shared one it might arrive late to. */
+async function freshApi() {
+  vi.resetModules()
+  return import('./searchApi')
+}
+
+describe('warmSearch', () => {
+  it('makes one small request the first time the reader shows interest, and never again', async () => {
+    const { warmSearch, SEARCH_ENDPOINT } = await freshApi()
+    const seen: { url: string; mode?: string }[] = []
+    vi.stubGlobal('fetch', (input: unknown, init?: RequestInit) => {
+      seen.push({ url: String(input), mode: init?.mode })
+      return Promise.resolve(new Response('{}'))
+    })
+
+    warmSearch()
+    warmSearch()
+
+    expect(seen).toHaveLength(1)
+    expect(seen[0].url.startsWith(SEARCH_ENDPOINT)).toBe(true)
+    // Opaque on purpose: the answer is thrown away, only the live connection is wanted.
+    expect(seen[0].mode).toBe('no-cors')
+    // One character: the service refuses this before it looks at anything, so no model runs.
+    expect(seen[0].url).toContain('q=.')
+    vi.unstubAllGlobals()
+  })
+
+  it('treats a warm-up that cannot connect as one that simply did not happen', async () => {
+    const { warmSearch } = await freshApi()
+    let called = 0
+    vi.stubGlobal('fetch', () => {
+      called++
+      return Promise.reject(new TypeError('Failed to fetch'))
+    })
+
+    expect(() => warmSearch()).not.toThrow()
+    await Promise.resolve()
+
+    expect(called).toBe(1)
+    vi.unstubAllGlobals()
+  })
+})

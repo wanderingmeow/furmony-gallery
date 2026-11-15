@@ -4,6 +4,9 @@ import {
   askPicture, askSettings, PICTURE_TIMEOUT_MS, searchConfigured, SEARCH_TIMEOUT_MS,
   worthAsking, type PictureResult, type SemanticResult,
 } from '../data/searchApi'
+// Static, not lazy: splitting this off the entry bought a 366 B chunk plus one more request
+// ahead of it, during the moment the reader waits to see their own picture. The HEIF parser
+// stays lazy, in a worker file that only a HEIC loads.
 import { prepare } from '../data/pictureInput'
 import { searchText } from './filterStore'
 // Re-exported so components do not depend on where the address comes from.
@@ -42,10 +45,13 @@ function makeWait(): Wait {
   }
 }
 
-/** There is no "waiting to be sent" state: choosing a picture starts the search. `staged`
- *  (nothing running) and `none` (nothing similar) stay apart because the reader is told
- *  different things; either one called `failed` would claim the search broke. */
-export type PictureState = 'empty' | 'staged' | 'searching' | 'busy' | 'failed' | 'none' | 'done'
+/** Choosing a picture starts the search, so there is no "waiting to be sent" state. `preparing`
+ *  (the reader's own device is re-encoding) and `none` (nothing similar) stay apart from
+ *  `failed`, which would claim the search broke. `staged` - a picture up with nothing running -
+ *  needs a wait dropped mid-flight, which no control can cause: the only `open()` left is
+ *  hidden while the mode is on. */
+export type PictureState =
+  'empty' | 'preparing' | 'staged' | 'searching' | 'busy' | 'failed' | 'none' | 'done'
 
 /** Fraction of the picture's edge (0–1) past which the cut-out box is not drawn: at that
  *  width it lands on the preview's own rounded corner and reads as a broken overlay. The box
@@ -87,9 +93,14 @@ const store = createRoot(() => {
     const [staged, setStaged] = createSignal<{ blob: Blob; url: string } | null>(null)
     const [answer, setAnswer] = createSignal<PictureResult | null>(null)
     const [waiting, setWaiting] = createSignal(false)
+    // The reader's own device is re-encoding the picture, before any request exists.
+    const [preparing, setPreparing] = createSignal(false)
     // Which half of 查找中: the upload over the reader's network, then the search on the server.
     const [uploading, setUploading] = createSignal(false)
     const wait = makeWait()
+    // A number per chosen picture, dropped along with it. Encoding is slow enough that a job
+    // can finish after a second choice, or after 退出, has taken the slot.
+    let stagedTurn = 0
 
     const stop = () => batch(() => {
       wait.drop()
@@ -99,6 +110,8 @@ const store = createRoot(() => {
 
     /** Revokes the previous preview's object URL: nothing else holds a reference to it. */
     const release = () => {
+      stagedTurn += 1
+      setPreparing(false)
       const previous = staged()
       if (previous) URL.revokeObjectURL(previous.url)
       setStaged(null)
@@ -130,7 +143,8 @@ const store = createRoot(() => {
     return {
       on: modeOn,
       answer,
-      /** The preview, made from the same bytes that get sent. */
+      /** The preview, made from the picture the reader chose; once the encode lands it is the
+       *  same picture that gets sent. */
       preview: () => staged()?.url ?? '',
       uploading,
 
@@ -156,19 +170,40 @@ const store = createRoot(() => {
         release()
       },
 
-      /** Show a chosen picture and search with it right away. Replaces the picture that was up
-       *  and releases its object URL. */
+      /** Show a chosen picture and search with it right away. Replaces the picture that was
+       *  up and releases its object URL. */
       async stage(file: Blob): Promise<void> {
-        const prepared = await prepare(file)
-        if (!prepared) {
-          // The browser could not decode it (a HEIC, a truncated file). Nothing left the
-          // device, so the service never got to say: use another picture.
-          setAnswer({ ids: [], box: null, error: 'unreadable', action: 'pick' })
+        // The reader's own file goes on screen in the task that handled the tap, before a
+        // single byte is re-encoded. On a phone the encode runs long enough that a drop zone
+        // still sitting there reads as a dead button.
+        release()
+        // A request still running for the previous picture is called off rather than left to
+        // finish: `search` below will not start while one is running, so the reader would see
+        // this picture wearing the other one's results and these bytes would never go out.
+        stop()
+        const turn = stagedTurn
+        setStaged({ blob: file, url: URL.createObjectURL(file) })
+        setAnswer(null)
+        setPreparing(true)
+
+        const found = await prepare(file)
+        // A newer picture, or 退出, took the slot while this one was encoding.
+        if (turn !== stagedTurn) return
+        if (!found.blob) {
+          // The browser could not read it: a HEIC with no platform HEVC decoder, a truncated
+          // file. Nothing left the device, so the service never got to say: use another picture.
+          batch(() => {
+            release()
+            setAnswer({ ids: [], box: null, error: found.reason, action: 'pick' })
+          })
           return
         }
-        release()
-        setStaged({ blob: prepared, url: URL.createObjectURL(prepared) })
-        setAnswer(null)
+        // From here the preview is the same picture that goes out: white ground, at most
+        // 768px, orientation baked in rather than promised.
+        batch(() => {
+          release()
+          setStaged({ blob: found.blob, url: URL.createObjectURL(found.blob) })
+        })
         search()
       },
 
@@ -182,6 +217,7 @@ const store = createRoot(() => {
         if (found?.ids.length) return 'done'
         // An empty list with no reason is a complete answer, not a failure.
         if (found) return 'none'
+        if (preparing()) return 'preparing'
         // However the wait ended, the reader's picture stays up rather than reverting to the
         // drop zone.
         return staged() ? 'staged' : 'empty'

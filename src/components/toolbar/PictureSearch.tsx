@@ -6,6 +6,7 @@ import type { JSX } from 'solid-js'
 import { CloseOutlined, PictureOutlined } from '@ant-design/icons-svg'
 import { Spinner } from '../ui/Spinner'
 import { picture } from '../../store'
+import { warmSearch, type PictureError } from '../../data/searchApi'
 import { AntIcon } from '../ui/AntIcon'
 
 /** Left of the sort buttons because using it removes them: the reader sees what is being
@@ -15,7 +16,12 @@ export function PictureToggle() {
     <button
       class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-faint
              hover:text-ink transition-colors"
-      onClick={picture.open}
+      onClick={() => {
+        // The reader is about to go looking for a file, which is the longest pause in this
+        // path: the trip to the service gets paid while that search is happening.
+        warmSearch()
+        picture.open()
+      }}
       aria-label="找类似的"
       title="找类似的"
     >
@@ -25,14 +31,22 @@ export function PictureToggle() {
 }
 
 /** The reason, in the reader's words. The *action* is not here: the service sends it with the
- *  reason, and a page that guessed would offer 重试 for a picture that can never be read. */
-const WHY: Record<string, string> = {
+ *  reason, and a page that guessed would offer 重试 for a picture that can never be read.
+ *  Typed against `PictureError` so a new reason from the encode path cannot ship without its
+ *  sentence; a word from a newer service still falls through to the line below. */
+const WHY: Record<PictureError, string> = {
   unreadable: '这张图片读不出来',
   not_an_image: '这张图片读不出来',
+  // The file is fine; this browser has no HEVC decoder (Windows Chrome needs the HEVC
+  // extension). 读不出来 would send the reader to another app for nothing.
+  noHevc: '这个浏览器解不了 HEIC 照片',
   too_large: '这张图片太大了',
   embed_down: '服务没有应答',
   network: '没连上服务',
   timeout: '等得太久了',
+  // The body arrived and was not a result at all. Our own word, so it gets its own line
+  // rather than the `??` below, which is for words a newer service invents.
+  unknown: '没搜成',
 }
 
 const ACTION_LABEL = { pick: '换一张', retry: '重试' } as const
@@ -41,7 +55,8 @@ const ACTION_LABEL = { pick: '换一张', retry: '重试' } as const
 function Chip(props: { onClick: () => void; children: JSX.Element }) {
   return (
     <button
-      class="h-8 px-3 rounded-lg border border-border bg-surface font-semibold text-ink
+      class="h-8 px-3 shrink-0 whitespace-nowrap rounded-lg border border-border bg-surface
+             font-semibold text-ink
              hover:border-black/30 dark:hover:border-white/30 transition-colors"
       onClick={props.onClick}
     >{props.children}</button>
@@ -52,7 +67,7 @@ function Chip(props: { onClick: () => void; children: JSX.Element }) {
  *  about where the wait is. */
 function AnswerRow(props: { onPick: () => void }) {
   const state = picture.state
-  const why = () => WHY[picture.error()] ?? '没搜成'
+  const why = () => WHY[picture.error() as PictureError] ?? '没搜成'
   const action = picture.action
   // No action, no chip: for a reason this build has never heard of, the page offers nothing
   // rather than a 重试 that may not help.
@@ -104,7 +119,12 @@ function AnswerRow(props: { onPick: () => void }) {
 
       {/* The row stretches its children; without this the word hangs at the top of a 96px
           row next to a centred picture. */}
-      <div class="self-center text-sm text-muted">
+      <div class="self-center min-w-0 text-sm text-muted">
+        {/* The reader's own device is re-encoding the picture. It is working, but no request
+            exists yet, so neither 上传中 nor 查找中 would be a true thing to say. */}
+        <Show when={state() === 'preparing'}>
+          <span class="flex items-center gap-2"><Spinner size={13} /></span>
+        </Show>
         <Show when={state() === 'searching'}>
           <span class="flex items-center gap-2">
             <Spinner size={13} /> {picture.uploading() ? '上传中' : '查找中'}
@@ -113,24 +133,21 @@ function AnswerRow(props: { onPick: () => void }) {
         <Show when={state() === 'busy'}>稍后再试</Show>
         <Show when={state() === 'failed'}>
           {/* An unknown reason gets the sentence and no button: a button that cannot work is
-              worse than none. */}
-          <span class="flex items-center gap-2.5">
-            {why()}
+              worse than none. The button always sits below the sentence rather than beside it:
+              beside would move it between lines as the sentence changes length, and a control
+              that is not in the same place twice is harder to hit than one row of extra space. */}
+          <span class="flex flex-col items-start gap-2">
+            <span>{why()}</span>
             <Show when={actionLabel()}>{(label) => <Chip onClick={ask}>{label()}</Chip>}</Show>
           </span>
         </Show>
         {/* It answered and found nothing alike: not a broken search, and 重试 would only send
             the same picture back. */}
         <Show when={state() === 'none'}>
-          <span class="flex items-center gap-2.5">
-            没有很像的
+          <span class="flex flex-col items-start gap-2">
+            <span>没有很像的</span>
             <Chip onClick={props.onPick}>换一张</Chip>
           </span>
-        </Show>
-        {/* The wait ended with no answer: ask again rather than wipe the reader's picture
-            away. */}
-        <Show when={state() === 'staged'}>
-          <Chip onClick={() => picture.search()}>查找</Chip>
         </Show>
       </div>
     </>

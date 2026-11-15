@@ -15,6 +15,9 @@ const sent = vi.hoisted(() => ({
   uploaded: null as (() => void) | null,
   // A file the browser itself cannot read: prepare() hands back null.
   unreadable: false,
+  // Re-encoding a picture takes a moment on a phone. A test can hold that moment open to see
+  // what the reader has on screen while it lasts.
+  encodeGate: null as Promise<void> | null,
 }))
 
 vi.mock('../data/searchApi', async (importOriginal) => {
@@ -38,8 +41,10 @@ vi.mock('../data/searchApi', async (importOriginal) => {
 // The canvas work belongs to the browser. The store is under test, and all it needs is for
 // the bytes to come back the other side of prepare().
 vi.mock('../data/pictureInput', () => ({
-  prepare: async (file: Blob) => (sent.unreadable ? null : file),
-  scaleOf: (w: number, h: number) => Math.min(1, 768 / Math.max(w, h)),
+  prepare: async (file: Blob) => {
+    if (sent.encodeGate) await sent.encodeGate
+    return sent.unreadable ? { blob: null, reason: 'unreadable' } : { blob: file }
+  },
 }))
 
 const { picture, semanticActive, semanticIds, semanticPending } =
@@ -59,6 +64,7 @@ beforeEach(() => {
   sent.signals.length = 0
   sent.answer = null
   sent.unreadable = false
+  sent.encodeGate = null
   picture.close()
   setSemanticSearch(true)
   setSearchText('')
@@ -185,16 +191,37 @@ describe('search by picture', () => {
     expect(picture.action()).toBe('')
   })
 
-  // When a wait ends with no answer, the reader's own picture has to stay on screen.
+  // When a wait ends with no answer, the reader's own picture has to stay on screen rather
+  // than revert to the drop zone. Dropping a mid-flight wait is the store's own seam: no
+  // control reaches it, because the only open() left is hidden while the mode is on.
   it('keeps the chosen picture when a wait ends without an answer', async () => {
     sent.answer = new Promise(() => {})
     await choose()
     await settled()
     expect(picture.state()).toBe('searching')
-    picture.open() // entering the mode again: the wait is dropped, no answer ever landed
+    picture.open() // the wait is called off; no answer ever landed
     expect(pictureWaitingNow()).toBe(false)
     expect(picture.state()).toBe('staged')
     expect(picture.preview()).not.toBe('')
+  })
+
+  // A pasted picture replaces the one on screen without going through the toggle, so nothing
+  // calls stop first: the request still running has to be dropped by the choice itself, or
+  // `search` refuses to start and the new picture sits there wearing the old one's results.
+  it('sends a picture pasted while the previous one is still being asked about', async () => {
+    sent.answer = new Promise(() => {})   // the first request never comes back
+    await choose()
+    await settled()
+    expect(picture.state()).toBe('searching')
+
+    sent.answer = Promise.resolve({ ids: [301], box: null })
+    await picture.stage(new Blob(['pasted']))
+    await settled()
+
+    expect(sent.signals[0].aborted).toBe(true)   // the retired question was called off
+    expect(sent.signals).toHaveLength(2)         // and these bytes actually went out
+    expect(picture.state()).toBe('done')
+    expect(semanticIds()).toEqual([301])
   })
 
   // A sentence in the hidden box must neither cancel the picture's request nor set its
@@ -327,6 +354,57 @@ describe('search by picture', () => {
     sent.uploaded?.()
     expect(picture.uploading()).toBe(false)
     expect(picture.state()).toBe('searching') // still waiting, now for the answer
+  })
+
+  // A tap has to show something the same moment it lands. On a phone the encode runs long
+  // enough that a drop zone still sitting there afterwards reads as a dead button, and a
+  // browser that paints no frames will not rescue an update waiting on the encode.
+  it('puts the chosen picture on screen before the encode finishes', async () => {
+    let done: () => void = () => {}
+    sent.encodeGate = new Promise((resolve) => { done = resolve })
+    picture.open()
+    const staging = picture.stage(new Blob(['raw']))
+    await settled()
+    expect(picture.preview()).not.toBe('')
+    expect(picture.state()).toBe('preparing')   // 设备还在算，一个请求都还没发
+    expect(sent.signals).toHaveLength(0)   // nothing has gone out: those are not the bytes yet
+    done()
+    await staging
+    await settled()
+    expect(sent.signals).toHaveLength(1)
+  })
+
+  // Two picks in a row, and the first encode finishes last: it must not answer for the picture
+  // the reader has already replaced.
+  it('lets the last picture chosen win when encodes overlap', async () => {
+    let first: () => void = () => {}
+    sent.encodeGate = new Promise((resolve) => { first = resolve })
+    picture.open()
+    const earlier = picture.stage(new Blob(['first']))
+    await settled()
+    sent.encodeGate = null
+    await picture.stage(new Blob(['second']))
+    first()
+    await earlier
+    await settled()
+    expect(sent.signals).toHaveLength(1)
+  })
+
+  // Leaving the mode while a picture is still being encoded: the finished job must not put it
+  // back on screen, nor ask with it.
+  it('does not bring a picture back after the reader left the mode', async () => {
+    let done: () => void = () => {}
+    sent.encodeGate = new Promise((resolve) => { done = resolve })
+    picture.open()
+    const staging = picture.stage(new Blob(['gone']))
+    await settled()
+    picture.close()
+    done()
+    await staging
+    await settled()
+    expect(picture.on()).toBe(false)
+    expect(picture.state()).toBe('empty')
+    expect(sent.signals).toHaveLength(0)
   })
 
 })

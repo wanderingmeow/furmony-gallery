@@ -98,9 +98,43 @@ export function pictureEndpoint(base: string): string {
 
 export const PICTURE_ENDPOINT = pictureEndpoint(SEARCH_ENDPOINT)
 
+// ---------- warming the connection ----------
+
+// Where the service lives, the handshake is the wait: measured 3.7-12s before the edge answers
+// a ClientHello, against ~50ms for the search itself. A browser keeps one connection per
+// origin for the whole session, so one small request when the reader shows interest takes that
+// handshake out of every wait they can see.
+let warmed = false
+
+/** One character, which the service rejects before running any model: it uses one of the twenty
+ *  sentences a minute it allows and leaves a live connection behind. `no-cors` keeps the answer
+ *  opaque.
+ *
+ *  The rejection arrives as a 400, which the browser logs as a failed resource. There is no
+ *  anonymous 2xx to aim at instead - /healthz answers 404 to anyone but the operator, on
+ *  purpose - so a warm connection and a quiet console are not both available today. Do not
+ *  "fix" this by sending a query the service has to work on.
+ */
+export function warmSearch(): void {
+  if (warmed || !searchConfigured || typeof fetch !== 'function') return
+  warmed = true
+  fetch(`${SEARCH_ENDPOINT}?${new URLSearchParams({ q: '.', k: '1' })}`, { mode: 'no-cors', cache: 'no-store' })
+    .catch(() => {})
+}
+
 /** Twenty-five seconds, where a sentence gets ten. The service takes one upload at a time, so
  *  the wait is the queue in front plus the 3.5s embedding, and the reader chose the file. */
 export const PICTURE_TIMEOUT_MS = 25000
+
+/** Why the reader's own device never produced a picture to send. These are the words this
+ *  build speaks for itself; the service's refusals arrive as free text over the wire and stay
+ *  outside the union, because typing them would promise what the wire does not guarantee. */
+export type LocalReason = 'unreadable' | 'noHevc' | 'timeout'
+
+/** Every reason the page keeps a sentence for: the local ones, and the refusals the service
+ *  sends by name. A reason missing from `WHY` is a compile error, not a vaguer message. */
+export type PictureError =
+  LocalReason | 'not_an_image' | 'too_large' | 'embed_down' | 'network' | 'unknown'
 
 export interface PictureResult {
   ids: number[]

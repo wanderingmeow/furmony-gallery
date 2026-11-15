@@ -2,6 +2,7 @@ import { createSignal, onCleanup, Show } from 'solid-js'
 import { CloseOutlined, SearchOutlined } from '@ant-design/icons-svg'
 import { Spinner } from '../ui/Spinner'
 import { searchPlaceholder, searchText, semanticPending, setSearchText } from '../../store'
+import { warmSearch } from '../../data/searchApi'
 import { AntIcon } from '../ui/AntIcon'
 
 export function SearchBar(props: { initial?: string }) {
@@ -31,6 +32,7 @@ export function SearchBar(props: { initial?: string }) {
       <input
         value={input()}
         onInput={onInput}
+        onFocus={warmSearch}
         placeholder={searchPlaceholder()}
         class="bg-transparent outline-none text-sm w-full"
       />

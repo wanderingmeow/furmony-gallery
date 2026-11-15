@@ -1,0 +1,83 @@
+// src/data/encodeWorker.ts - decode, scale, flatten and encode, off the main thread.
+//
+// The whole chain belongs here, not just the encode: `canvas.toBlob()` is async but stays on
+// the main thread, and so does `createImageBitmap(canvas)` on a drawn canvas. On a phone each
+// measured around 200ms - enough to delay the frames that show the reader their own picture.
+// The file arrives as a reference, not a copy.
+
+import type { LocalReason } from './searchApi'
+import type { Prepared } from './pictureInput'
+import type { HeicAnswer } from './heicWorker'
+import { QUALITY, paintOnWhite, targetSize } from './encodeSpec'
+
+// The reply types are the ones the other side declares, so the three files cannot drift apart.
+
+const scope = self as unknown as {
+  postMessage(message: Prepared): void
+  onmessage: ((event: MessageEvent<Blob>) => void) | null
+}
+
+/** The HEVC frame inside a HEIF, from a worker that exists only for this one file. */
+async function heicPixels(file: Blob): Promise<{ bitmap: ImageBitmap | null; heic: boolean }> {
+  const worker = new Worker(new URL('./heicWorker.ts', import.meta.url), { type: 'module' })
+  try {
+    const png = await new Promise<HeicAnswer>((done) => {
+      const settle = (answer: HeicAnswer) => {
+        worker.onmessage = null
+        worker.onerror = null
+        done(answer)
+      }
+      worker.onmessage = (event: MessageEvent<HeicAnswer>) => settle(event.data)
+      worker.onerror = () => settle({ blob: null, heic: false })
+      worker.postMessage(file)
+    })
+    if (!png.blob) return { bitmap: null, heic: png.heic }
+    // PNG bytes rather than a bitmap - see heicWorker for what that avoids. Decoded here, the
+    // composite is an ordinary single-frame image from then on.
+    return { bitmap: await createImageBitmap(png.blob), heic: false }
+  } finally {
+    worker.terminate()
+  }
+}
+
+/** Pixels, or the word for why there are none. */
+type Pixels =
+  { bitmap: ImageBitmap; reason?: undefined }
+  | { bitmap: null; reason: LocalReason }
+
+async function pixels(file: Blob): Promise<Pixels> {
+  try {
+    // createImageBitmap applies the EXIF orientation tag, so width and height come back
+    // upright - the same reason the main-thread fallback uses an image element.
+    return { bitmap: await createImageBitmap(file) }
+  } catch {
+    // Not a format this browser decodes. Try the HEVC frame inside a HEIF.
+  }
+  // A CSP that blocks the nested worker must still get an answer: silence costs the reader the
+  // whole 20s bound in pictureInput.
+  const heic = await heicPixels(file).catch(() => ({ bitmap: null, heic: false }))
+  if (heic.bitmap) return { bitmap: heic.bitmap }
+  // A file that parsed as HEIF is missing a platform HEVC decoder, not a photo. 读不出来 reads
+  // like a broken photo and sends the reader to another app for nothing.
+  return { bitmap: null, reason: heic.heic ? 'noHevc' : 'unreadable' }
+}
+
+scope.onmessage = async (event) => {
+  const found = await pixels(event.data)
+  if (!found.bitmap) {
+    scope.postMessage({ blob: null, reason: found.reason })
+    return
+  }
+  try {
+    const [width, height] = targetSize(found.bitmap.width, found.bitmap.height)
+    const canvas = new OffscreenCanvas(width, height)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('no 2d context')
+    paintOnWhite(ctx, found.bitmap, width, height)
+    scope.postMessage({ blob: await canvas.convertToBlob({ type: 'image/jpeg', quality: QUALITY }) })
+  } catch {
+    scope.postMessage({ blob: null, reason: 'unreadable' })
+  } finally {
+    found.bitmap.close()
+  }
+}

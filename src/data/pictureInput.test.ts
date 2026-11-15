@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { prepare, scaleOf } from './pictureInput'
+import { prepare } from './pictureInput'
+import { scaleOf } from './encodeSpec'
 
 describe('scaleOf', () => {
   // The service reads a picture equally well anywhere between 384 and 1024 pixels, and it
@@ -43,7 +44,9 @@ describe('prepare', () => {
   }
 
   /** Decoding goes through an <img>, so the fake reports the size the browser would show:
-   *  naturalWidth and naturalHeight already follow the EXIF orientation tag. */
+   *  naturalWidth and naturalHeight already follow the EXIF orientation tag. The load or error
+   *  event arrives from a microtask, which is where the data path delivers it - deliberately
+   *  not from a decode() call, because nothing may depend on that existing. */
   function fakeImage(width: number, height: number, fails = false) {
     const seen: string[] = []
     class FakeImage {
@@ -51,11 +54,18 @@ describe('prepare', () => {
       onerror: (() => void) | null = null
       naturalWidth = width
       naturalHeight = height
-      set src(value: string) { seen.push(value) }
-      decode = () => (fails ? Promise.reject(new Error('cannot decode')) : Promise.resolve())
+      set src(value: string) {
+        seen.push(value)
+        queueMicrotask(() => (fails ? this.onerror?.() : this.onload?.()))
+      }
     }
     vi.stubGlobal('Image', FakeImage)
-    vi.stubGlobal('URL', { createObjectURL: () => 'blob:staged', revokeObjectURL: () => seen.push('revoked') })
+    // A subclass rather than a bare object: the encode path builds a worker from
+    // `new URL('./encodeWorker.ts', import.meta.url)`, so URL has to stay constructible.
+    vi.stubGlobal('URL', class extends URL {
+      static createObjectURL = () => 'blob:staged'
+      static revokeObjectURL = () => { seen.push('revoked') }
+    })
     return seen
   }
 
@@ -63,6 +73,30 @@ describe('prepare', () => {
     const original = document.createElement.bind(document)
     vi.spyOn(document, 'createElement').mockImplementation((tag: string) =>
       (tag === 'canvas' ? canvas as unknown as HTMLCanvasElement : original(tag)))
+  }
+
+  /** A browser that can encode off thread - the precondition the worker path asks for. */
+  function offscreenThatEncodes() {
+    class FakeOffscreen {}
+    Object.defineProperty(FakeOffscreen.prototype, 'convertToBlob',
+      { value: () => Promise.resolve(new Blob()) })
+    vi.stubGlobal('OffscreenCanvas', FakeOffscreen)
+  }
+
+  /** A worker that answers `message` on the next turn. Whatever it is handed comes back as an
+   *  array, so a test can see the file crossed as a reference rather than a copy. */
+  function fakeWorker(message: { blob: Blob | null; reason?: string }): Blob[] {
+    const posted: Blob[] = []
+    class FakeWorker {
+      onmessage: ((event: { data: { blob: Blob | null; reason?: string } }) => void) | null = null
+      onerror: (() => void) | null = null
+      constructor() { setTimeout(() => this.onmessage?.({ data: message }), 0) }
+      postMessage(file: Blob) { posted.push(file) }
+      terminate() {}
+    }
+    vi.stubGlobal('Worker', FakeWorker)
+    offscreenThatEncodes()
+    return posted
   }
 
   // The white ground is what makes this retrieval work, not a decoration. The model has no
@@ -77,7 +111,7 @@ describe('prepare', () => {
 
     expect(ops).toEqual(['fillStyle=#fff', 'fillRect', 'drawImage', 'toBlob'])
     expect([canvas.width, canvas.height]).toEqual([768, 384])
-    expect(out?.type).toBe('image/jpeg')
+    expect(out.blob?.type).toBe('image/jpeg')
   })
 
   // A phone stores a portrait photo as landscape pixels plus an orientation tag, so the
@@ -107,10 +141,13 @@ describe('prepare', () => {
   })
 
   // An unreadable file is the store's sentence to say, not the service's: it happens before a
-  // single byte leaves the device. This side only has to return null.
+  // single byte leaves the device. The word travels with the empty answer, because 读不出来 is
+  // the wrong thing to say about a photo this browser could have decoded.
   it('returns nothing for a file the browser cannot decode', async () => {
     const seen = fakeImage(0, 0, true)
-    expect(await prepare(new Blob(['nope']))).toBeNull()
+    const out = await prepare(new Blob(['nope']))
+    expect(out.blob).toBeNull()
+    expect(out.reason).toBe('unreadable')
     expect(seen).toEqual(['blob:staged', 'revoked'])
   })
 
@@ -118,6 +155,86 @@ describe('prepare', () => {
   // zero-sized canvas.
   it('returns nothing when the picture has no size', async () => {
     fakeImage(0, 0)
-    expect(await prepare(new Blob(['nope']))).toBeNull()
+    expect((await prepare(new Blob(['nope']))).blob).toBeNull()
+  })
+
+  // `toBlob` is async but stays on the main thread, and so does copying a drawn canvas out of
+  // it - on a phone that is a few hundred ms of not painting the picture the reader just chose.
+  // Where the browser can do the whole chain elsewhere, the main thread must touch no canvas.
+  it('sends the whole chain to a worker when the browser can', async () => {
+    const { canvas, ops } = watchingCanvas()
+    fakeImage(3000, 1500)
+    fakeCanvas(canvas as unknown as HTMLCanvasElement)
+    const posted = fakeWorker({ blob: new Blob(['worker'], { type: 'image/jpeg' }) })
+
+    const out = await prepare(new Blob(['file'], { type: 'image/jpeg' }))
+
+    expect(ops).toEqual([])
+    expect(await posted[0]?.text()).toBe('file')
+    expect(await out.blob?.text()).toBe('worker')
+  })
+
+  // The worker answers null for what it cannot decode, and the image element is the one that
+  // can on iOS, where HEIC decodes through nothing else.
+  it('asks the image element when the worker cannot decode it', async () => {
+    const { canvas, ops } = watchingCanvas()
+    fakeImage(600, 400)
+    fakeCanvas(canvas as unknown as HTMLCanvasElement)
+    fakeWorker({ blob: null, reason: 'unreadable' })
+
+    const out = await prepare(new Blob(['heic'], { type: 'image/heic' }))
+
+    expect(ops).toContain('toBlob')
+    expect(out.blob).not.toBeNull()
+  })
+
+  // A HEIC the platform has no HEVC decoder for is not a broken photo, and the worker is the one
+  // that knows. Its word survives the <img> attempt that follows, which cannot help either.
+  it('keeps the worker\u2019s reason when the image element cannot help either', async () => {
+    fakeImage(0, 0, true)
+    fakeWorker({ blob: null, reason: 'noHevc' })
+
+    const out = await prepare(new Blob(['heic'], { type: 'image/heic' }))
+
+    expect(out.blob).toBeNull()
+    expect(out.reason).toBe('noHevc')
+  })
+
+  // A worker that never answers would keep the reader in 处理中 with 退出 as the only way out.
+  // The bound is what turns a stuck thread into a sentence and a 换一张.
+  it('gives up on a worker that never answers', async () => {
+    vi.useFakeTimers()
+    fakeImage(0, 0, true)   // the image element cannot help either
+    class SilentWorker {
+      onmessage: ((event: { data: { blob: Blob | null; reason?: string } }) => void) | null = null
+      onerror: (() => void) | null = null
+      postMessage() {}
+      terminate() {}
+    }
+    vi.stubGlobal('Worker', SilentWorker)
+    offscreenThatEncodes()
+
+    const going = prepare(new Blob(['heic'], { type: 'image/heic' }))
+    await vi.advanceTimersByTimeAsync(20_000)
+    const out = await going
+
+    expect(out.blob).toBeNull()
+    expect(out.reason).toBe('timeout')
+    vi.useRealTimers()
+  })
+
+  // A browser that blocks the worker - a strict CSP, an older build - still gets a picture,
+  // just encoded on the main thread, where it is slower.
+  it('falls back to the main thread when the worker cannot be made', async () => {
+    const { canvas, ops } = watchingCanvas()
+    fakeImage(600, 400)
+    fakeCanvas(canvas as unknown as HTMLCanvasElement)
+    vi.stubGlobal('Worker', class { constructor() { throw new Error('CSP refused the worker') } })
+    offscreenThatEncodes()
+
+    const out = await prepare(new Blob(['file'], { type: 'image/jpeg' }))
+
+    expect(ops).toContain('toBlob')
+    expect(out.blob).not.toBeNull()
   })
 })
