@@ -2,7 +2,8 @@ import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show }
 import { useNavigate } from '@solidjs/router'
 import type { AdoptListing } from '../../model/types'
 import {
-  listings, loadRelated, markRelatedNav, related, relatedOnlyUnlocked, setRelatedOnlyUnlocked,
+  listings, loadRelated, markRelatedNav, related, relatedLoaded, relatedOnlyUnlocked,
+  setRelatedOnlyUnlocked,
 } from '../../store'
 import { MIN_RELATED, relatedIds, resolveRelated } from '../../model/related'
 import {
@@ -13,6 +14,7 @@ import { edgeFade, NO_FADE, type EdgeFade } from '../../draw/fade'
 import { isAdopted, isLocked } from '../../model/domain'
 import { LockedIcon } from '../ui/LockedIcon'
 import { onImageError, stableImageUrl } from '../../data/image'
+import { Spinner } from '../ui/Spinner'
 
 // An adopted piece is also unbuyable: adopting means it was locked first. The lock badge
 // on a card and the 只看未锁定 switch both read this, so they cannot disagree.
@@ -41,14 +43,20 @@ export function RelatedRow(props: { item: AdoptListing }) {
     navigate(`/detail/${id}`, { replace: true, scroll: false })
   }
 
+  // The table arrives after the sheet is open, so the block holds its space until it does;
+  // the switch waits for the same reason - it changes a row that is not on screen yet.
+  const loading = () => !relatedLoaded()
+
   return (
-    <Show when={hasEnoughNeighbours()}>
+    <Show when={hasEnoughNeighbours() || loading()}>
       <section class="mt-4" aria-label="类似设定">
-        <div class="flex items-center gap-2">
+        {/* min-h matches the switch's h-8: without it the heading stands 8px shorter while
+            the table loads, and the row underneath climbs by that much when it lands. */}
+        <div class="flex min-h-8 items-center gap-2">
           <h2 class="text-base font-semibold">类似设定</h2>
-          <UnlockedOnlySwitch />
+          <Show when={!loading()}><UnlockedOnlySwitch /></Show>
         </div>
-        <RelatedStrip items={items()} onOpen={open} />
+        <RelatedStrip items={items()} loading={loading()} onOpen={open} />
       </section>
     </Show>
   )
@@ -75,15 +83,18 @@ function UnlockedOnlySwitch() {
 // defending its start position this long after the last scroll event.
 const COAST_IDLE_MS = 120
 
-// The most a fade gets. An unbounded fade over a bright cover reads as a black edge in
-// the dark theme; 0.7 leaves only the hint that the row continues. The band is 56px wide
-// so the same change spreads over a longer distance.
-const FADE_PEAK = 0.7
+// The most a fade gets. Past this, a bright cover ends in what looks like a black edge in
+// the dark theme: the last card disappears instead of continuing.
+const FADE_PEAK = 0.45
 
 // The row itself, and the message that replaces it when the switch filters out every
 // neighbour. Both states live here because the message has to reserve exactly the height
 // of a row of cards: the sheet must not jump between them.
-function RelatedStrip(props: { items: readonly AdoptListing[]; onOpen: (id: number) => void }) {
+function RelatedStrip(props: {
+  items: readonly AdoptListing[]
+  loading?: boolean
+  onOpen: (id: number) => void
+}) {
   // Full-bleed container: -mx cancels the detail body's side padding, so its width is the
   // width the cards get to fill. It stays mounted when the row is empty, which is what
   // makes it a usable measuring stand-in for the missing scroller.
@@ -112,13 +123,11 @@ function RelatedStrip(props: { items: readonly AdoptListing[]; onOpen: (id: numb
     setFade(scroller?.isConnected ? edgeFade(scroller, fadeRange()) : NO_FADE)
   }
 
-  // Hopping between related pieces stays on one route, so the row keeps its offset. Clearing
-  // it takes more than one write: scroll anchoring undoes the first one within the same
-  // frame (measured 710 → 426), and a flick that is still coasting writes its own offset
-  // after us — the row then sits past the end of the shorter list, which Safari paints as
-  // blank until the reader touches it. So every scroll event presses the row back to the
-  // start, until the events stop (COAST_IDLE_MS) or the reader touches the row, which hands
-  // the offset back to them.
+  // Hopping between related pieces stays on one route, so the row keeps its scroll offset.
+  // One write does not clear it: scroll anchoring undoes it in the same frame (measured
+  // 710 → 426), and a coasting flick writes its own after us, leaving the row past the end of
+  // the shorter list - which Safari paints blank. So every scroll event presses the row back,
+  // until the events stop (COAST_IDLE_MS) or the reader touches the row.
   const rewind = () => {
     function atStart() {
       if (!scroller?.isConnected) return
@@ -167,10 +176,19 @@ function RelatedStrip(props: { items: readonly AdoptListing[]; onOpen: (id: numb
       <Show
         when={props.items.length > 0}
         fallback={
+          // Both empty states take the height of a row of cards, measured the same way the
+          // cards themselves are measured, so neither the spinner leaving nor the message
+          // leaving moves anything.
           <div
             class="flex items-center justify-center text-xs text-faint"
             style={{ height: `${relatedRowHeight(cardW())}px` }}
-          >没有未锁定的类似设定</div>
+            role="status"
+            aria-label={props.loading ? '类似设定载入中' : undefined}
+          >
+            <Show when={props.loading} fallback="没有未锁定的类似设定">
+              <Spinner size={18} />
+            </Show>
+          </div>
         }
       >
         {/* Safari paints this kind of horizontal scroller as a composited layer above the
@@ -191,15 +209,15 @@ function RelatedStrip(props: { items: readonly AdoptListing[]; onOpen: (id: numb
             </div>
           </div>
           {/* Overlays whose opacity changes, rather than elements that come and go: the
-              fade has to grow with the scroll distance. The gradient ends at to-canvas/0 —
+              fade has to grow with the scroll distance. The gradient ends at to-canvas/0 -
               to-transparent is rgba(0,0,0,0), which pulls the middle of the ramp toward
               black and looks dirty in the light theme. */}
           <div
-            class="pointer-events-none absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-canvas via-canvas/45 via-40% to-canvas/0"
+            class="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-canvas via-canvas/35 via-16% to-canvas/0"
             style={{ opacity: `${fade().left * FADE_PEAK}` }}
           />
           <div
-            class="pointer-events-none absolute inset-y-0 right-0 w-14 bg-gradient-to-l from-canvas via-canvas/45 via-40% to-canvas/0"
+            class="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-canvas via-canvas/35 via-16% to-canvas/0"
             style={{ opacity: `${fade().right * FADE_PEAK}` }}
           />
         </div>

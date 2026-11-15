@@ -1,6 +1,7 @@
 import { createSignal, onCleanup, Show } from 'solid-js'
 import { CloseOutlined, SearchOutlined } from '@ant-design/icons-svg'
-import { searchText, setSearchText } from '../../store'
+import { Spinner } from '../ui/Spinner'
+import { searchPlaceholder, searchText, semanticPending, setSearchText } from '../../store'
 import { AntIcon } from '../ui/AntIcon'
 
 export function SearchBar(props: { initial?: string }) {
@@ -30,10 +31,15 @@ export function SearchBar(props: { initial?: string }) {
       <input
         value={input()}
         onInput={onInput}
-        placeholder="搜索名称/描述/ID"
+        placeholder={searchPlaceholder()}
         class="bg-transparent outline-none text-sm w-full"
       />
-      {/* circular clear button — only when there's input */}
+      {/* The Beta search answers in ~150ms, which is fast enough to feel instant and
+          slow enough to notice when several queries are in flight. */}
+      <Show when={semanticPending()}>
+        <Spinner class="text-faint" size={12} />
+      </Show>
+      {/* circular clear button - only when there's input */}
       <Show when={input().length > 0}>
         <button
           class="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-faint hover:text-ink transition-colors"

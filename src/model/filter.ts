@@ -1,6 +1,5 @@
-// Pure filtering/sorting layer (no reactivity, no I/O) - unit-testable in isolation.
-// Also owns the filter-domain vocabulary (tabs, sort modes, labels) so consumers import
-// these from the filter domain rather than a generic utils module.
+// src/model/filter.ts - what the grid shows: pure filtering and sorting over a list of rows,
+// plus the vocabulary that goes with it (tabs, sort modes, labels). No reactivity, no I/O.
 import type { AdoptListing } from './types'
 import type { SocialSearchEntry } from '../data/socials'
 import {
@@ -32,23 +31,58 @@ export interface ComputeOptions {
   socials?: Map<number, SocialSearchEntry>
   // debug/tracking aid: show only listings with NO social account (URL ?nosocial=1)
   noSocial?: boolean
+  // keep only these adoptIds - the semantic group reuses every filter but its own text
+  // match, because 68% of the descriptions never mention what the piece looks like
+  only?: Set<number>
+  // drop these adoptIds, so the semantic group does not repeat the exact matches
+  skip?: Set<number>
+  // the caller already ordered the rows: a semantic result list IS its own order, and
+  // re-sorting it by price would quietly undo the ranking the reader asked for
+  keepOrder?: boolean
+}
+
+const timeOf = (l: AdoptListing) => publishDate(l)?.getTime() ?? 0
+
+const by = (key: (l: AdoptListing) => number) => (a: AdoptListing, b: AdoptListing) => key(a) - key(b)
+
+const SORTS: Record<SortMode, (a: AdoptListing, b: AdoptListing) => number> = {
+  timeDesc: by((l) => -timeOf(l)),
+  timeAsc: by(timeOf),
+  priceAsc: by(displayPrice),
+  priceDesc: by((l) => -displayPrice(l)),
+}
+
+/** The text match. Digits open two extra doors - a partial 编号 and a partial handle - because
+ *  those are what people type from memory, and both are matched as prefixes, not substrings. */
+function matchesQuery(query: string, socials?: Map<number, SocialSearchEntry>) {
+  const q = query.trim().toLowerCase()
+  const digits = /^\d+$/.test(q)
+  const socialText = (l: AdoptListing) => {
+    const s = socials?.get(l.adoptId)
+    return s ? `${s.ownerName} ${s.searchables.join(' ')}`.toLowerCase() : ''
+  }
+  const uidPrefix = (l: AdoptListing) => {
+    const s = socials?.get(l.adoptId)
+    return !!s && s.uidPrefixes.some((u) => u.toLowerCase().startsWith(q))
+  }
+  return (l: AdoptListing) =>
+    (l.adoptName?.toLowerCase().includes(q) ?? false) ||
+    (l.detailDescription?.toLowerCase().includes(q) ?? false) ||
+    socialText(l).includes(q) ||
+    (digits && (String(l.adoptId).startsWith(q) || uidPrefix(l)))
 }
 
 export function compute(o: ComputeOptions): AdoptListing[] {
-  const { rows, tab, sort, colors, races, query, wishlist, socials, noSocial } = o
+  const { rows, tab, sort, colors, races, query, wishlist, socials, noSocial, only, skip, keepOrder } = o
   let result = rows.filter((l) => !isSelfCommission(l))
 
-  // no-social filter applies to the base set BEFORE tab/sort/search so it holds for
-  // every tab (including the wishlist early-return). An entry with zero processable
-  // platforms counts as no-social too.
+  // Both set filters run first: they are the cheapest test and everything after them works on
+  // the smaller list. They apply to every tab, the wishlist early-return included.
+  if (only) result = result.filter((l) => only.has(l.adoptId))
+  if (skip && skip.size > 0) result = result.filter((l) => !skip.has(l.adoptId))
   if (noSocial) result = result.filter((l) => isNoSocial(l.adoptId, socials))
 
-  if (colors.size > 0) {
-    result = result.filter((l) => {
-      const cols = colorNames(l)
-      return cols.length > 0 && cols.some((c) => colors.has(c))
-    })
-  }
+  if (colors.size > 0) result = result.filter((l) => colorNames(l).some((c) => colors.has(c)))
   if (races.size > 0) {
     result = result.filter((l) => {
       const r = raceName(l)
@@ -59,56 +93,28 @@ export function compute(o: ComputeOptions): AdoptListing[] {
   switch (tab) {
     case 'unlocked': result = result.filter((l) => !isLocked(l)); break
     case 'locked': result = result.filter((l) => isLocked(l)); break
-    case 'wishlist': {
-      result = result.filter((l) => wishlist.has(l.adoptId))
-      result.sort((a, b) => (wishlist.get(a.adoptId) ?? 0) > (wishlist.get(b.adoptId) ?? 0) ? -1 : 1)
+    case 'wishlist':
+      // The 收藏 tab keeps the order it was added in whatever `keepOrder` says: that order is
+      // what the tab is, not a sort the reader can switch off.
       return result
-    }
+        .filter((l) => wishlist.has(l.adoptId))
+        .sort(by((l) => -(wishlist.get(l.adoptId) ?? 0)))
     case 'all': break
   }
 
-  switch (sort) {
-    case 'timeDesc': result.sort((a, b) => (publishDate(a)?.getTime() ?? 0) > (publishDate(b)?.getTime() ?? 0) ? -1 : 1); break
-    case 'timeAsc': result.sort((a, b) => (publishDate(a)?.getTime() ?? 0) < (publishDate(b)?.getTime() ?? 0) ? -1 : 1); break
-    case 'priceAsc': result.sort((a, b) => displayPrice(a) - displayPrice(b)); break
-    case 'priceDesc': result.sort((a, b) => displayPrice(b) - displayPrice(a)); break
-  }
-
-  if (query) {
-    const q = query.trim().toLowerCase()
-    const socialText = (l: AdoptListing) => {
-      const s = socials?.get(l.adoptId)
-      return s ? `${s.ownerName} ${s.searchables.join(' ')}`.toLowerCase() : ''
-    }
-    const uidPrefix = (l: AdoptListing) => {
-      const s = socials?.get(l.adoptId)
-      return s ? s.uidPrefixes.some((u) => u.toLowerCase().startsWith(q)) : false
-    }
-    const byText = (l: AdoptListing) =>
-      (l.adoptName?.toLowerCase().includes(q) ?? false) ||
-      (l.detailDescription?.toLowerCase().includes(q) ?? false) ||
-      socialText(l).includes(q)
-    // digits-only input: adoptId PREFIX match, plus text match (name/description + owner/handles,
-    // substring) plus numeric social-uid PREFIX match (bilibili/douyin/xiaohongshu).
-    const isDigit = /^\d+$/.test(q);
-    if (isDigit) {
-      result = result.filter((l) => String(l.adoptId).startsWith(q) || byText(l) || uidPrefix(l))
-    } else {
-      result = result.filter(byText)
-    }
-  }
+  if (!keepOrder) result.sort(SORTS[sort])
+  if (query) result = result.filter(matchesQuery(query, socials))
   return result
 }
 
-// "no social" predicate - single definition shared by compute() filtering and the
-// remainingLocked count so the two never drift. An entry with zero processable
-// platforms counts as no-social too.
+/** Shared by compute()'s filter and the locked-tab count so the two never drift. An entry with
+ *  zero processable platforms counts as no-social too. */
 export function isNoSocial(id: number, socials?: Map<number, SocialSearchEntry>): boolean {
   return !(socials?.get(id)?.hasSocial)
 }
 
-// Locked listings still needing a social entry (locked ∧ not self-commission ∧ no-social).
-// Pure + unfiltered (ignores color/race/search) - used by the locked-tab progress badge.
+/** Locked, not self-commission, no social entry. Ignores color/race/search: the badge counts
+ *  what is left to do in the whole feed, not what happens to be on screen. */
 export function countLockedRemaining(rows: AdoptListing[], socials?: Map<number, SocialSearchEntry>): number {
   return rows.filter((l) => isLocked(l) && !isSelfCommission(l) && isNoSocial(l.adoptId, socials)).length
 }

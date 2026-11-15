@@ -20,9 +20,16 @@ function renderNode(node: IconNode): any {
 }
 
 export function AntIcon(props: { icon: IconDefinition | (() => IconDefinition); class?: string; size?: string | number }) {
+  const root = (() => {
+    const def = typeof props.icon === 'function' ? props.icon() : props.icon
+    return typeof def.icon === 'function' ? def.icon('currentColor', '#fff') : def.icon
+  })()
   return (
     <svg
-      viewBox="64 64 896 896"
+      // Most ant-design glyphs are drawn inside a 64 64 896 896 box; a few - the spinner is
+      // one - use the whole 0 0 1024 1024. Assuming the common one clips those to an
+      // off-centre fragment, and a clipped ring reads as a wobble instead of a rotation.
+      viewBox={root.attrs?.viewBox ?? '64 64 896 896'}
       class={props.class}
       width={props.size ?? '1em'}
       height={props.size ?? '1em'}
@@ -30,11 +37,7 @@ export function AntIcon(props: { icon: IconDefinition | (() => IconDefinition); 
       fill="currentColor"
       style={{ display: 'inline-block', 'flex-shrink': 0, 'user-select': 'none' }}
     >
-      {(() => {
-        const def = typeof props.icon === 'function' ? props.icon() : props.icon
-        const tree = typeof def.icon === 'function' ? def.icon('currentColor', '#fff') : def.icon
-        return tree.children?.map((c) => renderNode(c))
-      })()}
+      {root.children?.map((c) => renderNode(c as IconNode))}
     </svg>
   )
 }

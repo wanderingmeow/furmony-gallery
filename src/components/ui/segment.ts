@@ -4,7 +4,9 @@
 
 export const SEG_ROW = 'gap-1 rounded-xl border border-border bg-surface p-1'
 
-export const SEG_ITEM = 'rounded-lg px-3 py-1.5 text-xs font-medium transition-all'
+// No wrap: the row is three equal columns, and one label breaking onto a second line makes
+// that segment taller than its neighbours and the control visibly uneven.
+export const SEG_ITEM = 'rounded-lg px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-all'
 
 export const SEG_ITEM_STATE = (on: boolean) => ({
   'bg-surface-2 text-ink': on,

@@ -20,6 +20,9 @@ package-lock.json
 # embedding experiments: scripts, vectors, annotations, cover thumbnails
 embedding/
 
+# A local copy for development. The published copy is the current one, so do not commit this.
+public/related.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

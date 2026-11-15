@@ -1,15 +1,16 @@
 import { createSignal, For, Show } from 'solid-js'
 import type { JSXElement } from 'solid-js'
 import {
-  BgColorsOutlined, ClearOutlined, ExperimentOutlined, SettingOutlined,
+  BgColorsOutlined, BulbOutlined, ClearOutlined, ExperimentOutlined, SettingOutlined,
 } from '@ant-design/icons-svg'
 import {
   availableColors, availableRaces, selectedColors, setSelectedColors, selectedRaces, setSelectedRaces,
-  priceMode, setPriceMode,
+  priceMode, searchConfigured, setPriceMode, semanticOn, setSemanticSearch,
 } from '../../store'
 import { PRICE_MODES, PRICE_MODE_LABELS, type PriceMode } from '../../model/domain'
 import { SEG_ITEM, SEG_ITEM_STATE, SEG_ROW } from '../ui/segment'
 import { AntIcon } from '../ui/AntIcon'
+import { Switch } from '../ui/Switch'
 
 const COLOR_DOT: Record<string, string> = {
   红: 'bg-red-500', 橙: 'bg-orange-500', 黄: 'bg-yellow-500', 绿: 'bg-green-600',
@@ -23,11 +24,8 @@ const RACE_ICON: Record<string, string> = {
   兔: '🐰', 鹿: '🦌', 蝙蝠: '🦇', 神: '👑', 神秘生物: '❓',
 }
 
-/**
- * A chevron whose ink sits on the middle of its own box, so rotating it 180° keeps it
- * there. Ant's arrow glyphs leave more room on one side, which shows as a jump when the
- * row folds.
- */
+/** Ant's arrow glyphs leave more room on one side, so turning one 180° makes a folding row
+ *  jump. This one is centred in its own box. */
 function Chevron(props: { open: boolean }) {
   return (
     <svg
@@ -57,7 +55,19 @@ function toggleIn(cur: Set<string>, value: string): Set<string> {
   return next
 }
 
-/** A foldable list of choices. Both start open, so the picks you already made stay visible. */
+/** A header row: 6px of padding, a 12px glyph, an 8px gap, then its name. */
+function PanelHeader(props: { icon: JSXElement; children: JSXElement }) {
+  return (
+    <div class="min-h-7 px-1.5 flex items-center gap-2 text-xs font-semibold">
+      {props.icon} {props.children}
+    </div>
+  )
+}
+
+/** So section content starts under the name, not under the icon beside it: 6 + 12 + 8. */
+const UNDER_TEXT = 'pl-[26px] pr-1.5'
+
+/** A foldable list of choices. Starts open, so the picks already made stay visible. */
 function Section(props: {
   title: string
   icon: JSXElement
@@ -78,7 +88,8 @@ function Section(props: {
         >
           {props.icon} {props.title}
         </button>
-        {/* 只清这一块。价格显示不在这里管：它是显示方式，不是筛选条件 */}
+        {/* This clears the block it sits in. 价格显示 is a display mode, not a filter, so it
+            has no clear button of its own. */}
         <Show when={props.selected.size > 0}>
           <button
             class="w-9 h-9 flex items-center justify-center rounded-lg text-faint hover:text-red-600"
@@ -90,16 +101,15 @@ function Section(props: {
           </button>
         </Show>
         <span class="text-[10px] text-faint">{props.selected.size}/{props.items.length}</span>
-        {/* The row's own title button already folds it and carries the state for readers of
-            the accessibility tree, so this arrow is a second hit area only. */}
+        {/* The title button already folds the row and carries aria-expanded, so this is a
+            second hit area and nothing else. */}
         <button
           class="w-7 h-9 flex items-center justify-center text-faint"
           aria-hidden="true"
           tabindex={-1}
           onClick={() => setOpen((o) => !o)}
         >
-          {/* Digits have no descender, so their ink sits below the middle of the line box
-              that flex centres on. */}
+          {/* Set by eye: the arrow shares no baseline with the digit count beside it. */}
           <span class="relative top-[1px] flex items-center">
             <Chevron open={open()} />
           </span>
@@ -107,7 +117,7 @@ function Section(props: {
       </div>
 
       <Show when={open()}>
-        <div class="mt-1 px-1 flex flex-wrap gap-1">
+        <div class={`mt-1 ${UNDER_TEXT} flex flex-wrap gap-1`}>
           <For each={props.items}>
             {(v) => {
               const on = () => props.selected.has(v)
@@ -133,34 +143,52 @@ function Section(props: {
   )
 }
 
-// The panel behind the 筛选 button: how prices are shown, then colours, then species. Each
-// of the two filter blocks clears itself; the display mode is not a filter, so nothing
-// resets it. Where the panel opens and how it closes is FabMenu's business.
+// The panel behind the 筛选 button: the 设定搜索 switch, then 价格显示, then colours and
+// species. Opening and closing the panel is FabMenu's business.
 export function FilterPanel() {
   return (
-    <>
-      {/* The panel's one scroll area. 重置 sits outside it, so it stays under the thumb
-          instead of scrolling in, and clearing filters does not move it. */}
-      <div class="min-h-0 overflow-y-auto">
-      <div class="min-h-7 px-1.5 flex items-center gap-2 text-xs font-semibold">
-        <AntIcon icon={SettingOutlined} /> 价格显示
-      </div>
-      <div class={`mt-1 flex ${SEG_ROW}`}>
-        <For each={PRICE_MODES}>
-          {(m: PriceMode) => {
-            const on = () => priceMode() === m
-            return (
-              <button
-                class={`flex-1 py-2 ${SEG_ITEM}`}
-                classList={SEG_ITEM_STATE(on())}
-                aria-pressed={on()}
-                onClick={() => setPriceMode(m)}
-              >
-                {PRICE_MODE_LABELS[m]}
-              </button>
-            )
-          }}
-        </For>
+    // The panel's one scroll area. 重置 lives outside it, so it stays under the thumb and
+    // clearing filters never moves it.
+    <div class="min-h-0 overflow-y-auto">
+      {/* A build without a search address hides the switch rather than offering a search that
+          quietly does nothing. */}
+      <Show when={searchConfigured}>
+        <PanelHeader icon={<AntIcon icon={BulbOutlined} />}>
+          设定搜索 <span class="text-[10px] px-1 rounded bg-blue-500/15 text-blue-600 dark:text-blue-300">Beta</span>
+          <div class="ml-auto">
+            <Switch on={semanticOn()} onChange={setSemanticSearch} label="设定搜索" />
+          </div>
+        </PanelHeader>
+        {/* Where what the reader sends goes, said once at the switch: a tooltip does not
+            exist on a touch screen, and repeating it under every query would be noise. Every
+            clause is true of the service, so none of it is softened. */}
+        <div class={`mt-1 mb-2 ${UNDER_TEXT} text-[11px] leading-relaxed text-muted`}>
+          <span class="block">语义和图像搜索由 Embedding 模型驱动，需要上传检索信息至服务器。</span>
+          <span class="block">零数据保留（ZDR）：文字和图片只在服务器内存中用于生成结果，返回即消失，不被记录，也不用于模型训练。</span>
+        </div>
+      </Show>
+
+      <PanelHeader icon={<AntIcon icon={SettingOutlined} />}>价格显示</PanelHeader>
+      {/* The indent lives outside the bordered box: that box has an edge, and the edge is
+          what lines up with the header's first letter. */}
+      <div class={`mt-1 ${UNDER_TEXT}`}>
+        <div class={`flex ${SEG_ROW}`}>
+          <For each={PRICE_MODES}>
+            {(m: PriceMode) => {
+              const on = () => priceMode() === m
+              return (
+                <button
+                  class={`flex-1 py-2 ${SEG_ITEM}`}
+                  classList={SEG_ITEM_STATE(on())}
+                  aria-pressed={on()}
+                  onClick={() => setPriceMode(m)}
+                >
+                  {PRICE_MODE_LABELS[m]}
+                </button>
+              )
+            }}
+          </For>
+        </div>
       </div>
 
       <Section
@@ -181,8 +209,6 @@ export function FilterPanel() {
         onClear={() => setSelectedRaces(new Set<string>())}
         mark={(v) => <span class="w-4 text-center">{RACE_ICON[v] ?? '❔'}</span>}
       />
-      </div>
-
-    </>
+    </div>
   )
 }

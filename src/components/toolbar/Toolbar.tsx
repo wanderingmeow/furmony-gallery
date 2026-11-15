@@ -1,32 +1,37 @@
 import { Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
-import { noSocialOnly, setNoSocialOnly } from '../../store'
+import { noSocialOnly, picture, semanticActive, semanticOn, setNoSocialOnly } from '../../store'
+import { CollapseX } from '../ui/CollapseX'
 import { SearchBar } from './SearchBar'
 import { SortButtons } from './SortButtons'
 import { FilterTabs } from './FilterTabs'
+import { PictureMode, PictureToggle } from './PictureSearch'
 
 export function Toolbar() {
   return (
     <div class="glass relative z-40 px-3 py-3 rounded-2xl border border-black/10 shadow-sm mx-4 mt-3 pointer-events-auto">
       <div class="flex items-center gap-2">
-        <div class="flex-1 min-w-0"><SearchBar /></div>
-        <div class="shrink-0"><SortButtons /></div>
-        <Show when={noSocialOnly()}>
-          <NoSocialBadge />
+        <Show when={!picture.on()} fallback={<PictureMode />}>
+          <div class="flex-1 min-w-0"><SearchBar /></div>
+          <Show when={semanticOn()}><PictureToggle /></Show>
+          {/* Hidden rather than disabled: sorting a picture's ranking would undo it. */}
+          <CollapseX when={!semanticActive()}><SortButtons /></CollapseX>
+          <Show when={noSocialOnly()}>
+            <NoSocialBadge />
+          </Show>
         </Show>
       </div>
       {/* Colour and species filters sit in the bottom-right FAB column: the thumb reaches
           them there, and their panel has to float over the list anyway. */}
-      <div class="mt-2"><FilterTabs /></div>
+      <Show when={!picture.on()}>
+        <div class="mt-2"><FilterTabs /></div>
+      </Show>
     </div>
   )
 }
 
-/**
- * The whole pill is the exit, so the tap target is the pill rather than a 15px ✕.
- * Clearing means both the session flag and the URL query — a refresh re-reads the query,
- * so dropping only one of them would switch the mode straight back on.
- */
+/** Clearing takes both the session flag and the URL query: a refresh re-reads the query, so
+ *  dropping only one turns the mode straight back on. */
 function NoSocialBadge() {
   const navigate = useNavigate()
   return (

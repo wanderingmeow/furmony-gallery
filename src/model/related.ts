@@ -1,7 +1,7 @@
 // Parsing and lookup for the related row. No solid import, so a test can call these
 // directly.
 //
-// The neighbour table comes from embedding/src/25_export_related.py and ships as
+// The neighbour table is built offline from cover thumbnails and ships as
 // public/related.json. It stores adoptIds only: signed image URLs expire, and the app
 // re-derives a URL with stableImageUrl() anyway, so ids stay small and never go stale.
 // The listing objects themselves come from the current listings() at render time.

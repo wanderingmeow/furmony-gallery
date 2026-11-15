@@ -1,4 +1,4 @@
-// Display settings: how the page draws, not what the reader is looking for — that is
+// Display settings: how the page draws, not what the reader is looking for - that is
 // filterStore's job, and changing one should not change the other. localStorage keeps
 // each choice across reloads.
 import { createSignal } from 'solid-js'
@@ -6,6 +6,7 @@ import { PRICE_MODES, type PriceMode } from '../model/domain'
 
 const DISPLAY_KEY = 'price_display'
 const RELATED_KEY = 'related_only_unlocked'
+const SEMANTIC_KEY = 'semantic_search'
 const DEFAULT_MODE: PriceMode = 'once'
 
 /** The three methods readMode needs, so a test can pass a Map instead of localStorage. */
@@ -62,5 +63,19 @@ export function setRelatedOnlyUnlocked(on: boolean): void {
     // Off removes the key instead of storing "0", so the default state leaves nothing behind
     if (on) localStorage.setItem(RELATED_KEY, '1')
     else localStorage.removeItem(RELATED_KEY)
+  } catch { /* when the write fails, the next load starts from the default */ }
+}
+
+const [semanticSearch, setSemanticSearchSignal] = createSignal(readFlagAt(SEMANTIC_KEY))
+
+export { semanticSearch }
+
+/** Off by default: a reader who has never seen the Beta search should not have their typed
+ *  text sent anywhere before they ask for it. */
+export function setSemanticSearch(on: boolean): void {
+  setSemanticSearchSignal(on)
+  try {
+    if (on) localStorage.setItem(SEMANTIC_KEY, '1')
+    else localStorage.removeItem(SEMANTIC_KEY)
   } catch { /* when the write fails, the next load starts from the default */ }
 }

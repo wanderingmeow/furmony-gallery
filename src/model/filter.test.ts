@@ -15,7 +15,7 @@ function ids(result: AdoptListing[]): number[] {
   return result.map((l) => l.adoptId)
 }
 
-describe('compute — base', () => {
+describe('compute - base', () => {
   it('excludes self-commission (自设委托) listings', () => {
     const rows = [
       listing(1, { harmonyPainterVo: { painterid: 1, painterName: '自设委托' } }),
@@ -25,7 +25,7 @@ describe('compute — base', () => {
   })
 })
 
-describe('compute — tab', () => {
+describe('compute - tab', () => {
   const rows = [
     listing(1, { isLock: 2 }), // locked
     listing(2, { isLock: 1 }), // isLock=1 → pure unlocked in processing
@@ -50,7 +50,7 @@ describe('compute — tab', () => {
   })
 })
 
-describe('compute — color & race filters', () => {
+describe('compute - color & race filters', () => {
   const rows = [
     listing(1, { harmonyAdoptColorVos: [{ harmonyColor: { colorName: '红' } }] }),
     listing(2, { harmonyAdoptColorVos: [{ harmonyColor: { colorName: '蓝' } }] }),
@@ -71,7 +71,7 @@ describe('compute — color & race filters', () => {
   })
 })
 
-describe('compute — sort modes', () => {
+describe('compute - sort modes', () => {
   it('priceAsc sorts by nonrecurringExpense ascending', () => {
     const rows = [
       listing(1, { nonrecurringExpense: 100 }),
@@ -107,7 +107,7 @@ describe('compute — sort modes', () => {
   })
 })
 
-describe('compute — search', () => {
+describe('compute - search', () => {
   it('matches adoptName or detailDescription, case-insensitive', () => {
     const rows = [
       listing(1, { adoptName: 'Furry Fox' }),
@@ -156,8 +156,8 @@ describe('compute — search', () => {
   })
 })
 
-describe('compute — socials search', () => {
-  // fake data — tests must never reference real owner names/handles from production
+describe('compute - socials search', () => {
+  // fake data - tests must never reference real owner names/handles from production
   const SOCIALS = new Map<number, SocialSearchEntry>([
     [1, { ownerName: 'TestOwnerOne', searchables: ['TestHandleOne'], uidPrefixes: [], hasSocial: true }],
     [2, { ownerName: 'TestOwnerTwo', searchables: [], uidPrefixes: ['12345678'], hasSocial: true }],
@@ -186,7 +186,7 @@ describe('compute — socials search', () => {
   })
 })
 
-describe('compute — noSocial filter', () => {
+describe('compute - noSocial filter', () => {
   // fake data: 1/2 have a processable platform (hasSocial), 3 has an entry but zero
   // platforms (also no-social), 4 has no entry at all
   const SOCIALS = new Map<number, SocialSearchEntry>([
@@ -240,5 +240,38 @@ describe('countLockedRemaining', () => {
 
   it('absent socials map → every locked non-self listing counts as remaining', () => {
     expect(countLockedRemaining(rows)).toBe(2)
+  })
+})
+
+describe('compute - semantic group', () => {
+  const rows = [listing(1), listing(2), listing(3)]
+  const base = { rows, tab: 'all' as const, sort: 'timeDesc' as const, colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP }
+
+  it('keeps only the ids it is handed', () => {
+    expect(ids(compute({ ...base, only: new Set([2, 3]) }))).toEqual([2, 3])
+  })
+
+  it('drops the ids the exact group already showed', () => {
+    expect(ids(compute({ ...base, skip: new Set([1]) }))).toEqual([2, 3])
+  })
+
+  it('applies both sets at once', () => {
+    expect(ids(compute({ ...base, only: new Set([1, 2, 3]), skip: new Set([2]) }))).toEqual([1, 3])
+  })
+
+  // The text match is the one filter the group skips - its whole purpose is the listing
+  // whose description never says what the piece looks like. Everything else still bites.
+  it('still filters by colour, tab and lock state', () => {
+    const coloured = [
+      listing(1, { harmonyAdoptColorVos: [{ harmonyColor: { colorName: '蓝' } }] }),
+      listing(2, { harmonyAdoptColorVos: [{ harmonyColor: { colorName: '红' } }] }),
+      listing(3, { harmonyAdoptColorVos: [{ harmonyColor: { colorName: '蓝' } }], isLock: 2 }),
+    ]
+    expect(ids(compute({ ...base, rows: coloured, colors: new Set(['蓝']) }))).toEqual([1, 3])
+    expect(ids(compute({ ...base, rows: coloured, colors: new Set(['蓝']), tab: 'unlocked' as const }))).toEqual([1])
+  })
+
+  it('an empty only set is nothing, not everything', () => {
+    expect(ids(compute({ ...base, only: new Set<number>() }))).toEqual([])
   })
 })

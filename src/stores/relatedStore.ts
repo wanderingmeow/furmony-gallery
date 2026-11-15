@@ -1,14 +1,21 @@
-// The neighbor table (public/related.json) is 48 KB gzipped, so we fetch it on the first
-// detail open instead of at startup.
+// The neighbor table is 48 KB gzipped, so we fetch it on the first detail open instead of at
+// startup. It is refreshed with the published site rather than shipped from this repository,
+// so the copy under public/ is only a development fallback. If the fetch fails, the row stays
+// hidden rather than showing a stale one.
 //
-// On failure we log and draw nothing: the row is an extra, and a toast about a missing
-// file would be worse than the missing row.
+// On failure we log and draw nothing. The row is an extra, and a toast about a missing file
+// would be worse than the missing row.
 import { createSignal } from 'solid-js'
 import { EMPTY_TABLE, parseRelated, type RelatedTable } from '../model/related'
 
 const [related, setRelated] = createSignal<RelatedTable>(EMPTY_TABLE)
 
-export { related }
+// Whether the fetch is over. The row keeps a placeholder up until this flips, so a failed
+// load has to flip it too: a spinner that never stops tells the reader less than a row that
+// is simply not there.
+const [relatedLoaded, setRelatedLoaded] = createSignal(false)
+
+export { related, relatedLoaded }
 
 let inflight: Promise<void> | null = null
 
@@ -30,5 +37,7 @@ async function fetchRelated(): Promise<void> {
   } catch (err) {
     console.error('[related] load failed', err)
     inflight = null // allow a retry on the next detail open
+  } finally {
+    setRelatedLoaded(true)
   }
 }
