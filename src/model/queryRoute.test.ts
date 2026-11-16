@@ -40,9 +40,22 @@ describe('routeFor', () => {
       .toEqual({ by: 'picture', ids: [] })
   })
 
-  // Before any picture answers there is nothing to show, so the plain list stays.
-  it('shows no ids while the first picture is on its way', () => {
-    expect(routeFor({ ...base, pictureOn: true, pictureIds: null })).toEqual({ by: 'none' })
+  // The neighbors from the sentence stay while the reader picks a file: the local search
+  // cannot match that sentence either.
+  it('keeps the sentence results while the first picture is on its way', () => {
+    expect(routeFor({ ...base, pictureOn: true, pictureIds: null, textIds: [7, 1] }))
+      .toEqual({ by: 'text', ids: [7, 1] })
+  })
+
+  it('shows the plain list once the box holds nothing worth asking', () => {
+    expect(routeFor({ ...base, pictureOn: true, pictureIds: null, query: '' }))
+      .toEqual({ by: 'none' })
+  })
+
+  // With the enhanced search off, the reader was looking at the plain list, and it stays.
+  it('shows the plain list when the enhanced search is off', () => {
+    expect(routeFor({ ...base, pictureOn: true, pictureIds: null, semanticOn: false, textIds: [7] }))
+      .toEqual({ by: 'none' })
   })
 
   // A picture outranks the sentence still sitting in the hidden box.

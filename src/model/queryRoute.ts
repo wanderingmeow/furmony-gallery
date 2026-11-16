@@ -33,20 +33,22 @@ export interface RouteInput {
   textIds: number[]
 }
 
+function boxHoldsQuestion(i: { semanticOn: boolean; query: string }): boolean {
+  return i.semanticOn && worthAsking(i.query)
+}
+
 /** A picture holds the service's one upload slot, so picture mode takes the question. */
 export function shouldAskText(i: {
   pictureOn: boolean
   semanticOn: boolean
   query: string
 }): boolean {
-  return !i.pictureOn && i.semanticOn && worthAsking(i.query)
+  return !i.pictureOn && boxHoldsQuestion(i)
 }
 
 export function routeFor(i: RouteInput): Route {
-  if (i.pictureOn) {
-    // An empty answer is still the picture's answer, so the list follows it and goes empty.
-    // While nothing has answered, the plain list stays.
-    return i.pictureIds === null ? { by: 'none' } : { by: 'picture', ids: i.pictureIds }
-  }
-  return shouldAskText(i) ? { by: 'text', ids: i.textIds } : { by: 'none' }
+  // An empty picture answer still empties the list. Until a picture answers, the sentence's
+  // results stay: the local search cannot match a sentence.
+  if (i.pictureOn && i.pictureIds !== null) return { by: 'picture', ids: i.pictureIds }
+  return boxHoldsQuestion(i) ? { by: 'text', ids: i.textIds } : { by: 'none' }
 }
