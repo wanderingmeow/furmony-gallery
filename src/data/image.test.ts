@@ -39,3 +39,20 @@ describe('stableImageUrl (img_url_map)', () => {
     expect(img.stableImageUrl('https://a.jpg?y=2')).toBe('https://a.jpg?x=1')
   })
 })
+
+describe('urlPath (the part that identifies an image)', () => {
+  it('drops the signature', () => {
+    expect(img.urlPath('https://cdn.example/1.jpg?q-signature=abc'))
+      .toBe('https://cdn.example/1.jpg')
+  })
+
+  it('leaves an unsigned URL alone', () => {
+    expect(img.urlPath('https://cdn.example/1.jpg')).toBe('https://cdn.example/1.jpg')
+  })
+
+  // The compare also looks at text fields, and a name can end in a question mark.
+  it('leaves text alone, question mark and all', () => {
+    expect(img.urlPath('这是什么?')).toBe('这是什么?')
+    expect(img.urlPath('/relative/path.png?x=1')).toBe('/relative/path.png?x=1')
+  })
+})

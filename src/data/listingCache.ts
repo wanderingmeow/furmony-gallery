@@ -1,39 +1,25 @@
-// src/data/listingCache.ts — IndexedDB cache layer for LISTINGS only.
+// src/data/listingCache.ts - the IndexedDB cache for listings.
 //
-// The signed-image URL map lives in image.ts (it's image-URL domain logic, not listing
-// infra) — this module stays a clean infrastructure leaf for the adopt-list cache:
-//    listings — KV table keyed by adoptId (one row per listing), plus a separate
-//      `order` record holding the adoptIds in display order (the API order is meaningful).
+// The `listings` store holds one row per adoptId, plus a single `order` record with the
+// adoptIds in display order: the order that the API sends is the order on screen.
 //
-// Network layer (fetchPage / fetchAllListings) lives in api.ts.
+// Opening the database and running transactions lives in idb.ts. Fetching from the API lives
+// in api.ts.
 import type { AdoptListing } from '../model/types'
-import { LISTINGS_STORE, ORDER_KEY, getRecord, openDb } from './idb'
+import { urlPath } from './image'
+import { LISTINGS_STORE, ORDER_KEY, clearStore, readAll, replaceAll } from './idb'
 
+// Rows and the `order` record share one store, so a read of the store returns both. A row is
+// keyed by a number and holds an AdoptListing; `order` is the one string key and holds ids.
 export async function loadListings(): Promise<AdoptListing[] | null> {
   try {
-    const order = await getRecord<number[]>(LISTINGS_STORE, ORDER_KEY)
-    // rows are keyed by numeric adoptId; the `order` record is a string key — skip it
+    const all = await readAll<number | string, AdoptListing | number[]>(LISTINGS_STORE)
     const byId = new Map<number, AdoptListing>()
-    const db = await openDb()
-    try {
-      const tx = db.transaction(LISTINGS_STORE, 'readonly')
-      const cur = tx.objectStore(LISTINGS_STORE).openCursor()
-      await new Promise<void>((res, rej) => {
-        cur.onsuccess = () => {
-          const c = cur.result
-          if (c) {
-            if (typeof c.key === 'number') byId.set(c.key, c.value as AdoptListing)
-            c.continue()
-          } else {
-            res()
-          }
-        }
-        cur.onerror = () => rej(cur.error)
-      })
-    } finally {
-      db.close()
+    for (const [key, value] of all) {
+      if (typeof key === 'number' && !Array.isArray(value)) byId.set(key, value)
     }
-    const rows = order && order.length > 0
+    const order = all.get(ORDER_KEY)
+    const rows = Array.isArray(order) && order.length > 0
       ? order.map((id) => byId.get(id)).filter((l): l is AdoptListing => !!l)
       : [...byId.values()]
     return rows.length > 0 ? rows : null
@@ -44,54 +30,48 @@ export async function loadListings(): Promise<AdoptListing[] | null> {
 
 export async function saveListings(listings: AdoptListing[]): Promise<void> {
   try {
-    const db = await openDb()
-    try {
-      const tx = db.transaction(LISTINGS_STORE, 'readwrite')
-      const store = tx.objectStore(LISTINGS_STORE)
-      store.clear() // replace-all: drop stale rows, then write every row + order
-      for (const l of listings) store.put(l, l.adoptId)
-      store.put(listings.map((l) => l.adoptId), ORDER_KEY)
-      await new Promise<void>((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error) })
-    } finally {
-      db.close()
-    }
+    const entries: [string | number, unknown][] = listings.map((l) => [l.adoptId, l])
+    entries.push([ORDER_KEY, listings.map((l) => l.adoptId)])
+    await replaceAll(LISTINGS_STORE, entries)
   } catch { /* ignore */ }
 }
 
 export async function clearListings(): Promise<void> {
   try {
-    const db = await openDb()
-    try {
-      db.transaction(LISTINGS_STORE, 'readwrite').objectStore(LISTINGS_STORE).clear()
-    } finally {
-      db.close()
-    }
+    await clearStore(LISTINGS_STORE)
   } catch { /* ignore */ }
 }
 
-// ---------------------------------------------------------------------------
-// Incremental merge: compare persisted (old) rows with freshly fetched ones, persist if
-// changed. `changed` is determined by content compare directly — no hash needed.
-// ---------------------------------------------------------------------------
-export async function mergeListings(old: AdoptListing[], newRows: AdoptListing[]): Promise<{ updated: AdoptListing[]; changed: boolean }> {
-  const oldIds = new Set(old.map((l) => l.adoptId))
-  const newIds = new Set(newRows.map((l) => l.adoptId))
-  let changed = oldIds.size !== newIds.size
+// The waterfall keys each card by its listing object, so a row with the same content has to be
+// handed back as the same object: a new object means a new card and a cover that decodes again.
 
-  if (!changed) {
-    const oldDict = new Map(old.map((l) => [l.adoptId, l]))
-    for (const item of newRows) {
-      const oldItem = oldDict.get(item.adoptId)
-      if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
-        changed = true
-        break
-      }
-    }
+// What the reader would see. Signed URLs are compared by path, so a new signature is the same
+// image. Keys are sorted, because the order of the fields in the JSON is not something a reader
+// can see. The order inside a list is visible: api.ts sorts the two lists that the API returns
+// unordered, and a third one would rebuild every card.
+function fingerprint(value: unknown): string {
+  if (typeof value === 'string') return JSON.stringify(urlPath(value))
+  if (Array.isArray(value)) return `[${value.map(fingerprint).join(',')}]`
+  if (value && typeof value === 'object') {
+    const row = value as Record<string, unknown>
+    return `{${Object.keys(row).sort()
+      .map((k) => `${JSON.stringify(k)}:${fingerprint(row[k])}`).join(',')}}`
   }
+  return value === undefined ? 'null' : JSON.stringify(value)
+}
+
+export async function mergeListings(old: AdoptListing[], newRows: AdoptListing[]): Promise<{ updated: AdoptListing[]; changed: boolean }> {
+  const byId = new Map(old.map((l) => [l.adoptId, { row: l, print: fingerprint(l) }]))
+  const updated = newRows.map((item) => {
+    const prior = byId.get(item.adoptId)
+    return prior && prior.print === fingerprint(item) ? prior.row : item
+  })
+  // A row with the same content kept its old object, so a new object here is a change.
+  const changed = updated.length !== old.length || updated.some((l, i) => l !== old[i])
 
   if (changed) {
-    await saveListings(newRows)
+    await saveListings(updated)
   }
 
-  return { updated: newRows, changed }
+  return { updated, changed }
 }

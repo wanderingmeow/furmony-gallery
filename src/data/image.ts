@@ -1,13 +1,8 @@
 // src/data/image.ts — signed-image URL resolution + persistence.
 //
-// Image-URL domain service: maps an image path to its first-seen signed URL so the browser
-// HTTP cache hits across refreshes. Reads are synchronous through an in-memory Map; writes
-// are debounced async and only touch dirty (newly-seen) keys. Persistence lives in the
-// `img_url_map` IndexedDB store via the generic idb helpers.
-//
-// This module is imported by the domain helpers (domain.ts) and components — NOT the
-// listings cache. That keeps the pure domain layer off the infrastructure cache layer:
-// listingCache.ts stays a leaf for listings only.
+// Reads are synchronous through an in-memory Map; writes are debounced async and only touch
+// dirty (newly-seen) keys. Persistence lives in the `img_url_map` IndexedDB store via the
+// generic idb helpers.
 import { IMG_URL_STORE, putMany, readAll } from './idb'
 
 let imageUrlMap: Map<string, string> | null = null
@@ -50,13 +45,23 @@ export async function initImageUrlMap(): Promise<void> {
   } catch { /* IndexedDB unavailable — memory-only */ }
 }
 
-// Returns a stable URL for `raw`. Only URLs with a `?` (signed) are mapped — no-query
-// URLs are returned as-is and bypass the map entirely.
+/**
+ * The URL without its signature. The API signs the same path again on every request, so the
+ * path is what identifies an image across visits. Text that is not an http(s) URL is returned
+ * unchanged, question mark and all.
+ */
+export function urlPath(raw: string): string {
+  if (!/^https?:\/\//i.test(raw)) return raw
+  const q = raw.indexOf('?')
+  return q === -1 ? raw : raw.slice(0, q)
+}
+
+// The browser's HTTP cache keys on the whole URL, so this returns the first URL seen for that
+// path and keeps it across visits: the cover then loads from cache.
 export function stableImageUrl(raw: string | undefined): string | undefined {
   if (!raw) return raw
-  const q = raw.indexOf('?')
-  if (q === -1) return raw
-  const path = raw.slice(0, q)
+  const path = urlPath(raw)
+  if (path === raw) return raw
   recentRaw.set(path, raw)
   const map = loadMap()
   const memo = map.get(path)
@@ -76,7 +81,7 @@ export function onImageError(e: Event): void {
   const tries = Number(img.dataset.retry || 0)
   if (tries >= 2) return
   const src = img.currentSrc || img.src
-  const path = src.split('?')[0]
+  const path = urlPath(src)
   const fresh = recentRaw.get(path)
   img.dataset.retry = String(tries + 1)
   img.src = fresh && fresh !== src ? fresh : src

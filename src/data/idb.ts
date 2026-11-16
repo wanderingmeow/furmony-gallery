@@ -1,13 +1,15 @@
-// src/data/idb.ts — thin generic IndexedDB helpers shared by the listings cache (listingCache.ts)
-// and the signed-image URL map (image.ts). Both live in ONE database but separate
-// object stores, so store creation is coordinated here once.
+// src/data/idb.ts - the IndexedDB helpers for the two local caches: listings (listingCache.ts)
+// and signed image URLs (image.ts).
+//
+// Both stores are in one database, so adding a store means raising DB_VERSION here and
+// creating it in openDb.
 export const DB_NAME = 'furmony_cache'
 export const DB_VERSION = 2
 export const IMG_URL_STORE = 'img_url_map'
 export const LISTINGS_STORE = 'listings'
 export const ORDER_KEY = 'order'
 
-export function openDb(): Promise<IDBDatabase> {
+function openDb(): Promise<IDBDatabase> {
   return new Promise((res, rej) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
     req.onupgradeneeded = () => {
@@ -20,54 +22,57 @@ export function openDb(): Promise<IDBDatabase> {
   })
 }
 
-export async function getRecord<T>(store: string, key: string): Promise<T | undefined> {
+// The promise waits for oncomplete, so a write is durable by the time it resolves. A request
+// that fails aborts the transaction, and that rejects the promise.
+async function withStore(
+  store: string,
+  mode: IDBTransactionMode,
+  run: (obj: IDBObjectStore) => void,
+): Promise<void> {
   const db = await openDb()
   try {
-    const tx = db.transaction(store, 'readonly')
-    const req = tx.objectStore(store).get(key)
-    const rec = await new Promise<T | undefined>((res, rej) => {
-      req.onsuccess = () => res(req.result)
-      req.onerror = () => rej(req.error)
+    const tx = db.transaction(store, mode)
+    run(tx.objectStore(store))
+    await new Promise<void>((res, rej) => {
+      tx.oncomplete = () => res()
+      tx.onerror = () => rej(tx.error)
+      tx.onabort = () => rej(tx.error)
     })
-    return rec
   } finally {
     db.close()
   }
 }
 
-// Read every entry of a KV store into a Map (key -> value).
 export async function readAll<K, V>(store: string): Promise<Map<K, V>> {
   const out = new Map<K, V>()
-  const db = await openDb()
-  try {
-    const tx = db.transaction(store, 'readonly')
-    const req = tx.objectStore(store).openCursor()
-    await new Promise<void>((res, rej) => {
-      req.onsuccess = () => {
-        const cur = req.result
-        if (cur) {
-          out.set(cur.key as K, cur.value as V)
-          cur.continue()
-        } else {
-          res()
-        }
+  await withStore(store, 'readonly', (obj) => {
+    const cur = obj.openCursor()
+    cur.onsuccess = () => {
+      const c = cur.result
+      if (c) {
+        out.set(c.key as K, c.value as V)
+        c.continue()
       }
-      req.onerror = () => rej(req.error)
-    })
-  } finally {
-    db.close()
-  }
+    }
+  })
   return out
 }
 
-export async function putMany(store: string, entries: [string, unknown][]): Promise<void> {
-  const db = await openDb()
-  try {
-    const tx = db.transaction(store, 'readwrite')
-    const obj = tx.objectStore(store)
+export function putMany(store: string, entries: [string | number, unknown][]): Promise<void> {
+  return withStore(store, 'readwrite', (obj) => {
     for (const [k, v] of entries) obj.put(v, k)
-    await new Promise<void>((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error) })
-  } finally {
-    db.close()
-  }
+  })
+}
+
+// The clear and the writes are one transaction, so a read at the same time returns either the
+// old contents or the new ones, never an empty store.
+export function replaceAll(store: string, entries: [string | number, unknown][]): Promise<void> {
+  return withStore(store, 'readwrite', (obj) => {
+    obj.clear()
+    for (const [k, v] of entries) obj.put(v, k)
+  })
+}
+
+export function clearStore(store: string): Promise<void> {
+  return withStore(store, 'readwrite', (obj) => { obj.clear() })
 }

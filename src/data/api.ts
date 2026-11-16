@@ -1,5 +1,6 @@
 // src/data/api.ts - fetching only. The local cache lives in listingCache.ts.
 import type { AdoptListing, AdoptListResponse } from '../model/types'
+import { urlPath } from './image'
 
 // `series` is the site's 「新作登场」 list; its rows never appear in the main list
 // (evidence: agent/furmony-api-notes.md §7).
@@ -38,12 +39,31 @@ async function fetchPage(endpoint: Endpoint, pageSize?: number, pageNum = 1): Pr
   return data
 }
 
+function byKey<T>(key: (v: T) => number | string) {
+  return (a: T, b: T) => {
+    const x = key(a)
+    const y = key(b)
+    return x < y ? -1 : x > y ? 1 : 0
+  }
+}
+
+// The API gives the color list and the picture list no fixed order, so one setting can come
+// back as [红, 蓝] and, on the next request, as [蓝, 红]. The chips and the gallery would
+// shuffle on every visit, and the merge would treat every row as new.
+export function sortColorsAndPictures(row: AdoptListing): AdoptListing {
+  const colors = row.harmonyAdoptColorVos
+  if (colors) row.harmonyAdoptColorVos = [...colors].sort(byKey((c) => c.colorId ?? 0))
+  const details = row.harmonyAdoptDetails
+  if (details) row.harmonyAdoptDetails = [...details].sort(byKey((d) => urlPath(d.detailPicture ?? '')))
+  return row
+}
+
 // The API sends only 10 rows unless pageSize is given: ask once for `total`, then again with
 // pageSize=total.
 async function fetchList(endpoint: Endpoint): Promise<AdoptListing[]> {
   const { total } = await fetchPage(endpoint)
   const { rows } = await fetchPage(endpoint, total)
-  return rows
+  return rows.map(sortColorsAndPictures)
 }
 
 async function withRetry<T>(attempts: number, load: () => Promise<T>): Promise<T> {

@@ -46,18 +46,18 @@ export async function loadData(): Promise<void> {
   }
 
   const oldRows = cached ?? []
-  const { changed } = await mergeListings(oldRows, newRows)
+  const { updated, changed } = await mergeListings(oldRows, newRows)
 
   if (changed) {
-    setListings(newRows)
+    setListings(updated)
     // notification diff — first visit has empty oldRows, so nothing to diff; that
     // also serves as the "visited" check, no need for a separate hasVisited flag
-    notifyListingChanges(oldRows, newRows)
+    notifyListingChanges(oldRows, updated)
   }
   setDataReady(true)
 
   // clean stale wishlist entries (ids removed from the API)
-  cleanStaleWishlist(new Set(newRows.map((l) => l.adoptId)))
+  cleanStaleWishlist(new Set(updated.map((l) => l.adoptId)))
 
   setIsLoading(false)
 }
