@@ -1,6 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { prepare } from './pictureInput'
+import { prepare, type EncodeReply } from './pictureInput'
 import { scaleOf } from './encodeSpec'
+
+/** The first bytes of a HEIF: the header, the major brand at byte 8, the compatible brands from
+ *  byte 16. This box is small, so its size fits in the last of the four bytes that hold it. */
+function ftypBox(major: string, compatible: string[] = []): Uint8Array<ArrayBuffer> {
+  const bytes = new Uint8Array(16 + compatible.length * 4)
+  bytes[3] = bytes.length
+  const tag = (at: number, text: string) => {
+    for (let i = 0; i < 4; i++) bytes[at + i] = text.charCodeAt(i)
+  }
+  tag(4, 'ftyp')
+  tag(8, major)
+  compatible.forEach((brand, i) => tag(16 + i * 4, brand))
+  return bytes
+}
 
 describe('scaleOf', () => {
   // The service reads a picture equally well anywhere between 384 and 1024 pixels, and it
@@ -47,7 +61,7 @@ describe('prepare', () => {
    *  naturalWidth and naturalHeight already follow the EXIF orientation tag. The load or error
    *  event arrives from a microtask, which is where the data path delivers it - deliberately
    *  not from a decode() call, because nothing may depend on that existing. */
-  function fakeImage(width: number, height: number, fails = false) {
+  function fakeImage(width: number, height: number, fails = false, log?: string[]) {
     const seen: string[] = []
     class FakeImage {
       onload: (() => void) | null = null
@@ -56,6 +70,7 @@ describe('prepare', () => {
       naturalHeight = height
       set src(value: string) {
         seen.push(value)
+        log?.push('img')
         queueMicrotask(() => (fails ? this.onerror?.() : this.onload?.()))
       }
     }
@@ -83,20 +98,27 @@ describe('prepare', () => {
     vi.stubGlobal('OffscreenCanvas', FakeOffscreen)
   }
 
-  /** A worker that answers `message` on the next turn. Whatever it is handed comes back as an
-   *  array, so a test can see the file crossed as a reference rather than a copy. */
-  function fakeWorker(message: { blob: Blob | null; reason?: string }): Blob[] {
-    const posted: Blob[] = []
+  /** One answer per run, in order. */
+  function fakeWorker(answers: EncodeReply[], log?: string[]) {
+    const files: Blob[] = []
+    let run = 0
     class FakeWorker {
-      onmessage: ((event: { data: { blob: Blob | null; reason?: string } }) => void) | null = null
+      onmessage: ((event: { data: EncodeReply }) => void) | null = null
       onerror: (() => void) | null = null
-      constructor() { setTimeout(() => this.onmessage?.({ data: message }), 0) }
-      postMessage(file: Blob) { posted.push(file) }
+      constructor() {
+        const answer = answers[Math.min(run, answers.length - 1)]
+        run += 1
+        setTimeout(() => this.onmessage?.({ data: answer }), 0)
+      }
+      postMessage(request: { file: Blob; allowHeifParser: boolean }) {
+        files.push(request.file)
+        log?.push(`worker:${request.allowHeifParser ? 'parser' : 'platform'}`)
+      }
       terminate() {}
     }
     vi.stubGlobal('Worker', FakeWorker)
     offscreenThatEncodes()
-    return posted
+    return { files }
   }
 
   // The white ground is what makes this retrieval work, not a decoration. The model has no
@@ -165,34 +187,91 @@ describe('prepare', () => {
     const { canvas, ops } = watchingCanvas()
     fakeImage(3000, 1500)
     fakeCanvas(canvas as unknown as HTMLCanvasElement)
-    const posted = fakeWorker({ blob: new Blob(['worker'], { type: 'image/jpeg' }) })
+    const log: string[] = []
+    const { files } = fakeWorker([{ blob: new Blob(['worker'], { type: 'image/jpeg' }) }], log)
 
     const out = await prepare(new Blob(['file'], { type: 'image/jpeg' }))
 
     expect(ops).toEqual([])
-    expect(await posted[0]?.text()).toBe('file')
+    expect(await files[0]?.text()).toBe('file')
     expect(await out.blob?.text()).toBe('worker')
+    // A JPEG the platform decodes should not make the reader download the parser.
+    expect(log).toEqual(['worker:platform'])
   })
 
-  // The worker answers null for what it cannot decode, and the image element is the one that
-  // can on iOS, where HEIC decodes through nothing else.
+  // On iOS an <img> is the only thing that decodes a HEIC. The parser stays unloaded here.
   it('asks the image element when the worker cannot decode it', async () => {
     const { canvas, ops } = watchingCanvas()
-    fakeImage(600, 400)
+    const log: string[] = []
+    fakeImage(600, 400, false, log)
     fakeCanvas(canvas as unknown as HTMLCanvasElement)
-    fakeWorker({ blob: null, reason: 'unreadable' })
+    fakeWorker([{ declined: 'heif' }], log)
 
     const out = await prepare(new Blob(['heic'], { type: 'image/heic' }))
 
     expect(ops).toContain('toBlob')
     expect(out.blob).not.toBeNull()
+    expect(log).toEqual(['worker:platform', 'img'])
   })
 
-  // A HEIC the platform has no HEVC decoder for is not a broken photo, and the worker is the one
-  // that knows. Its word survives the <img> attempt that follows, which cannot help either.
-  it('keeps the worker\u2019s reason when the image element cannot help either', async () => {
+  // The parser comes last: after the <img> has failed too, and only for a file whose own bytes
+  // are a HEIF.
+  it('asks for the parser last, after the image element has failed', async () => {
+    const log: string[] = []
+    fakeImage(0, 0, true, log)
+    fakeWorker(
+      [{ declined: 'heif' }, { blob: new Blob(['parsed'], { type: 'image/jpeg' }) }], log)
+
+    const out = await prepare(new Blob(['heic'], { type: 'image/heic' }))
+
+    expect(log).toEqual(['worker:platform', 'img', 'worker:parser'])
+    expect(await out.blob?.text()).toBe('parsed')
+  })
+
+  // A PDF gets no parser: the parser could not open it, and the reader is waiting.
+  it('keeps the parser away from a file that is not a HEIF', async () => {
+    const log: string[] = []
+    fakeImage(0, 0, true, log)
+    fakeWorker([{ declined: 'heif' }], log)
+
+    const out = await prepare(new Blob(['%PDF-1.4'], { type: 'application/pdf' }))
+
+    expect(log).toEqual(['worker:platform', 'img'])
+    expect(out.reason).toBe('unreadable')
+  })
+
+  // A picture from another app often arrives with no type, so the code has to read the bytes. The
+  // brand here is a compatible one, so the search cannot stop at byte 8.
+  it('reads the brand from the bytes when the file gives no type', async () => {
+    const log: string[] = []
+    fakeImage(0, 0, true, log)
+    fakeWorker([{ declined: 'heif' }, { blob: null, reason: 'noHevc' }], log)
+
+    const out = await prepare(new Blob([ftypBox('mif1', ['heic'])]))
+
+    expect(log).toEqual(['worker:platform', 'img', 'worker:parser'])
+    expect(out.reason).toBe('noHevc')
+  })
+
+  // A HEIC that arrives as image/jpeg is ordinary. Trust the type here and the reader gets
+  // 读不出来 about a photo that the parser opens.
+  it('reads the bytes when the type says it is something else', async () => {
+    const log: string[] = []
+    fakeImage(0, 0, true, log)
+    fakeWorker(
+      [{ declined: 'heif' }, { blob: new Blob(['parsed'], { type: 'image/jpeg' }) }], log)
+
+    const out = await prepare(new Blob([ftypBox('heic')], { type: 'image/jpeg' }))
+
+    expect(log).toEqual(['worker:platform', 'img', 'worker:parser'])
+    expect(await out.blob?.text()).toBe('parsed')
+  })
+
+  // The parser opens the container, so its reason is the one the reader sees once the two cheaper
+  // paths have failed.
+  it('keeps the parser\u2019s reason when nothing else could open the file', async () => {
     fakeImage(0, 0, true)
-    fakeWorker({ blob: null, reason: 'noHevc' })
+    fakeWorker([{ declined: 'heif' }, { blob: null, reason: 'noHevc' }])
 
     const out = await prepare(new Blob(['heic'], { type: 'image/heic' }))
 
@@ -200,14 +279,16 @@ describe('prepare', () => {
     expect(out.reason).toBe('noHevc')
   })
 
-  // A worker that never answers would keep the reader in 处理中 with 退出 as the only way out.
-  // The bound is what turns a stuck thread into a sentence and a 换一张.
-  it('gives up on a worker that never answers', async () => {
+  // A worker that never answers would leave the reader in 加载中 with only 退出. One bound covers
+  // the whole file, so the parser run cannot start a fresh 20 seconds after the first one hung.
+  it('gives up on a worker that never answers, without a second run', async () => {
     vi.useFakeTimers()
     fakeImage(0, 0, true)   // the image element cannot help either
+    let made = 0
     class SilentWorker {
-      onmessage: ((event: { data: { blob: Blob | null; reason?: string } }) => void) | null = null
+      onmessage: ((event: { data: EncodeReply }) => void) | null = null
       onerror: (() => void) | null = null
+      constructor() { made += 1 }
       postMessage() {}
       terminate() {}
     }
@@ -220,6 +301,7 @@ describe('prepare', () => {
 
     expect(out.blob).toBeNull()
     expect(out.reason).toBe('timeout')
+    expect(made).toBe(1)
     vi.useRealTimers()
   })
 

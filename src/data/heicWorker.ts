@@ -1,8 +1,8 @@
 // src/data/heicWorker.ts - the HEIF container parser and the HEVC frame inside it.
 //
 // Its own worker because a bundler puts everything a worker imports into that worker's file:
-// parsing HEIC in the encode worker would make every JPEG and every screenshot carry ~35 kB of
-// parser it never uses.
+// parsing HEIC in the encode worker would make every JPEG and every screenshot carry the parser
+// they never use.
 //
 // No WebAssembly: with no `wasmLoader`, the library's cascade stops at the platform codec.
 
