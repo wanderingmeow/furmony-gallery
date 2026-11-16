@@ -4,10 +4,10 @@
 import { createEffect, onCleanup, Show } from 'solid-js'
 import type { JSX } from 'solid-js'
 import { CloseOutlined, PictureOutlined } from '@ant-design/icons-svg'
-import { Spinner } from '../ui/Spinner'
 import { picture } from '../../store'
 import { warmSearch, type PictureError } from '../../data/searchApi'
 import { AntIcon } from '../ui/AntIcon'
+import { SPARK, SPARK_WORKING } from '../ui/spark'
 
 /** Left of the sort buttons because using it removes them: the reader sees what is being
  *  given up. */
@@ -123,11 +123,11 @@ function AnswerRow(props: { onPick: () => void }) {
         {/* The reader's own device is re-encoding the picture. It is working, but no request
             exists yet, so neither 上传中 nor 查找中 would be a true thing to say. */}
         <Show when={state() === 'preparing'}>
-          <span class="flex items-center gap-2"><Spinner size={13} /></span>
+          <span class="flex items-center gap-2"><AntIcon icon={SPARK} size={13} class={SPARK_WORKING} /></span>
         </Show>
         <Show when={state() === 'searching'}>
           <span class="flex items-center gap-2">
-            <Spinner size={13} /> {picture.uploading() ? '上传中' : '查找中'}
+            <AntIcon icon={SPARK} size={13} class={SPARK_WORKING} /> {picture.uploading() ? '上传中' : '查找中'}
           </span>
         </Show>
         <Show when={state() === 'busy'}>稍后再试</Show>

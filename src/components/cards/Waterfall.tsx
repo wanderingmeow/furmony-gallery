@@ -5,7 +5,7 @@ import {
   sortMode, setOnFilterChange,
 } from '../../store'
 import {
-  FOOTER_H, GAP, OVERSCAN_ROWS, PREVIEW_FADE_MS, PREVIEW_H, PREVIEW_IDLE_MS, VIEW_PAD,
+  GAP, OVERSCAN_ROWS, PREVIEW_FADE_MS, PREVIEW_H, PREVIEW_IDLE_MS, VIEW_PAD,
   indexOfRow, rowOfIndex, waterfallCardWidth, waterfallCols, waterfallRowHeight,
 } from '../../draw/layout'
 import { displayPrice } from '../../model/domain'
@@ -32,8 +32,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   // The toolbar floats above the content, so the top reserves its height plus the card
   // padding: the first card starts below the bar instead of under it.
   const topPad = createMemo(() => props.topOffset() + VIEW_PAD)
-  const contentHeight = createMemo(() => rowCount() * rowHeight() + topPad() + FOOTER_H)
-  const maxScrollTop = createMemo(() => Math.max(0, contentHeight() - viewportH()))
+  const contentHeight = createMemo(() => rowCount() * rowHeight() + topPad())
 
   const firstRow = createMemo(() => Math.max(0, Math.floor(scrollTop() / rowHeight())))
   const lastRow = createMemo(() => Math.min(rowCount(), Math.ceil((scrollTop() + viewportH()) / rowHeight())))
@@ -57,7 +56,10 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   // it to stay on that card instead of jumping to the top.
   let lastTopId: number | null = null
   const updatePreview = () => {
-    const s = maxScrollTop()
+    // How far the page can scroll. The browser measures this, and its answer includes the band
+    // under the last row, whose height follows the text it holds. Reading the number once per
+    // frame here means nothing else has to reserve a height for that band.
+    const s = Math.max(0, document.documentElement.scrollHeight - viewportH())
     const h = viewportH()
     const top = s <= 0 ? 0 : (scrollTop() / s) * (h - PREVIEW_H)
     const row = Math.floor(Math.max(0, scrollTop()) / rowHeight())
@@ -107,8 +109,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
 
   return (
     <>
-      {/* Normal document flow, for the reason on the signals above. The footer sits right
-          after the last row, so no grey strip is left at the bottom. */}
+      {/* Normal document flow, for the reason stated above. */}
       <div class="relative w-full" style={{ height: `${contentHeight()}px`, 'padding-top': `${topPad()}px`, 'padding-right': `${VIEW_PAD}px`, 'padding-left': `${VIEW_PAD}px` }}>
         <div
           class="virtual-content"
@@ -129,11 +130,30 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
             onOpen={props.onOpen}
           />
         </div>
-        <div
-          class="absolute left-0 right-0 flex items-center justify-center text-center text-sm text-muted px-6 py-5 border-t border-border"
-          style={{ top: `${topPad() + rowCount() * rowHeight()}px` }}
-        >
-          所有图片与文字素材均源自 Furmony（furmony.com），版权归原作者所有；本页面仅作浏览展示，不用于商业用途。
+      </div>
+      {/* The band under the last row is in normal flow, so its height follows the text it
+          holds: the copyright line wraps to two lines on a phone and one line on a desktop. */}
+      <div class="w-full text-center text-sm text-muted px-6 py-5 border-t border-border">
+        所有图片与文字素材均源自 Furmony（furmony.com），版权归原作者所有；本页面仅作浏览展示，不用于商业用途。
+        <div class="mt-1.5">
+          代码以{' '}
+          <a
+            href="https://github.com/wanderingmeow/furmony-gallery/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-blue-700 dark:text-blue-300 hover:underline"
+          >
+            MIT 协议
+          </a>{' '}
+          开源 ·{' '}
+          <a
+            href="https://github.com/wanderingmeow/furmony-gallery"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-blue-700 dark:text-blue-300 hover:underline"
+          >
+            项目仓库
+          </a>
         </div>
       </div>
 

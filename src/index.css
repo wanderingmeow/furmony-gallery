@@ -184,6 +184,17 @@ body {
   animation-fill-mode: forwards;
 }
 
+/* The sparkle while a search is in flight. The answer takes about 150ms, and a fast typist
+   runs several at once, so the pulse stays quick enough to look like work. Only the opacity
+   moves here: the accent color comes from the classes on the glyph. */
+@keyframes spark-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.22; }
+}
+.spark-pulse {
+  animation: spark-pulse 0.9s ease-in-out infinite;
+}
+
 /* Scroll-progress clock ring on the back-to-top button.
    A conic-gradient arc clipped to a thin ring via a radial mask, driven by a custom-property angle (turn unit).
    The arc starts at 12 o'clock and sweeps clockwise (clock-style);

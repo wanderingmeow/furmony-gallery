@@ -145,7 +145,7 @@ function Section(props: {
   )
 }
 
-// The panel behind the 筛选 button: the 设定搜索 switch, then 价格显示, then colours and
+// The panel behind the 筛选 button: the 设定搜索增强 switch, then 价格显示, then colors and
 // species. Opening and closing the panel is FabMenu's business.
 export function FilterPanel() {
   return (
@@ -156,9 +156,9 @@ export function FilterPanel() {
           quietly does nothing. */}
       <Show when={searchConfigured}>
         <PanelHeader icon={<AntIcon icon={BulbOutlined} />}>
-          设定搜索 <span class="text-[10px] px-1 rounded bg-blue-500/15 text-blue-600 dark:text-blue-300">Beta</span>
+          设定搜索增强 <span class="text-[10px] px-1 rounded bg-blue-500/15 text-blue-600 dark:text-blue-300">Beta</span>
           <div class="ml-auto">
-            <Switch on={semanticOn()} onChange={setSemanticSearch} label="设定搜索" />
+            <Switch on={semanticOn()} onChange={setSemanticSearch} label="设定搜索增强" />
           </div>
         </PanelHeader>
         {/* Where what the reader sends goes, said once at the switch: a tooltip does not

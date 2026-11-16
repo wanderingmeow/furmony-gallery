@@ -23,9 +23,6 @@ export const MIN_CARD = 236
 export const MIN_COLS = 2
 export const OVERSCAN_ROWS = 6
 
-// The copyright band under the last row.
-export const FOOTER_H = 72
-
 /**
  * Columns the grid uses: as many MIN_CARD-wide cards as fit, never fewer than MIN_COLS.
  * A width of 0 means nothing has been measured yet, and that case is a phone.

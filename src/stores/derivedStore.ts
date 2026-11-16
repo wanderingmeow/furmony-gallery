@@ -1,5 +1,5 @@
 // src/stores/derivedStore.ts - everything the grid and the tab badges read, in one pass from
-// listings + filters + wishlist + the Beta answer.
+// listings + filters + wishlist + what the enhanced search returned.
 import { createEffect, createMemo, createRoot, createSignal, on } from 'solid-js'
 import type { AdoptListing } from '../model/types'
 import { compute, countLockedRemaining } from '../model/filter'

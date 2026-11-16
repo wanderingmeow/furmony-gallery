@@ -1,4 +1,4 @@
-// src/stores/semanticStore.ts - state for the Beta search, sentence and picture.
+// src/stores/semanticStore.ts - state for the enhanced search, sentence and picture.
 import { batch, createEffect, createMemo, createRoot, createSignal, on } from 'solid-js'
 import {
   askPicture, askSettings, PICTURE_TIMEOUT_MS, searchConfigured, SEARCH_TIMEOUT_MS,
@@ -81,13 +81,14 @@ const store = createRoot(() => {
   /** Whether the reader's switch is on, and only for a build that was given an address. */
   const semanticOn = createMemo(() => semanticSearch() && searchConfigured)
 
-  /** The box's hint: a sentence about the piece rather than a name, once the search is on. */
+  /** The hint in the search box. When the enhanced search is on, the hint is a sample query
+   *  that the reader can type as it is. */
   const searchPlaceholder = createMemo(() =>
-    semanticOn() ? '描述设定，比如「黑绿色的龙，不带翅膀」' : '搜索名称/描述/ID')
+    semanticOn() ? '爱吃肉的棒小龙…' : '搜索名称/描述/ID')
 
   // ---------- the picture ----------
 
-  /** The picture half of the Beta search. Opening it is not a filter: the search box, the
+  /** The picture half of the enhanced search. Opening it is not a filter: the search box, the
    *  tabs and the sort buttons give way to one thumbnail. */
   function makePictureSearch() {
     const [modeOn, setModeOn] = createSignal(false)

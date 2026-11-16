@@ -7,6 +7,14 @@
 // `isComposing` stays false on every `input` event. The state machine therefore reads
 // `inputType`. This is the one guard: nothing else in the app accepts text that the writer
 // has not finished with.
+//
+// Engines disagree about when these events arrive and about what they call them, so three
+// rules keep the machine from depending on any one engine's habits. The gate reads the value
+// when its wait ends. An engine that sends `compositionend` before the text is in the box
+// still commits the finished text. An `input` event with `isComposing` true always holds the
+// box. An `inputType` that names composition text holds the box only while a composition is
+// open: macOS Firefox sends the finished text again under that same name right after
+// `compositionend`, and that second copy carries the finished question.
 
 import { hasUncommittedText } from '../../model/composing'
 
@@ -14,18 +22,21 @@ import { hasUncommittedText } from '../../model/composing'
 const COMMIT_WAIT = 500
 
 export interface ImeGate {
-  input(value: string, inputType: string, isComposing: boolean): void
+  input(inputType: string, isComposing: boolean): void
   compositionStart(): void
-  compositionEnd(value: string): void
+  compositionEnd(): void
   /** The box lost focus: this is the way out when `compositionend` never arrives. */
-  blur(value: string): void
+  blur(): void
   /** The value changed by code, so no event will arrive: the clear button. */
   reset(): void
   dispose(): void
 }
 
-/** Watch one input and call `commit` with text the writer has finished. */
-export function makeImeGate(commit: (value: string) => void): ImeGate {
+/**
+ * Watch one input and call `commit` with the text that the writer has finished. `read` returns
+ * what the box holds at the moment it is called, and the gate calls it when the wait ends.
+ */
+export function makeImeGate(commit: (value: string) => void, read: () => string): ImeGate {
   let composing = false
   let timer: ReturnType<typeof setTimeout> | null = null
 
@@ -35,43 +46,36 @@ export function makeImeGate(commit: (value: string) => void): ImeGate {
       timer = null
     }
   }
-  const schedule = (value: string): void => {
+  const schedule = (): void => {
     cancel()
     timer = setTimeout(() => {
       timer = null
       // The escape hatches - blur and a lost compositionend - pass on whatever the box
       // holds, and that can still be syllables. Then the previous query stays.
+      const value = read()
       if (!composing && !hasUncommittedText(value)) commit(value)
     }, COMMIT_WAIT)
   }
 
   return {
-    input(value, inputType, isComposing) {
-      // Syllables being put together, or taken back: nothing to ask yet.
-      if (/^(insert|delete)CompositionText$/.test(inputType)) {
+    input(inputType, isComposing) {
+      // Syllables being put together, or taken back: nothing to ask yet. The flag is the
+      // clearest signal, but iOS leaves it false for every event, so the event name is the
+      // only signal while a composition is open. Once the composition has closed, the name
+      // alone is not enough: macOS Firefox sends the finished text a second time under
+      // `insertCompositionText` after `compositionend`, and holding the box on that copy
+      // would ask nothing forever.
+      if (isComposing || (composing && /^(insert|delete)CompositionText$/.test(inputType))) {
         composing = true
         cancel()
         return
       }
-      // The committed text. Safari sends this a few milliseconds before `compositionend`,
-      // which is the one that schedules.
-      if (inputType === 'insertFromComposition') return
-      if (inputType === '') {
-        // An engine that reports no input type. For one that gives nothing else, the flag
-        // turning false is the only signal that composition ended.
-        if (isComposing) {
-          composing = true
-          cancel()
-        } else {
-          composing = false
-          schedule(value)
-        }
-        return
-      }
-      // A plain edit. After a composition it means the IME has let go of the box, so it
-      // also recovers from a `compositionend` that never arrived.
+      // Text that is no longer being put together: the committed characters, an ordinary key,
+      // or a backspace. Any of them can hold the finished sentence, so each one starts the
+      // wait, and one that follows a composition also covers a `compositionend` that never
+      // came.
       composing = false
-      schedule(value)
+      schedule()
     },
 
     compositionStart() {
@@ -79,15 +83,15 @@ export function makeImeGate(commit: (value: string) => void): ImeGate {
       cancel()
     },
 
-    compositionEnd(value) {
+    compositionEnd() {
       composing = false
-      schedule(value)
+      schedule()
     },
 
-    blur(value) {
+    blur() {
       if (!composing) return
       composing = false
-      schedule(value)
+      schedule()
     },
 
     reset() {

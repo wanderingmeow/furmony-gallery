@@ -70,7 +70,7 @@ const [semanticSearch, setSemanticSearchSignal] = createSignal(readFlagAt(SEMANT
 
 export { semanticSearch }
 
-/** Off by default: a reader who has never seen the Beta search should not have their typed
+/** Off by default: a reader who has never seen the enhanced search should not have their typed
  *  text sent anywhere before they ask for it. */
 export function setSemanticSearch(on: boolean): void {
   setSemanticSearchSignal(on)

@@ -1,4 +1,4 @@
-// src/data/searchApi.ts - the Beta search calls: one for a sentence, one for a picture.
+// src/data/searchApi.ts - the enhanced search calls: one for a sentence, one for a picture.
 // Failures resolve to null rather than throwing, so the local search keeps working alone.
 import { worthAsking } from '../model/queryRoute'
 
