@@ -8,7 +8,7 @@ import { listings } from './listingsStore'
 import { tab, sortMode, selectedColors, selectedRaces, searchText, noSocialOnly } from './filterStore'
 import { wishlist } from './wishlistStore'
 import { socialSearch } from './socialsStore'
-import { picture, semanticActive, semanticIds, semanticPending } from './semanticStore'
+import { route, semanticActive, semanticPending } from './semanticStore'
 
 export let filteredListings: () => AdoptListing[]
 export let availableColors: () => string[]
@@ -46,20 +46,21 @@ createRoot(() => {
   const sortedUnique = (values: string[]) => [...new Set(values)].sort()
 
   const merged = createMemo<AdoptListing[]>(() => {
-    const ids = semanticIds()
+    const r = route()
+    const ids = r.by === 'none' ? [] : r.ids
     const rank = new Map(ids.map((id, i) => [id, i]))
     // A photograph is the whole query: there is no exact-match group in front of it, and
     // leading with the plain list would bury the answer somewhere near the end.
     //
     // `only` still runs every other filter over the hits: a locked listing does not join a
     // picture's results because the picture happened to look like it.
-    if (picture.ranked() && ids.length) {
+    if (r.by === 'picture') {
       return compute({ ...base(), query: '', only: new Set(ids), keepOrder: true })
         .sort(byRank(rank))
     }
     const exact = compute({ ...base(), query: searchText() })
     if (ids.length === 0) return exact
-    // Exact matches first, the model's neighbours after them. The second group keeps every
+    // Exact matches first, the model's neighbors after them. The second group keeps every
     // other filter but the text match - its whole purpose is the listing whose description
     // never says what it looks like.
     const similar = compute({

@@ -4,27 +4,28 @@ import { Spinner } from '../ui/Spinner'
 import { searchPlaceholder, searchText, semanticPending, setSearchText } from '../../store'
 import { warmSearch } from '../../data/searchApi'
 import { AntIcon } from '../ui/AntIcon'
+import { makeImeGate } from '../ui/imeGate'
 
 export function SearchBar(props: { initial?: string }) {
   const [input, setInput] = createSignal(props.initial ?? searchText())
-  let timer: ReturnType<typeof setTimeout> | null = null
+  // The gate holds back the syllables that an iOS pinyin field keeps in the value, so the
+  // search only receives text the writer finished with. The box itself always shows what
+  // the reader typed.
+  const gate = makeImeGate(setSearchText)
+  onCleanup(() => gate.dispose())
 
-  const onInput = (e: Event) => {
-    const v = (e.currentTarget as HTMLInputElement).value
-    setInput(v)
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => setSearchText(v), 300)
+  const onInput = (e: InputEvent) => {
+    const value = (e.currentTarget as HTMLInputElement).value
+    setInput(value)
+    gate.input(value, e.inputType, e.isComposing)
   }
 
-  // clear immediately: reset local input + debounce timer + store search
+  // clear immediately: reset local input + the gate's pending commit + the store's query
   const onClear = () => {
     setInput('')
-    if (timer) clearTimeout(timer)
-    timer = null
+    gate.reset()
     setSearchText('')
   }
-
-  onCleanup(() => { if (timer) clearTimeout(timer) })
 
   return (
     <div class="flex items-center gap-1.5 h-8 px-2 search-field rounded-lg w-full min-w-0">
@@ -32,6 +33,9 @@ export function SearchBar(props: { initial?: string }) {
       <input
         value={input()}
         onInput={onInput}
+        onCompositionStart={() => gate.compositionStart()}
+        onCompositionEnd={(e) => gate.compositionEnd((e.currentTarget as HTMLInputElement).value)}
+        onBlur={(e) => gate.blur(e.currentTarget.value)}
         onFocus={warmSearch}
         placeholder={searchPlaceholder()}
         class="bg-transparent outline-none text-sm w-full"

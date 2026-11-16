@@ -47,8 +47,14 @@ vi.mock('../data/pictureInput', () => ({
   },
 }))
 
-const { picture, semanticActive, semanticIds, semanticPending } =
+const { picture, semanticActive, route, semanticPending } =
   await import('./semanticStore')
+
+/** The ids the list ranks by, whoever ranks it. */
+const ids = (): number[] => {
+  const r = route()
+  return r.by === 'none' ? [] : r.ids
+}
 
 /** Reads the wait itself: the state label translates it into other words. */
 const pictureWaitingNow = () => picture.state() === 'searching'
@@ -127,7 +133,7 @@ describe('the semantic request lifecycle', () => {
     await settled()
     setSearchText('白龙')
     await settled()
-    expect(semanticIds()).toEqual([])
+    expect(ids()).toEqual([])
   })
 })
 
@@ -154,7 +160,7 @@ describe('search by picture', () => {
     await choose()
     await settled()
     expect(picture.state()).toBe('done')
-    expect(semanticIds()).toEqual([201, 7])
+    expect(route()).toEqual({ by: 'picture', ids: [201, 7] })
     // The sort buttons read this: a picture ranking that got reordered undid itself.
     expect(semanticActive()).toBe(true)
     expect(picture.box()).toEqual([0.12, 0.08, 0.64, 0.72])
@@ -221,7 +227,47 @@ describe('search by picture', () => {
     expect(sent.signals[0].aborted).toBe(true)   // the retired question was called off
     expect(sent.signals).toHaveLength(2)         // and these bytes actually went out
     expect(picture.state()).toBe('done')
-    expect(semanticIds()).toEqual([301])
+    expect(route()).toEqual({ by: 'picture', ids: [301] })
+  })
+
+  // A second picture replaces the list only when it answers. Until then the reader keeps
+  // looking at the first answer.
+  it('keeps the first answer on the list while the second picture is on its way', async () => {
+    sent.answer = Promise.resolve({ ids: [201, 7], box: null })
+    await choose()
+    await settled()
+    expect(route()).toEqual({ by: 'picture', ids: [201, 7] })
+
+    sent.answer = new Promise(() => {})   // still running
+    await picture.stage(new Blob(['second']))
+    await settled()
+    expect(picture.state()).toBe('searching')
+    expect(route()).toEqual({ by: 'picture', ids: [201, 7] })
+    expect(semanticActive()).toBe(true)   // the ranking still orders the list
+  })
+
+  // A failed upload reports the reason in the panel and leaves the list alone.
+  it('keeps the first answer when the second picture fails', async () => {
+    sent.answer = Promise.resolve({ ids: [201], box: null })
+    await choose()
+    await settled()
+    sent.answer = Promise.resolve({ ids: [], box: null, error: 'embed_down', action: 'retry' })
+    await picture.stage(new Blob(['second']))
+    await settled()
+    expect(picture.state()).toBe('failed')
+    expect(route()).toEqual({ by: 'picture', ids: [201] })
+  })
+
+  // Nothing looks like the second picture either: that is an answer, so the list follows it.
+  it('lets an empty second answer empty the list', async () => {
+    sent.answer = Promise.resolve({ ids: [201], box: null })
+    await choose()
+    await settled()
+    sent.answer = Promise.resolve({ ids: [], box: null })
+    await picture.stage(new Blob(['second']))
+    await settled()
+    expect(picture.state()).toBe('none')
+    expect(route()).toEqual({ by: 'picture', ids: [] })
   })
 
   // A sentence in the hidden box must neither cancel the picture's request nor set its
@@ -276,7 +322,7 @@ describe('search by picture', () => {
     await settled()
     picture.close()
     expect(picture.on()).toBe(false)
-    expect(semanticIds()).toEqual([])
+    expect(route()).toEqual({ by: 'none' })
     expect(semanticActive()).toBe(false)
     expect(picture.box()).toBeNull()
   })
@@ -308,7 +354,7 @@ describe('search by picture', () => {
     sent.answer = Promise.resolve({ ids: [201], box: null })
     await choose()
     await settled()
-    expect(semanticIds()).toEqual([201])
+    expect(route()).toEqual({ by: 'picture', ids: [201] })
   })
 
   it('keeps the reason the service gave', async () => {

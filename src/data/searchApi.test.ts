@@ -1,31 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   askPicture, askSettings, endpointUsable, parsePicture, parseResponse, pictureEndpoint,
-  worthAsking,
 } from './searchApi'
-
-describe('worthAsking', () => {
-  it('needs three characters before it leaves the device', () => {
-    expect(worthAsking('小狼')).toBe(false)
-    expect(worthAsking('小狼人')).toBe(true)
-    expect(worthAsking('  小狼  ')).toBe(false)
-  })
-
-  it('leaves adoptIds to the local search, which matches them exactly', () => {
-    expect(worthAsking('2871')).toBe(false)
-    expect(worthAsking('287')).toBe(false)
-    expect(worthAsking('12 34')).toBe(false)
-    expect(worthAsking('1234，5678')).toBe(false)
-    expect(worthAsking('2871/2872')).toBe(false)
-    // A number with a word in it is a question again: 2 heads, 4 wings.
-    expect(worthAsking('2871 龙')).toBe(true)
-  })
-
-  it('counts characters, not UTF-16 units', () => {
-    expect(worthAsking('🐉🐉')).toBe(false)
-    expect(worthAsking('🐉🐉🐉')).toBe(true)
-  })
-})
 
 describe('parseResponse', () => {
   it('reads a reply', () => {

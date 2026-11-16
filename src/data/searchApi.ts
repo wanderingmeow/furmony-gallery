@@ -1,5 +1,6 @@
 // src/data/searchApi.ts - the Beta search calls: one for a sentence, one for a picture.
 // Failures resolve to null rather than throwing, so the local search keeps working alone.
+import { worthAsking } from '../model/queryRoute'
 
 // Set at build time. Missing means the feature is off, not broken.
 const ENCODED = String(import.meta.env.VITE_SEARCH_URL_B64 ?? '')
@@ -40,17 +41,6 @@ const WANT = 24
 // nothing about that.
 export interface SemanticResult {
   ids: number[]
-}
-
-/** Digits and nothing but separators: `12 34`, `1234,5678`. A pile of numbers gives the model
- *  nothing to rank. */
-const ONLY_NUMBERS = /^[\d\s,，、/.；;.-]+$/
-
-/** Three characters or more, and not a pile of numbers: the local search matches an adoptId
- *  exactly, so that part is its job. Length counts code points, not UTF-16 units. */
-export function worthAsking(query: string): boolean {
-  const q = query.trim()
-  return Array.from(q).length >= 3 && !ONLY_NUMBERS.test(q)
 }
 
 // The grid re-renders on tab and filter changes, each of which would otherwise re-ask.

@@ -6,6 +6,7 @@
 // never touches the URL/history.
 import { batch, createSignal } from 'solid-js'
 import { FILTER_TABS, SORT_MODES, type FilterTab, type SortMode } from '../model/filter'
+import { hasUncommittedText } from '../model/composing'
 
 const FILTER_KEY = 'furmony_filter'
 
@@ -73,6 +74,8 @@ export function loadFilters(): void {
     if (f.sort && SORT_MODES.includes(f.sort as SortMode)) setSortModeSignal(f.sort as SortMode)
     if (Array.isArray(f.colors)) setSelectedColorsSignal(new Set(f.colors.filter(Boolean)))
     if (Array.isArray(f.races)) setSelectedRacesSignal(new Set(f.races.filter(Boolean)))
-    if (typeof f.search === 'string') setSearchTextSignal(f.search)
+    // A query stored before the input gate existed can still hold syllables nobody
+    // committed. That is not a question, so `loadFilters` ignores it.
+    if (typeof f.search === 'string' && !hasUncommittedText(f.search)) setSearchTextSignal(f.search)
   } catch { /* ignore */ }
 }

@@ -2,8 +2,9 @@
 import { batch, createEffect, createMemo, createRoot, createSignal, on } from 'solid-js'
 import {
   askPicture, askSettings, PICTURE_TIMEOUT_MS, searchConfigured, SEARCH_TIMEOUT_MS,
-  worthAsking, type PictureResult, type SemanticResult,
+  type PictureResult, type SemanticResult,
 } from '../data/searchApi'
+import { routeFor, shouldAskText, type Route } from '../model/queryRoute'
 // Static, not lazy: splitting this off the entry bought a 366 B chunk plus one more request
 // ahead of it, during the moment the reader waits to see their own picture. The HEIF parser
 // stays lazy, in a worker file that only a HEIC loads.
@@ -91,8 +92,16 @@ const store = createRoot(() => {
   function makePictureSearch() {
     const [modeOn, setModeOn] = createSignal(false)
     const [staged, setStaged] = createSignal<{ blob: Blob; url: string } | null>(null)
+    // The answer for the picture that is up now: the panel reads its box, its reason and its
+    // retry button. The list reads `lastShownIds` below, which can hold an earlier picture's answer.
     const [answer, setAnswer] = createSignal<PictureResult | null>(null)
     const [waiting, setWaiting] = createSignal(false)
+    // The ids the list shows. A new picture does not clear them: the list would otherwise
+    // drop to the plain matches while the second search runs, and a failed upload would
+    // clear the first answer too. 退出 picture mode clears them, so the next session starts
+    // from the plain list. A complete answer replaces them, even one that is empty; a
+    // refusal, a busy service or a timeout keeps the ids already there.
+    const [lastShownIds, setLastShownIds] = createSignal<number[] | null>(null)
     // The reader's own device is re-encoding the picture, before any request exists.
     const [preparing, setPreparing] = createSignal(false)
     // Which half of 查找中: the upload over the reader's network, then the search on the server.
@@ -136,6 +145,7 @@ const store = createRoot(() => {
           setUploading(false)
           // The browser only reports that the request stopped; the timeout is the only cause.
           setAnswer(result ?? { ids: [], box: null, error: 'timeout', action: 'retry' })
+          if (result && !result.error && !result.busy) setLastShownIds(result.ids)
         })
       })
     }
@@ -166,6 +176,7 @@ const store = createRoot(() => {
           cancelSentence()
           stop()
           setAnswer(null)
+          setLastShownIds(null)
         })
         release()
       },
@@ -239,9 +250,8 @@ const store = createRoot(() => {
        *  refusals, this file for the browser's. */
       action: () => answer()?.action ?? '',
 
-      /** Whether the list is ranked by the picture. Nothing on the site matches a photograph
-       *  by text, so there is no exact-match group in front of it. */
-      ranked: createMemo(() => !!answer()?.ids.length),
+      /** The ids the list is showing, or null while it still shows its plain matches. */
+      lastShownIds,
     }
   }
 
@@ -249,19 +259,24 @@ const store = createRoot(() => {
 
   // ---------- what the list reads ----------
 
-  /** The toolbar and the list read this one test, so they cannot disagree about the sort
-   *  buttons. */
-  const semanticActive = createMemo(() => picture.ranked()
-    || (semanticOn() && worthAsking(searchText().trim())))
-
-  /** The ids the list ranks by. An answer to an older sentence must not rank a newer one,
-   *  hence the query check. */
-  const semanticIds = createMemo<number[]>(() => {
-    if (picture.ranked()) return picture.answer()?.ids ?? []
-    if (!semanticOn()) return []
+  /** An answer to an older sentence must not rank a newer one, hence the query check. */
+  const sentenceIds = createMemo<number[]>(() => {
     const found = sentenceAnswer()
     return found && found.query === searchText().trim() ? found.ids : []
   })
+
+  /** Which route the list follows. The toolbar and the grid both read it, so they cannot
+   *  disagree about the sort buttons while a ranking is on screen. */
+  const route = createMemo<Route>(() => routeFor({
+    pictureOn: picture.on(),
+    pictureIds: picture.lastShownIds(),
+    semanticOn: semanticOn(),
+    query: searchText().trim(),
+    textIds: sentenceIds(),
+  }))
+
+  /** Whether a model ranking orders the list. */
+  const semanticActive = createMemo(() => route().by !== 'none')
 
   // ---------- the question the box asks ----------
 
@@ -269,7 +284,7 @@ const store = createRoot(() => {
   createEffect(on([searchText, picture.on, semanticOn], ([typed]) => {
     cancelSentence()
     const q = typed.trim()
-    if (picture.on() || !semanticOn() || !worthAsking(q)) return
+    if (!shouldAskText({ pictureOn: picture.on(), semanticOn: semanticOn(), query: q })) return
     // A stalled request must not freeze the list: the timeout aborts it, local matches stay.
     const ctrl = sentenceWait.begin(SEARCH_TIMEOUT_MS)
     setPending(true)
@@ -282,9 +297,9 @@ const store = createRoot(() => {
     })
   }))
 
-  return { pending, semanticOn, searchPlaceholder, picture, semanticActive, semanticIds }
+  return { pending, semanticOn, searchPlaceholder, picture, semanticActive, route }
 })
 
-export const { semanticOn, searchPlaceholder, semanticActive, semanticIds, picture } = store
+export const { semanticOn, searchPlaceholder, semanticActive, route, picture } = store
 const { pending } = store
 export { pending as semanticPending }
