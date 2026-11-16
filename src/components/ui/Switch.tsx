@@ -1,21 +1,27 @@
 // src/components/ui/Switch.tsx - the iOS switch, for the settings that are simply on or off.
 //
-// Apple's 51×31 is sized for a full-height settings row and dominates the text next to it in a
-// panel this dense. Below is the same switch, smaller, with the same inset on every side.
+// The switch in the iOS settings app is 51×31. That size is for a full-height row, and in a
+// panel this dense it is larger than the text next to it. The switch below is the same design at
+// a smaller size, with the same gap on every side.
 //
-// The off track is a theme token, so dark mode flips it. The green is literal because iOS keeps
-// the same green in both themes.
+// The off track uses a theme token, so it changes in dark mode. The green is written out because
+// iOS uses the same green in both themes.
 
 const TRACK_W = 40
 const TRACK_H = 24
 const KNOB = 20
-/** 1px border plus 1px inside it. */
+const BORDER = 1
+/** The gap between the knob and the track edge, measured inside the border. */
 const INSET = 1
-const TRAVEL = TRACK_W - KNOB - INSET * 2
+// The knob starts inside the border, so the space it can travel in is 2px narrower than the
+// track. The first version here used the full 40px, and the knob ended up flush against the
+// right edge.
+const TRAVEL = TRACK_W - BORDER * 2 - KNOB - INSET * 2
 
-// +10px above and below brings the 24px track to the 44px minimum, which is what falls short of
-// it. Only 6px to the right, the row's own padding: extending the area all around overflowed the
-// panel's scroll container and gave the whole panel a horizontal scrollbar.
+// The track is 24px tall and the tap target minimum is 44px, so +10px above and below make up
+// the difference. To the right, the row's own padding gives 6px, and that is all this area can
+// use: widening it on both sides made the panel's scroll container wider than the panel, and the
+// panel got a horizontal scrollbar.
 const HIT_AREA = "after:absolute after:inset-y-[-10px] after:left-0 after:right-[-6px] after:content-['']"
 
 export function Switch(props: { on: boolean; onChange: (on: boolean) => void; label: string }) {
