@@ -94,12 +94,22 @@ export function relatedCardWidth(avail: number, n: number): number {
 // the browser at every card width.
 export const RELATED_CAPTION_H = 24
 
-/**
- * Height of one row of related cards. The empty state reserves this much space, so
- * switching views cannot shove the sheet's content up or down.
- */
-export function relatedRowHeight(cardWidth: number): number {
+export function relatedCardsHeight(cardWidth: number): number {
   return cardWidth / THUMB_ASPECT + RELATED_CAPTION_H
+}
+
+// The progress bar under the related cards. A full-width bar looks like a divider between
+// sections, so the track stays short.
+export const RELATED_BAR_W = 120
+export const RELATED_BAR_H = 3
+export const RELATED_BAR_GAP = 8
+// Below this the thumb is hard to see.
+export const RELATED_BAR_MIN_THUMB = 24
+
+/** The empty states take this much room, so the sheet's height is the same whether the
+ *  strip is empty or full. */
+export function relatedStripHeight(cardWidth: number): number {
+  return relatedCardsHeight(cardWidth) + RELATED_BAR_H + RELATED_BAR_GAP
 }
 
 // ---- row preview chip ----

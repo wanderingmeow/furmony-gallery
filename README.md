@@ -9,7 +9,7 @@
 ```bash
 npm install
 npm run dev        # http://localhost:5173/furmony-gallery/
-npm test           # 21 个文件，231 个测试，不会联网
+npm test           # 不会联网
 npm run build      # 构建 dist/，并复制一份 dist/404.html 供 GitHub Pages SPA 模式使用
 ```
 
@@ -48,7 +48,7 @@ npm run build      # 构建 dist/，并复制一份 dist/404.html 供 GitHub Pag
 
 ## 测试
 
-`npm test` 运行 231 个测试：定价规则、筛选、搜索请求的拼装与响应解析、图片上传前的缩放与方向、设定搜索的状态、邻居查找与解析、卡片布局、背景滚动锁定、如何合并两个列表等。
+`npm test` 覆盖定价规则、筛选、搜索请求的拼装与响应解析、图片上传前的缩放与方向、设定搜索的状态、邻居查找与解析、卡片布局、背景滚动锁定、如何合并两个列表。
 使用 happy-dom 作为 DOM， fake-indexeddb 作为存储。测试用 mock 的 API，不会发出请求。
 
 ## 技术栈

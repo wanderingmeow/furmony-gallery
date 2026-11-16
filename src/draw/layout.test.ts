@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   GAP, MIN_CARD, MIN_COLS, RELATED_CARD_GAP, RELATED_CARD_MIN, VIEW_PAD,
-  indexOfRow, relatedCardWidth, relatedPerView, relatedRowHeight, rowOfIndex,
-  waterfallCardWidth, waterfallCols, waterfallRowHeight,
+  indexOfRow, relatedCardWidth, relatedCardsHeight, relatedPerView, relatedStripHeight,
+  rowOfIndex, waterfallCardWidth, waterfallCols, waterfallRowHeight,
 } from './layout'
 
 // Each grid answers two questions: how many cards fit, and how wide each one is. The
@@ -61,11 +61,16 @@ describe('related row column math', () => {
     expect(RELATED_CARD_MIN * 3 + RELATED_CARD_GAP * 2 - avail).toBe(18)
   })
 
-  // The empty state reserves this height. If it drifts from the real card, the sheet
-  // content jumps when 只看未锁定 filters the row down to nothing. Measured against the
-  // real card on a 430px sheet: 192px wide, 124.45px cover, 24px caption line.
-  it('reserves the height a real card row takes', () => {
-    expect(relatedRowHeight(192)).toBeCloseTo(148.45, 1)
+  // Measured in the browser on a 430px sheet: 192px wide, 124.45px cover, 24px caption line.
+  // The empty strip holds this plus the bar, so the sheet jumps when the number here and
+  // a real card's height differ.
+  it('matches the height a real card row takes', () => {
+    expect(relatedCardsHeight(192)).toBeCloseTo(148.45, 1)
+  })
+
+  // This checks the sum. Whether the empty strip uses it is a browser check.
+  it('adds the bar and its gap to the cards', () => {
+    expect(relatedStripHeight(192)).toBeCloseTo(159.45, 1)
   })
 
   it('keeps the waterfall floor above the related row floor', () => {
