@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ant-design/icons": "^6.3.4",
+    "@ant-design/icons-svg": "^4.6.0",
     "@dschz/solid-uplot": "^0.5.2",
     "@panzoom/panzoom": "^4.6.2",
     "@solidjs/router": "^1.0.0",
