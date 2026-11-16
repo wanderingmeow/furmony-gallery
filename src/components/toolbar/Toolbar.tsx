@@ -8,8 +8,11 @@ import { FilterTabs } from './FilterTabs'
 import { PictureMode, PictureToggle } from './PictureSearch'
 
 export function Toolbar() {
+  // The banner carries the group class that the picture row grows from, so a pointer anywhere
+  // on the bar counts.
   return (
-    <div class="glass relative z-40 px-3 py-3 rounded-2xl border border-black/10 shadow-sm mx-4 mt-3 pointer-events-auto">
+    <div class="glass group relative z-40 px-3 py-3 rounded-2xl border border-black/10
+                shadow-sm dark:shadow-md mx-4 mt-3 pointer-events-auto">
       <div class="flex items-center gap-2">
         <Show when={!picture.on()} fallback={<PictureMode />}>
           <div class="flex-1 min-w-0"><SearchBar /></div>

@@ -1,7 +1,7 @@
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import {
-  dataReady, fetchFailed, errorMessage, setErrorMessage,
+  dataReady, fetchFailed, errorMessage, picture, setErrorMessage,
 } from '../store'
 import { Toolbar } from '../components/toolbar/Toolbar'
 import { Waterfall } from '../components/cards/Waterfall'
@@ -17,7 +17,12 @@ export function Home() {
   let barWrap!: HTMLDivElement
   createEffect(() => {
     if (!dataReady() && !fetchFailed()) return
-    const measure = () => setTopOffset(barWrap.getBoundingClientRect().bottom)
+    // Picture mode grows the bar. The grid keeps the space it already had, so the taller panel
+    // floats over the top row.
+    const measure = () => {
+      if (picture.on()) return
+      setTopOffset(barWrap.getBoundingClientRect().bottom)
+    }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(barWrap)

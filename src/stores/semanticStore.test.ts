@@ -373,19 +373,23 @@ describe('search by picture', () => {
     await settled()
     expect(picture.error()).toBe('')
   })
-  it('draws the box only when it leaves something out', async () => {
-    // The mask crops to the subject, so a photograph of a suit against a wall comes back
-    // with a box that is the picture: drawn, it reads as a broken overlay on the preview's
-    // own edge. A design sheet with a margin leaves a box small enough to be worth drawing.
+  it('draws the box unless it spans the whole picture', async () => {
+    // The mask crops to the subject, so the answer for a photograph of a suit against a wall
+    // carries a box over both edges. A box over one edge is a band, and a band still tells the
+    // reader which part of the picture the service answered from.
     const asked = async (box: number[] | null) => {
       sent.answer = Promise.resolve({ ids: [201], box })
       await choose()
       await settled()
       return picture.box()
     }
-    expect(await asked([0.005, 0.05, 0.995, 0.863])).toBeNull()
+    // Both edges over the line: the box is the picture.
+    expect(await asked([0.005, 0.05, 0.995, 0.96])).toBeNull()
+    expect(await asked([0, 0, 0.9, 0.9])).toBeNull()
+    // One edge only: a band, so it stays.
+    expect(await asked([0.005, 0.05, 0.995, 0.863])).toEqual([0.005, 0.05, 0.995, 0.863])
+    expect(await asked([0.05, 0.005, 0.86, 0.97])).toEqual([0.05, 0.005, 0.86, 0.97])
     expect(await asked([0.25, 0.25, 0.5, 0.5])).toEqual([0.25, 0.25, 0.5, 0.5])
-    expect(await asked([0, 0, 0.89, 0.95])).toBeNull()
     expect(await asked(null)).toBeNull()
   })
 

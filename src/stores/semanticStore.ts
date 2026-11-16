@@ -54,10 +54,10 @@ function makeWait(): Wait {
 export type PictureState =
   'empty' | 'preparing' | 'staged' | 'searching' | 'busy' | 'failed' | 'none' | 'done'
 
-/** Fraction of the picture's edge (0–1) past which the cut-out box is not drawn: at that
- *  width it lands on the preview's own rounded corner and reads as a broken overlay. The box
- *  exists for a hall photo whose background the mask cuts away. */
-const BOX_EDGE_WORTH_DRAWING = 0.9
+/** Past this fraction of both edges the box is the picture. Drawing it would put the frame on the
+ *  preview's own rounded corners, where it looks like a broken overlay. A box over one edge is a
+ *  band, and a band is worth drawing. */
+const BOX_IS_THE_PICTURE = 0.9
 
 // This store is global on purpose - one search box per app - so its memos and its effect are
 // created in a root, the same way derivedStore wraps its own.
@@ -240,8 +240,9 @@ const store = createRoot(() => {
       box: createMemo<[number, number, number, number] | null>(() => {
         const found = answer()?.box ?? null
         if (!found) return null
-        return found[2] >= BOX_EDGE_WORTH_DRAWING
-          || found[3] >= BOX_EDGE_WORTH_DRAWING ? null : found
+        return found[2] >= BOX_IS_THE_PICTURE && found[3] >= BOX_IS_THE_PICTURE
+          ? null
+          : found
       }),
 
       /** Why the last picture came back with nothing. Empty when there was an answer. */

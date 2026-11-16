@@ -1,9 +1,9 @@
 import { defineConfig } from 'vitest/config'
 import solid from 'vite-plugin-solid'
 
-// Pure-logic tests: no rendering. happy-dom supplies localStorage and IndexedDB, and the
-// tests mock the API instead of calling the site. Each test sits next to the file it
-// covers, so the include pattern is recursive.
+// happy-dom supplies localStorage, IndexedDB and enough DOM for the component tests. The tests
+// mock the API, so nothing reaches the site. Each test sits next to the file it covers, so the
+// include pattern is recursive.
 export default defineConfig({
   // Component tests need the Solid JSX transform; without it no .tsx file can be imported.
   plugins: [solid()],
