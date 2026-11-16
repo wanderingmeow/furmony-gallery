@@ -10,7 +10,8 @@ export const THUMB_ASPECT = 921 / 597
 // width / THUMB_ASPECT + this. Measured at four card widths (191, 236.8, 278.66, 326) and
 // each gave 81.63 to 81.64, so the number does not move with width.
 // Change anything at the bottom of a card and re-measure, or the row pitch and the card
-// gap stop matching: this is (real card height - width * 597 / 921).
+// gap stop matching: this is (real card height - width * 597 / 921). Measured with a price
+// shown. The price row has min-h-5, so a card with no price is the same height.
 export const CARD_EXTRA_HEIGHT = 81.63
 
 // ---- waterfall ----

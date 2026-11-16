@@ -22,6 +22,7 @@ export const SPARK: IconDefinition = {
   },
 }
 
-/** The classes on a sparkle while a query is in flight: the accent color and the pulse. One
- *  place, so the search box and the picture row always match. */
-export const SPARK_WORKING = 'spark-pulse text-orange-700 dark:text-orange-300'
+/** The class on a sparkle while it is working. The keyframes hold the accent, and both ends of
+ *  the cycle are the resting grey, so the mark stops on the color it already has. One place, so
+ *  the search box and the picture row always match. */
+export const SPARK_WORKING = 'spark-pulse'

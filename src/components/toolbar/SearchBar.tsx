@@ -16,12 +16,10 @@ export function SearchBar(props: { initial?: string }) {
   const gate = makeImeGate(setSearchText, () => el.value)
   onCleanup(() => gate.dispose())
 
-  // The pulse has to stop on a whole cycle. Stopping it in the middle makes the opacity jump
-  // back to full, and every engine does that in one frame, with no transition to catch it.
-  // Each cycle ends at full opacity, so the mark stops there and never in the middle. The
-  // signal carries the pulse and the accent color together, and both stay in the class
-  // attribute: a reactive class writes the whole attribute, so a class added by hand would
-  // disappear on the next update.
+  // The pulse stops on a whole cycle: stopping partway leaves the accent at whatever brightness
+  // it had reached, and every engine makes that jump in one frame, with no transition to catch
+  // it. Each cycle starts and ends on the resting grey, so the mark stops where it sits when
+  // idle, and text-faint stays on the element the whole time.
   let spark!: HTMLSpanElement
   const [pulsing, setPulsing] = createSignal(false)
   createEffect(() => {
@@ -52,7 +50,7 @@ export function SearchBar(props: { initial?: string }) {
           mark: no second mark appears next to it. */}
       <span
         ref={spark}
-        class={`flex shrink-0 transition-colors ${pulsing() ? SPARK_WORKING : 'text-faint'}`}
+        class={`flex shrink-0 text-faint ${pulsing() ? SPARK_WORKING : ''}`}
       >
         <AntIcon icon={semanticOn() ? SPARK : SearchOutlined} />
       </span>

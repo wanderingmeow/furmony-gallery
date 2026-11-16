@@ -87,20 +87,22 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
             <Show when={locked}>
               <LockedIcon size="16px" />
             </Show>
+            {/* The button is a flex box: an inline box is as tall as the font's ascent plus
+                descent (19.3px at this size), and the glyph sits about 0.6px low inside it. */}
             <button
-              class="text-lg leading-none"
+              class={`flex text-lg leading-none ${wishlisted() ? 'text-red-500' : 'text-ink'}`}
               onClick={onHeart}
               aria-label="收藏"
             >
-              <span class={wishlisted() ? 'text-red-500' : 'text-ink'}>
-                <AntIcon icon={wishlisted() ? HeartFilled : HeartOutlined} />
-              </span>
+              <AntIcon icon={wishlisted() ? HeartFilled : HeartOutlined} />
             </button>
           </div>
         </div>
 
-        <div class="flex items-center gap-1.5">
-          {/* A card is 191px wide: the price never shrinks, the tags take what is left. */}
+        <div class="flex min-h-5 items-center gap-1.5">
+          {/* A card is 191px wide: the price never shrinks, the tags take what is left.
+              min-h-5 holds the row at 20px with the price hidden, so a card with no price is
+              as tall as a card with one, and the row pitch in draw/layout.ts still holds. */}
           <div class="min-w-0 flex-1">
             <Tags tags={tags} />
           </div>

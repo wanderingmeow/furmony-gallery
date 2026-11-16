@@ -147,4 +147,19 @@ describe('the search box', () => {
     expect(glyph.className).toContain('spark-pulse')
     setSemanticSearch(false)
   })
+
+  // The animation supplies the accent now, so the resting class has to stay on the element.
+  // Without it the mark would fall back to the browser's default color when the answer lands.
+  it('keeps the resting color on the mark while it pulses', async () => {
+    setSemanticSearch(true)
+    setSearchText('黑色的龙')
+    await settle()
+    const glyph = host.querySelector('.search-field span') as HTMLSpanElement
+    expect(glyph.className).toContain('spark-pulse')
+    expect(glyph.className).toContain('text-faint')
+    glyph.dispatchEvent(new Event('animationiteration'))
+    expect(glyph.className).not.toContain('spark-pulse')
+    expect(glyph.className).toContain('text-faint')
+    setSemanticSearch(false)
+  })
 })

@@ -266,8 +266,10 @@ function Card(props: { listing: AdoptListing; width: number; onOpen: (id: number
         />
       </div>
       {/* No artist line: the pool mixes anonymous and named work, so that line would sit
-          empty on half the cards. The ID is what lets you recognise a piece you have seen. */}
-      <div class="pt-1 flex items-baseline gap-1">
+          empty on half the cards. The ID is what lets you recognise a piece you have seen.
+          The 2px of side padding matches the gap that the main card leaves between cover and
+          text. */}
+      <div class="px-0.5 pt-1 flex items-baseline gap-1">
         <span class="text-sm truncate">{l.adoptName ?? '未知'}</span>
         <span class="text-xs text-faint shrink-0">#{l.adoptId}</span>
         <Show when={locked}>

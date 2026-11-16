@@ -185,14 +185,31 @@ body {
 }
 
 /* The sparkle while a search is in flight. The answer takes about 150ms, and a fast typist
-   runs several at once, so the pulse stays quick enough to look like work. Only the opacity
-   moves here: the accent color comes from the classes on the glyph. */
+   runs several at once, so the pulse stays quick enough to look like work.
+   Only the color moves, and both ends of the cycle are the color that the resting mark already
+   has. The mark stops on `animationiteration`, which is one of those ends, so handing it back
+   is a no-op. An opacity pulse could not do that: it stopped at full brightness, and the resting
+   mark is the tertiary grey, a color that no dimmed accent reaches. */
 @keyframes spark-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.22; }
+  0%, 100% { color: var(--color-faint); }
+  50% { color: var(--spark-on); }
 }
 .spark-pulse {
+  --spark-on: var(--color-orange-700);
   animation: spark-pulse 0.9s ease-in-out infinite;
+}
+@media (prefers-color-scheme: dark) {
+  .spark-pulse {
+    --spark-on: var(--color-orange-300);
+  }
+}
+/* With no animation the mark would sit in the resting grey and look idle while it is working,
+   so the accent is stated here too. */
+@media (prefers-reduced-motion: reduce) {
+  .spark-pulse {
+    animation: none;
+    color: var(--spark-on);
+  }
 }
 
 /* Scroll-progress clock ring on the back-to-top button.
