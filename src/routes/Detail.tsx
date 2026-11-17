@@ -7,11 +7,11 @@ import {
 } from '../store'
 import { detailImages } from '../model/domain'
 import { DETAIL_PAD_X } from '../draw/layout'
-import { stableImageUrl } from '../data/image'
+import { sizedUrl, stableImageUrl } from '../data/image'
 import { AntIcon } from '../components/ui/AntIcon'
 import { AnimatedHeight } from '../components/ui/AnimatedHeight'
 import { SheetFab } from '../components/ui/SheetFab'
-import { ART_PLACEHOLDER, DETAIL_BODY, SHEET_FAB_ROW, useSheetFooter } from '../components/ui/boxes'
+import { DETAIL_BODY, SHEET_FAB_ROW, useSheetFooter } from '../components/ui/boxes'
 import { DetailToolbar } from '../components/sheet/DetailToolbar'
 import { Gallery } from '../components/detail/Gallery'
 import { FullScreenZoom } from '../components/detail/FullScreenZoom'
@@ -64,13 +64,13 @@ export function Detail(props: { onClose: () => void }) {
     const l = listing()
     return l ? detailImages(l) : []
   })
-  const current = () => {
-    const imgs = images()
-    const i = Math.min(index(), Math.max(0, imgs.length - 1))
-    return imgs.length > 0 ? imgs[i] : stableImageUrl(listing()?.adoptHeadPicture)
-  }
-  // A setting without detail pictures shows its head picture, so the zoom counter
-  // starts at 1 there instead of 0.
+  // The gallery paints resized copies; the zoom keeps the raw address for the whole picture.
+  const shown = createMemo(() => images().map((u) => sizedUrl(u, 'detail')!))
+  const at = (list: string[]): string | undefined => list[Math.min(index(), Math.max(0, list.length - 1))]
+  const head = () => stableImageUrl(listing()?.adoptHeadPicture)
+  const current = () => at(shown()) ?? sizedUrl(head(), 'detail')
+  const currentRaw = () => at(images()) ?? head()
+  // With no detail pictures the zoom shows the head picture, so the counter reads 1 of 1.
   const zoomCount = () => images().length || (listing()?.adoptHeadPicture ? 1 : 0)
 
   // Esc closes the sheet. While the zoom is open it takes Esc, so a single press
@@ -81,22 +81,6 @@ export function Detail(props: { onClose: () => void }) {
     }
     document.addEventListener('keydown', handler)
     onCleanup(() => document.removeEventListener('keydown', handler))
-  })
-
-  // Wait for the first image before showing the gallery. Later index changes do not
-  // re-gate: the Gallery fades each swap itself, and gating again would hide the whole
-  // gallery behind a spinner even for a cached image.
-  const [ready, setReady] = createSignal(false)
-  let firstLoadDone = false
-  createEffect(() => {
-    if (firstLoadDone) return
-    const src = current()
-    if (!src) { setReady(true); firstLoadDone = true; return }
-    setReady(false)
-    const img = new Image()
-    img.onload = () => { setReady(true); firstLoadDone = true }
-    img.onerror = () => { setReady(true); firstLoadDone = true } // a broken image still shows
-    img.src = src
   })
 
   return (
@@ -130,14 +114,12 @@ export function Detail(props: { onClose: () => void }) {
         >
           {(l) => (
             <>
-              <Show when={ready()} fallback={<ImageLoading />}>
-                <Gallery
-                  images={images()}
-                  index={index}
-                  setIndex={setIndex}
-                  onOpenFull={() => setFull(true)}
-                />
-              </Show>
+              <Gallery
+                images={shown()}
+                index={index}
+                setIndex={setIndex}
+                onOpenFull={() => setFull(true)}
+              />
               <div class="mt-4">
                 {/* l() is an accessor: read it inline. Copying it into a const freezes
                     the table on the first setting. */}
@@ -167,6 +149,7 @@ export function Detail(props: { onClose: () => void }) {
         <Portal>
           <FullScreenZoom
             imageUrl={current() ?? ''}
+            fullUrl={currentRaw() ?? ''}
             count={zoomCount()}
             index={index}
             onClose={() => setFull(false)}
@@ -175,9 +158,4 @@ export function Detail(props: { onClose: () => void }) {
       </Show>
     </div>
   )
-}
-
-/** The bar that fills the gallery's place while the first image loads. */
-function ImageLoading() {
-  return <div class={`sk-bar sk-pulse ${ART_PLACEHOLDER}`} />
 }

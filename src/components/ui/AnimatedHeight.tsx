@@ -2,11 +2,11 @@ import { onCleanup, onMount, type JSX } from 'solid-js'
 import { EASE, prefersReducedMotion, SHEET_MOVE_MS } from '../../draw/anim'
 
 /**
- * Slides from one height to the next instead of jumping, because the block under it would
- * otherwise snap: swapping a detail changes the row count and the description length.
+ * Slides from one height to the next, because the block under this one would otherwise snap:
+ * swapping a detail changes the row count and the description length.
  *
- * The observer watches the inner element, whose natural height does not depend on how tall
- * we pin the outer one — so an animation starts only when the content really changed.
+ * The observer watches the inner element, whose natural height does not depend on how tall the
+ * outer one is pinned, so an animation starts only when the content really changed.
  */
 export function AnimatedHeight(props: { children: JSX.Element }) {
   let wrap!: HTMLDivElement

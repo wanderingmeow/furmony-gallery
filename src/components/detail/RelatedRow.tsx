@@ -13,7 +13,7 @@ import {
 import { scrollThumb, type Thumb } from '../../draw/progress'
 import { isAdopted, isLocked } from '../../model/domain'
 import { LockedIcon } from '../ui/LockedIcon'
-import { onImageError, stableImageUrl } from '../../data/image'
+import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
 import { Spinner } from '../ui/Spinner'
 
 // An adopted piece is also unbuyable: adopting means it was locked first. The lock badge
@@ -241,7 +241,7 @@ function Card(props: { listing: AdoptListing; width: number; onOpen: (id: number
   let imgRef!: HTMLImageElement
   let raf = 0
   onMount(() => {
-    raf = requestAnimationFrame(() => { imgRef.src = stableImageUrl(l.adoptPicture) ?? '' })
+    raf = requestAnimationFrame(() => { imgRef.src = sizedUrl(stableImageUrl(l.adoptPicture), 'card') ?? '' })
   })
   onCleanup(() => { if (raf) cancelAnimationFrame(raf) })
 

@@ -4,7 +4,7 @@ import type { AdoptListing } from '../../model/types'
 import { colorNames, formatPrice, isLocked, painterName, priceParts, raceName } from '../../model/domain'
 import { THUMB_ASPECT } from '../../draw/layout'
 import { isWishlisted, priceMode, toggleWishlist } from '../../store'
-import { onImageError, stableImageUrl } from '../../data/image'
+import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
 import { AntIcon } from '../ui/AntIcon'
 import { LockedIcon } from '../ui/LockedIcon'
 import {
@@ -52,7 +52,7 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
   let imgRef!: HTMLImageElement
   let raf = 0
   onMount(() => {
-    raf = requestAnimationFrame(() => { imgRef.src = stableImageUrl(l.adoptPicture) ?? '' })
+    raf = requestAnimationFrame(() => { imgRef.src = sizedUrl(stableImageUrl(l.adoptPicture), 'card') ?? '' })
     onCleanup(() => { if (raf) cancelAnimationFrame(raf) })
   })
 

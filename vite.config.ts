@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
 import solid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
+import { prefetchScript } from './src/data/prefetch.ts'
 
 function textAt(path: URL): string {
   try {
@@ -113,8 +114,36 @@ function inlineStyles(): Plugin {
 
 const root = fileURLToPath(new URL('.', import.meta.url))
 
+/**
+ * Writes the list requests into the document as a script tag, ahead of every link and script.
+ *
+ * The app can only ask for these lists after its own code arrives from github.io. The same requests
+ * from the document start while the document is still arriving, and the app joins them later, so
+ * the reader waits once. The slower the path to the scripts, the more this saves.
+ *
+ * A preconnect to the picture host does not help: the covers go out as a burst that opens its
+ * sockets in parallel, and that host uses HTTP/1.1, where a preconnect warms one socket at a time.
+ */
+function inlinePrefetch(): Plugin {
+  return {
+    name: 'inline-prefetch',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html) {
+        // It sits after the charset, so the parser reaches it as soon as the first bytes land. The
+        // replacement is a function, so nothing in the script acts as a match pattern.
+        return html.replace(
+          /<meta charset[^>]*>/,
+          (tag) => `${tag}\n    <script>${prefetchScript()}</script>`,
+        )
+      },
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [solid(), tailwindcss(), inlineStyles()],
+  plugins: [solid(), tailwindcss(), inlinePrefetch(), inlineStyles()],
   // GitHub Pages serves at https://<user>.github.io/furmony-gallery/ (sub-path)
   base: '/furmony-gallery',
   define: { 'import.meta.env.VITE_SEARCH_URL_B64': JSON.stringify(encodedAddress()) },

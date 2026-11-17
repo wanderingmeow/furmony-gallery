@@ -1,10 +1,11 @@
-import { createEffect, createMemo, createSignal, For, Show, type JSXElement } from 'solid-js'
+import { createMemo, For, Show, type JSXElement } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
 import {
   colorNames, formatPrice, isAdopted, isLocked, painterAvatar, painterName, priceParts, raceName,
   type InstallmentPrice, type OncePrice,
 } from '../../model/domain'
-import { stableImageUrl } from '../../data/image'
+import { sizedUrl, stableImageUrl } from '../../data/image'
+import { SkelImg } from '../ui/SkelImg'
 import { priceMode, socials } from '../../store'
 import { StatusBadge } from '../ui/StatusBadge'
 
@@ -35,39 +36,13 @@ function OptRow(props: { label: string; when: boolean; children: JSXElement }) {
 }
 
 function HeadImg(props: { url?: string }) {
-  const [loaded, setLoaded] = createSignal(false)
-  const [failed, setFailed] = createSignal(false)
-
-  // Opening another listing does not remount this component: url changes while loaded()
-  // still holds true from the previous picture, so the new image would leave a hole.
-  createEffect(() => {
-    props.url
-    setLoaded(false)
-    setFailed(false)
-  })
-
-  const box = 'w-15 h-15 rounded-lg bg-surface-2 shrink-0'
-  const spinner = <div class="spinner w-4 h-4" />
+  const box = 'w-15 h-15 rounded-lg shrink-0'
   return (
     <Show
       when={props.url}
-      fallback={<span class={`${box} flex items-center justify-center`}>{spinner}</span>}
+      fallback={<span class={`bg-surface-2 ${box}`} />}
     >
-      {(url) => (
-        <div class={`relative ${box} overflow-hidden`}>
-          <Show when={!loaded()}>
-            <div class="absolute inset-0 flex items-center justify-center">{spinner}</div>
-          </Show>
-          <img
-            src={url()}
-            alt=""
-            class="w-full h-full rounded-lg object-cover border-2 border-border shadow transition-opacity duration-200"
-            classList={{ 'opacity-0': !loaded(), hidden: failed() }}
-            onLoad={() => setLoaded(true)}
-            onError={() => { setLoaded(true); setFailed(true) }}
-          />
-        </div>
-      )}
+      {(url) => <SkelImg url={url()} box={box} imgClass="rounded-lg border-2 border-border shadow" />}
     </Show>
   )
 }
@@ -145,7 +120,7 @@ export function InfoTable(props: { listing: AdoptListing }) {
   return (
     <div class="rounded-xl bg-surface border border-border p-3">
       <div class={`${GRID} items-start`}>
-        <HeadImg url={stableImageUrl(l().adoptHeadPicture)} />
+        <HeadImg url={sizedUrl(stableImageUrl(l().adoptHeadPicture), 'badge')} />
         <div class="min-w-0">
           <div class="flex items-baseline gap-2">
             <h2 class="text-xl font-bold truncate">{l().adoptName ?? '未知'}</h2>

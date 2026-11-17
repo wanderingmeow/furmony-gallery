@@ -37,6 +37,12 @@ npm run build      # 构建 dist/，并复制一份 dist/404.html 供 GitHub Pag
 - **统计页** `/stats`：价格分布、颜色、物种、每月新增设定等图表。模块会在需要时才加载。
 - **暗色主题**：跟随系统设置；所有动画都支持 `prefers-reduced-motion`。
 
+## 加载性能
+
+- **首屏 1 个 RTT 就能渲染**：外链的 CSS 要等 HTML 加载完后才去请求，构建的时候，直接把样式内联到 HTML 里。并且，在 gzip 压缩后，[大小不超过 10-MSS （10 个 TCP 包）](https://endtimes.dev/why-your-website-should-be-under-14kb-in-size/)。
+- **在首屏就发起列表请求**：`index.html` 中有一段内联脚本，首屏加载时立即请求全量列表。
+- **图片加载优化**：封面图片原图常常是 1MB 上下的 PNG 图片。在渲染时，给图片地址加上腾讯云 COS 的 `imageMogr2` 参数，缩放到所需尺寸、转成 WebP、去除元数据。首屏的 22 张缩略图，从 14.05 MB 缩减到了 1.01 MB（-92.8%）。
+
 ## 数据与隐私
 
 - API 有两个：主列表（`entrustAdopt/list`）和“新作登场”频道用的（`productSeries/list`）。后者的条目不会出现在主列表中，因此需要请求两者。

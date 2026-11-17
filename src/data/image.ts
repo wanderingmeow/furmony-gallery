@@ -1,13 +1,11 @@
-// src/data/image.ts - signed-image URL resolution + persistence.
-//
-// Reads are synchronous through an in-memory Map; writes are debounced async and only touch
-// dirty (newly-seen) keys. Persistence lives in the `img_url_map` IndexedDB store via the
-// generic idb helpers.
+// Maps an image path to one stable signed URL, and keeps that map across visits in IndexedDB.
+// Reads go through an in-memory Map. Writes are debounced, and only the paths added since the
+// last write go to the store.
 import { IMG_URL_STORE, putMany, readAll } from './idb'
 
 let imageUrlMap: Map<string, string> | null = null
-let recentRaw = new Map<string, string>() // path -> freshest signed URL (for error retry)
-let dirtyPaths: Set<string> | null = null // paths added since last persist
+let recentRaw = new Map<string, string>() // path -> newest signed URL, for the error retry
+let dirtyPaths: Set<string> | null = null // paths added since the last write
 let persistTimer: ReturnType<typeof setTimeout> | null = null
 
 function loadMap(): Map<string, string> {
@@ -35,20 +33,21 @@ function persist() {
   persistTimer = setTimeout(() => { persistNow() }, 1000)
 }
 
-// Load persisted KV entries into memory. DB entries WIN over any session-fresh writes:
-// they're the remembered (cross-session cacheable) URLs - that's the whole point.
+// Load the saved map into memory. A saved URL beats a newer one from this session: the browser
+// already holds the saved URL in its HTTP cache, so reusing it is what makes the picture load
+// from cache on the next visit.
 export async function initImageUrlMap(): Promise<void> {
   loadMap()
   try {
     const dbMap = await readAll<string, string>(IMG_URL_STORE)
     for (const [path, url] of dbMap) imageUrlMap!.set(path, url)
-  } catch { /* IndexedDB unavailable - memory-only */ }
+  } catch { /* IndexedDB unavailable */ }
 }
 
 /**
  * The URL without its signature. The API signs the same path again on every request, so the
- * path is what identifies an image across visits. Text that is not an http(s) URL is returned
- * unchanged, question mark and all.
+ * path is what identifies an image across visits. Anything that is not an http(s) URL, such as
+ * a `data:` address, is returned unchanged.
  */
 export function urlPath(raw: string): string {
   if (!/^https?:\/\//i.test(raw)) return raw
@@ -56,8 +55,12 @@ export function urlPath(raw: string): string {
   return q === -1 ? raw : raw.slice(0, q)
 }
 
-// The browser's HTTP cache keys on the whole URL, so this returns the first URL seen for that
-// path and keeps it across visits: the cover then loads from cache.
+/**
+ * The URL to put in `src`. The browser caches an image by its full URL, so the fresh signature
+ * the API just handed out misses the cache even when the picture is already there. This returns
+ * the first URL seen for the path, which the browser does have cached, and remembers it across
+ * visits.
+ */
 export function stableImageUrl(raw: string | undefined): string | undefined {
   if (!raw) return raw
   const path = urlPath(raw)
@@ -73,8 +76,76 @@ export function stableImageUrl(raw: string | undefined): string | undefined {
   return raw
 }
 
-// Self-healing image error handler: on a failed load, retry with the freshest signed URL
-// seen for that path (max 2 retries), in case the remembered URL went stale.
+/**
+ * The same picture, sized for the space that displays it. Covers arrive far larger than any
+ * card or slot in the app, and often as PNG, so the list loads far more bytes than it shows.
+ *
+ * The bucket resizes and re-encodes on request. It accepts this parameter on a signed address
+ * because the signature covers only the parameters it lists.
+ *
+ * The `>` on every cap means shrink only: a picture smaller than the cap stays as it is. That
+ * keeps the aspect ratio, which matters because the full-screen zoom opens on the `detail`
+ * address and later puts the original picture over it.
+ *
+ * `card` is the list and the related strip. `badge` is the small head picture and the
+ * notification avatar, which would otherwise need a whole cover to fill a circle. `detail` is
+ * the large picture in the sheet.
+ *
+ * No other host accepts this parameter, so everything else passes through untouched,
+ * including the `data:` addresses that development mode reads. A bucket that ignores the
+ * parameter returns the original picture. A bucket that rejects it fails the load, and
+ * onImageError then retries the plain address.
+ *
+ * `/strip` drops metadata. One cover came back at many times the size its pixels need. The
+ * extra bytes were metadata: the source file carries a large XMP block, and the bucket copies it
+ * into every output, even into low-quality re-encodes. Turning the quality down barely helps;
+ * stripping the metadata does. The ICC profile survives, so colors do not shift. No cover on
+ * this bucket carries an EXIF orientation tag, so nothing needs rotating.
+ */
+const PRESET = {
+  card: 'imageMogr2/thumbnail/600x%3E/quality/80/format/webp/strip',
+  detail: 'imageMogr2/thumbnail/1300x%3E/quality/85/format/webp/strip',
+  badge: 'imageMogr2/thumbnail/180x%3E/quality/80/format/webp/strip',
+} as const
+
+export function sizedUrl(url: string | undefined, preset: keyof typeof PRESET): string | undefined {
+  if (!url || !/^https:\/\/[^/]*\.myqcloud\.com\//i.test(url)) return url
+  if (url.includes('imageMogr2')) return url
+  return `${url}${url.includes('?') ? '&' : '?'}${PRESET[preset]}`
+}
+
+/**
+ * Downloads a picture in the background. `ready` settles with the element once the download
+ * finishes. A failed download settles it too, so the caller can still show something.
+ *
+ * `cancel` stops a download the caller does not need. Dropping the element does not stop the
+ * download, so a reader who has moved on still pays for it.
+ *
+ * After cancel, `ready` never settles. Clearing an address that is still pending fires an error
+ * on the element, and the caller would read that error as a finished load.
+ */
+export function preloadImage(
+  src: string,
+): { ready: Promise<HTMLImageElement>; cancel: () => void } {
+  const img = new Image()
+  let settle!: (pic: HTMLImageElement) => void
+  const ready = new Promise<HTMLImageElement>((resolve) => { settle = resolve })
+  let alive = true
+  img.onload = () => { if (alive) settle(img) }
+  img.onerror = () => { if (alive) settle(img) }
+  img.src = src
+  return {
+    ready,
+    cancel: () => {
+      alive = false
+      // A download that already finished has nothing left to stop.
+      if (!img.complete) img.src = ''
+    },
+  }
+}
+
+// On a failed load, retry with the newest signed URL seen for this path, up to twice. A URL
+// remembered from an earlier visit can expire.
 export function onImageError(e: Event): void {
   const img = e.target as HTMLImageElement
   if (!img) return
@@ -87,13 +158,10 @@ export function onImageError(e: Event): void {
   img.src = fresh && fresh !== src ? fresh : src
 }
 
-// Flush pending image-map writes immediately (best-effort for beforeunload - IndexedDB
-// writes are async, so this may not complete on an immediate close, but the debounced
-// write during normal use keeps the map durable).
 /**
  * Flush the map when the page goes away. Both events are registered, because mobile Safari
  * fires `pagehide` and often skips `beforeunload`. Only the first one writes: the flush is
- * best-effort, and starting it twice adds nothing but a second IndexedDB write.
+ * best-effort, and starting it twice adds a second IndexedDB write and nothing else.
  */
 export function flushUrlMapOnExit(): void {
   let flushed = false

@@ -1,7 +1,7 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { CloseOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons-svg'
 import Panzoom from '@panzoom/panzoom'
-import { onImageError } from '../../data/image'
+import { onImageError, preloadImage } from '../../data/image'
 import { AntIcon } from '../ui/AntIcon'
 import { watchTaps } from '../ui/tapGate'
 
@@ -13,10 +13,10 @@ const ENABLED = 'cursor-pointer bg-black/40 hover:bg-white/15 active:bg-white/25
 const DISABLED = 'bg-black/20 text-white/40 cursor-not-allowed'
 
 export function FullScreenZoom(props: {
-  imageUrl: string; count: number; index: () => number; onClose: () => void
+  imageUrl: string; fullUrl: string; count: number; index: () => number; onClose: () => void
 }) {
   let container!: HTMLDivElement
-  let img!: HTMLImageElement
+  let stage!: HTMLDivElement
   let pz: ReturnType<typeof Panzoom> | null = null
   const [scale, setScale] = createSignal(1)
   const MIN_SCALE = 1
@@ -24,12 +24,41 @@ export function FullScreenZoom(props: {
   const atMax = () => scale() >= MAX_SCALE - 0.01
   const atMin = () => scale() <= MIN_SCALE + 0.01
 
+  /**
+   * The whole picture is downloaded in the background, then put over the one on screen.
+   *
+   * The swap is instant, and a sudden change in sharpness is fine: the view must not move.
+   * Panzoom drives the wrapper that holds both layers, so a reader who has panned or zoomed to 3x
+   * sees the new pixels land on the old ones. Both layers are the same box with the same aspect
+   * ratio, because shrinking a picture keeps its shape. The new layer goes on top and the first
+   * keeps its own src, so when the whole picture never arrives the resized one stays.
+   */
+  const [sharp, setSharp] = createSignal(false)
+
+  createEffect(() => {
+    const url = props.fullUrl
+    setSharp(false)
+    if (!url || url === props.imageUrl) return
+    const job = preloadImage(url)
+    onCleanup(job.cancel)
+    void job.ready.then((pic) => {
+      const show = () => setSharp(true)
+      // Decoding a whole picture can take long enough for the reader to see it. Waiting for the
+      // decode here moves that wait into the gap between frames; not waiting leaves it in the swap
+      // frame, and that frame stutters. Skipping the wait is safe: a layer with no pixels yet is
+      // transparent, and the resized picture sits underneath, so a browser without decode shows the
+      // sharp picture a frame or two later.
+      pic.decode?.().then(show, () => {}) ?? show()
+    })
+  })
+
   createEffect(() => {
     const url = props.imageUrl
     if (!url) return
     if (pz) { pz.destroy(); pz = null }
 
-    pz = Panzoom(img, { maxScale: MAX_SCALE, minScale: MIN_SCALE, contain: 'outside', cursor: 'grab' })
+    // Panzoom binds here, so both layers share one transform.
+    pz = Panzoom(stage, { maxScale: MAX_SCALE, minScale: MIN_SCALE, contain: 'outside', cursor: 'grab' })
     const wheel = (e: WheelEvent) => {
       e.preventDefault()
       if (pz) {
@@ -40,19 +69,20 @@ export function FullScreenZoom(props: {
     // panzoom fires `panzoomchange` on every transform, whether the wheel, a button or a pinch
     // caused it, so the zoom buttons always show the real scale.
     const onZoomChange = () => { if (pz) setScale(pz.getScale()) }
-    img.addEventListener('panzoomchange', onZoomChange)
+    stage.addEventListener('panzoomchange', onZoomChange)
     container.addEventListener('wheel', wheel, { passive: false })
     onCleanup(() => {
-      img.removeEventListener('panzoomchange', onZoomChange)
+      stage.removeEventListener('panzoomchange', onZoomChange)
       container.removeEventListener('wheel', wheel)
       pz?.destroy()
       pz = null
     })
   })
 
-  // One tap on the picture closes the viewer.
+  // One tap on the picture closes the viewer. The buttons are outside the stage, so anything
+  // inside it is the picture.
   onCleanup(watchTaps({
-    owns: (target) => target === img || target === container,
+    owns: (target) => target === container || stage.contains(target as Node),
     onTap: props.onClose,
   }))
 
@@ -72,13 +102,17 @@ export function FullScreenZoom(props: {
       ref={container}
       class="fixed inset-0 z-50 bg-black flex items-center justify-center"
     >
-      <img
-        ref={img}
-        src={props.imageUrl}
-        alt=""
-        class="w-full h-full object-contain"
-        onError={onImageError}
-      />
+      <div ref={stage} class="relative w-full h-full">
+        <img
+          src={props.imageUrl}
+          alt=""
+          class="absolute inset-0 w-full h-full object-contain"
+          onError={onImageError}
+        />
+        <Show when={sharp()}>
+          <img src={props.fullUrl} alt="" class="absolute inset-0 w-full h-full object-contain" />
+        </Show>
+      </div>
 
       {/* close */}
       <button

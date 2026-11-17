@@ -1,15 +1,8 @@
 // src/data/api.ts - fetching only. The local cache lives in listingCache.ts.
 import type { AdoptListing, AdoptListResponse } from '../model/types'
+import { LIST_REQUEST_INIT, listKey, pageUrl, type Endpoint } from './endpoints'
+import { takePrefetched } from './prefetch'
 import { urlPath } from './image'
-
-// `series` is the site's 「新作登场」 list; its rows never appear in the main list
-// (evidence: agent/furmony-api-notes.md §7).
-type Endpoint = 'primary' | 'series'
-
-const ENDPOINT_URL: Record<Endpoint, string> = {
-  primary: 'https://apo.furmony.com/adopt/HarmonyAdopt/entrustAdopt/list',
-  series: 'https://apo.furmony.com/adopt/HarmonyAdopt/productSeries/list',
-}
 
 // No timeout: it would have to fit the slowest download, so shorter aborts loads that were about to succeed.
 // No retry delay either: this API has never rate-limited us.
@@ -19,6 +12,8 @@ const ATTEMPTS_PER_LIST = 3
 // bottom layer so retrying and merging behave the same in dev as in production; the bundler
 // strips the whole branch (and the copies) from release builds.
 async function fetchPage(endpoint: Endpoint, pageSize?: number, pageNum = 1): Promise<AdoptListResponse> {
+  const url = pageUrl(endpoint, pageSize, pageNum)
+
   if (import.meta.env.DEV) {
     const mockPath = endpoint === 'primary' ? '../../agent/listings_sample.json' : '../../agent/series_sample.json'
     const mockFiles = import.meta.glob<{ default: any }>([
@@ -29,10 +24,7 @@ async function fetchPage(endpoint: Endpoint, pageSize?: number, pageNum = 1): Pr
     if (loadMock) return (await loadMock()).default as AdoptListResponse
   }
 
-  const qs = new URLSearchParams({ pageNum: String(pageNum) })
-  if (pageSize !== undefined) qs.set('pageSize', String(pageSize))
-  const url = `${ENDPOINT_URL[endpoint]}?${qs.toString()}`
-  const res = await fetch(url, { referrerPolicy: 'no-referrer' })
+  const res = await fetch(url, LIST_REQUEST_INIT)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data: AdoptListResponse = await res.json()
   if (data.code !== 200) throw new Error(`API code ${data.code}`)
@@ -61,6 +53,10 @@ export function sortColorsAndPictures(row: AdoptListing): AdoptListing {
 // The API sends only 10 rows unless pageSize is given: ask once for `total`, then again with
 // pageSize=total.
 async function fetchList(endpoint: Endpoint): Promise<AdoptListing[]> {
+  // The document can start this chain before the app exists, so the answer may already be running.
+  const whole = (await takePrefetched(listKey(endpoint))) as AdoptListResponse | null | undefined
+  if (whole?.code === 200 && Array.isArray(whole.rows)) return whole.rows.map(sortColorsAndPictures)
+
   const { total } = await fetchPage(endpoint)
   const { rows } = await fetchPage(endpoint, total)
   return rows.map(sortColorsAndPictures)
