@@ -1,25 +1,27 @@
-// src/draw/scrollLock.ts — ref-counted document scroll lock.
+// src/draw/scrollLock.ts: ref-counted document scroll lock.
 //
 // Layers (CSS is the PRIMARY mechanism, JS is only the fallback):
 //
 //   PRIMARY (declared before any gesture, in CSS):
 //     - the sheet scroller has `touch-action: pan-y` + `overscroll-behavior: contain`,
 //       so it scrolls freely and never chains to the page behind it
-//     - `html[data-scroll-locked], body[data-scroll-locked]` pin the document
-//       (`overflow: hidden` + `scrollbar-gutter: stable`)
-//     This covers Android / modern PC.
+//     - `html[data-scroll-locked], body[data-scroll-locked]` set `touch-action: none`, so
+//       the document cannot be panned while a sheet is open. iOS reads this rule: it ignores
+//       `overflow: hidden` for touch, and a document that starts scrolling keeps receiving
+//       later flicks wherever they land.
+//     - the inline `overflow: hidden` below stops the wheel. iOS ignores it for touch.
 //
-//   FALLBACK (iOS Safari / older browsers, where body `overflow: hidden` is
-//   ignored): we ALSO set inline overflow on html+body and intercept the touch
-//   gesture (touchstart/touchmove/touchend/touchcancel), preventDefault only the
-//   moves that would scroll the locked document. `window.scrollY` stays untouched —
-//   the waterfall's virtualization reads it, so NO `position: fixed`.
+//   FALLBACK (iOS Safari / older browsers, where body `overflow: hidden` is ignored):
+//   we ALSO set inline overflow on html+body and intercept the touch gesture
+//   (touchstart/touchmove/touchend/touchcancel), and we preventDefault only the moves
+//   that would scroll the locked document. `window.scrollY` stays untouched, because the
+//   waterfall's virtualization reads it: NO `position: fixed`.
 //
-// API: `acquire(options) => release()`. Each acquire returns an idempotent release,
-// so nesting is a simple ref-count and there is no lock/unlock target-pairing to
-// get wrong — one instance serves one document (the default).
+// API: `acquire(options) => release()`. Each acquire returns an idempotent release, so
+// nesting is a simple ref-count and there is no pairing of one lock with one unlock to
+// get wrong. One instance serves one document (the default).
 //
-// The document is injected (a seam) so the logic is unit-testable without a real
+// The document is a parameter (a seam), so the logic is unit-testable without a real
 // DOM. The app uses the exported `scrollLock` singleton with the real `document`.
 
 export interface Scrollable {
@@ -65,8 +67,8 @@ export function createScrollLock(defaultDocument: ScrollTarget = document as unk
     const start = (e: TouchEvent) => {
       // single-finger only; ignore multi-touch / empty
       if (e.touches.length !== 1) return
-      // re-resolve the scroller for THIS gesture — never cache across gestures,
-      // so a scroller that mounts later (lazy content) is picked up next touch
+      // re-resolve the scroller for THIS gesture: never cache one across gestures, so a
+      // scroller that mounts later (lazy content) is picked up next touch
       cached = null
       const t = e.touches[0]
       startX = t.clientX
@@ -77,7 +79,7 @@ export function createScrollLock(defaultDocument: ScrollTarget = document as unk
       if (!e.cancelable || e.touches.length !== 1) return
       const scrollable = cached ?? (cached = getScrollable())
       const target = e.target as Node | null
-      // touches outside the sheet scroller would scroll the locked document — block
+      // a touch outside the sheet scroller would scroll the locked document, so block it
       if (!scrollable || !target || !scrollable.contains(target)) {
         e.preventDefault()
         return

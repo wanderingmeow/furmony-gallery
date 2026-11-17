@@ -40,6 +40,15 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Stops the document from being panned while a sheet is open. iOS ignores
+   `overflow: hidden` for touch, and once the document is scrolling, iOS sends later flicks
+   to the document wherever the finger lands. The browser reads `touch-action` up the DOM and
+   stops at the scroller that is being scrolled, so the sheet's own scroller still works. */
+html[data-scroll-locked],
+body[data-scroll-locked] {
+  touch-action: none;
+}
+
 body {
   margin: 0;
   background: var(--color-canvas);
