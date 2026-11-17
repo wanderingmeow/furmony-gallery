@@ -6,14 +6,14 @@ import { SearchBar } from './SearchBar'
 import { SortButtons } from './SortButtons'
 import { FilterTabs } from './FilterTabs'
 import { PictureMode, PictureToggle } from './PictureSearch'
+import { BAR_BANNER, BAR_ROW, BAR_TABS } from '../ui/boxes'
 
 export function Toolbar() {
   // The banner carries the group class that the picture row grows from, so a pointer anywhere
   // on the bar counts.
   return (
-    <div class="glass group relative z-40 px-3 py-3 rounded-2xl border border-black/10
-                shadow-sm dark:shadow-md mx-4 mt-3 pointer-events-auto">
-      <div class="flex items-center gap-2">
+    <div class={`${BAR_BANNER} group pointer-events-auto`}>
+      <div class={BAR_ROW}>
         <Show when={!picture.on()} fallback={<PictureMode />}>
           <div class="flex-1 min-w-0"><SearchBar /></div>
           <Show when={semanticOn()}><PictureToggle /></Show>
@@ -27,7 +27,7 @@ export function Toolbar() {
       {/* Colour and species filters sit in the bottom-right FAB column: the thumb reaches
           them there, and their panel has to float over the list anyway. */}
       <Show when={!picture.on()}>
-        <div class="mt-2"><FilterTabs /></div>
+        <div class={BAR_TABS}><FilterTabs /></div>
       </Show>
     </div>
   )

@@ -2,16 +2,17 @@ import { ArrowDownOutlined, ArrowUpOutlined, ClockCircleOutlined, DollarOutlined
 import type { SortMode } from '../../model/filter'
 import { sortMode, setSortMode } from '../../store'
 import { AntIcon } from '../ui/AntIcon'
+import { SORT_BTN } from '../ui/boxes'
 
 // simplest toggle: each button only flips between its own two directions and never
 // cancels back to the other group (no triple-press-to-deselect)
 function togglePrice(current: SortMode): SortMode {
-  // enter price group at priceAsc, then flip asc↔desc — never cancels back to time
+  // enter price group at priceAsc, then flip asc↔desc - never cancels back to time
   return current === 'priceAsc' ? 'priceDesc' : 'priceAsc'
 }
 
 function toggleTime(current: SortMode): SortMode {
-  // enter time group at timeDesc (default), then flip desc↔asc — never cancels back
+  // enter time group at timeDesc (default), then flip desc↔asc - never cancels back
   return current === 'timeDesc' ? 'timeAsc' : 'timeDesc'
 }
 
@@ -26,14 +27,14 @@ export function SortButtons() {
   return (
     <div class="flex items-center gap-2">
       <button
-        class="h-8 px-2 rounded-lg text-sm flex items-center gap-1"
+        class={`${SORT_BTN} px-2 text-sm flex items-center gap-1`}
         classList={{ 'bg-orange-500/35 text-orange-700 dark:text-orange-300': isPrice(), 'bg-surface-2 text-ink': !isPrice() }}
         onClick={() => setSortMode(togglePrice(sm()))}
       >
         <AntIcon icon={priceIcon} /> 价格
       </button>
       <button
-        class="h-8 px-2 rounded-lg text-sm flex items-center gap-1"
+        class={`${SORT_BTN} px-2 text-sm flex items-center gap-1`}
         classList={{ 'bg-orange-500/35 text-orange-700 dark:text-orange-300': isTime(), 'bg-surface-2 text-ink': !isTime() }}
         onClick={() => setSortMode(toggleTime(sm()))}
       >

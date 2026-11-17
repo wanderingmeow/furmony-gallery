@@ -50,6 +50,15 @@ export function waterfallRowHeight(cardWidth: number): number {
   return waterfallCardHeight(cardWidth) + GAP
 }
 
+/**
+ * The rows that a placeholder list draws: every row that starts above the fold, so the last one
+ * may show only its top. The real list ends the same way at the bottom edge, so no empty band is
+ * left above the fold.
+ */
+export function skeletonRows(viewportHeight: number, topPad: number, rowHeight: number): number {
+  return Math.max(1, Math.ceil((viewportHeight - topPad) / rowHeight))
+}
+
 /** The row an item sits in. A negative index (nothing found) means the first row. */
 export function rowOfIndex(index: number, cols: number): number {
   return Math.floor(Math.max(0, index) / cols)

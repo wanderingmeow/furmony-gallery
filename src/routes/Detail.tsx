@@ -11,6 +11,8 @@ import { stableImageUrl } from '../data/image'
 import { AntIcon } from '../components/ui/AntIcon'
 import { AnimatedHeight } from '../components/ui/AnimatedHeight'
 import { SheetFab } from '../components/ui/SheetFab'
+import { ART_PLACEHOLDER, DETAIL_BODY, SHEET_FAB_ROW, useSheetFooter } from '../components/ui/boxes'
+import { DetailToolbar } from '../components/sheet/DetailToolbar'
 import { Gallery } from '../components/detail/Gallery'
 import { FullScreenZoom } from '../components/detail/FullScreenZoom'
 import { InfoTable } from '../components/detail/InfoTable'
@@ -20,7 +22,10 @@ import { scrollSheetToTop } from '../components/sheet/Sheet'
 export function Detail(props: { onClose: () => void }) {
   const params = useParams()
   const navigate = useNavigate()
+  const footerHost = useSheetFooter()
   const listing = createMemo(() => listings().find((l) => l.adoptId === Number(params.id)))
+  // The bar only exists once the shell has handed over the box to paint it in.
+  const footerItem = createMemo(() => (footerHost() ? listing() : undefined))
 
   const [index, setIndex] = createSignal(0)
   const [full, setFull] = createSignal(false)
@@ -98,9 +103,9 @@ export function Detail(props: { onClose: () => void }) {
     <div class="min-h-full w-full bg-canvas flex flex-col">
       {/* Detail has no header bar: these float over content that spans the sheet and
           scrolls under them. ✕ always closes to the grid. The ← appears only after a
-          related tap, and covers "the one I just looked at" — pressing ← never turns ✕
+          related tap, and covers "the one I just looked at" - pressing ← never turns ✕
           into a back action. */}
-      <div class="absolute top-4 left-4 z-20 flex items-center gap-2">
+      <div class={SHEET_FAB_ROW}>
         <SheetFab label="关闭" onClick={close}>
           <AntIcon icon={CloseOutlined} size={22} />
         </SheetFab>
@@ -112,7 +117,7 @@ export function Detail(props: { onClose: () => void }) {
       </div>
 
       {/* pt-16 keeps the first row clear of the floating buttons */}
-      <div class="flex-1 min-h-0 pt-16 pb-4" style={{ 'padding-left': `${DETAIL_PAD_X}px`, 'padding-right': `${DETAIL_PAD_X}px` }}>
+      <div class={`flex-1 min-h-0 ${DETAIL_BODY}`} style={{ 'padding-left': `${DETAIL_PAD_X}px`, 'padding-right': `${DETAIL_PAD_X}px` }}>
         <Show
           when={listing()}
           fallback={
@@ -146,6 +151,17 @@ export function Detail(props: { onClose: () => void }) {
         </Show>
       </div>
 
+      {/* The bar belongs to this screen, so it travels in this chunk. It goes into the box the
+          shell keeps outside the scroller: a sticky bar inside the scroller covered the full
+          width and hid the Safari scrollbar. */}
+      <Show when={footerItem()}>
+        {(l) => {
+          const host = footerHost()
+          if (!host) return null
+          return <Portal mount={host} useShadow={false}><DetailToolbar item={l()} /></Portal>
+        }}
+      </Show>
+
       {/* The zoom goes to the body, so the sheet's overflow and transform cannot clip it */}
       <Show when={full()}>
         <Portal>
@@ -161,12 +177,7 @@ export function Detail(props: { onClose: () => void }) {
   )
 }
 
-/** The round buttons at the top left: same size, glass, and shadow. */
-/** iOS-style spinner in the gallery's place while the first image loads. */
+/** The bar that fills the gallery's place while the first image loads. */
 function ImageLoading() {
-  return (
-    <div class="h-72 rounded-xl bg-surface-2 flex items-center justify-center">
-      <div class="w-6 h-6 rounded-full border-[3px] border-transparent border-t-blue-500 animate-spin" />
-    </div>
-  )
+  return <div class={`sk-bar sk-pulse ${ART_PLACEHOLDER}`} />
 }

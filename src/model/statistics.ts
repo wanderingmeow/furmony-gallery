@@ -1,6 +1,6 @@
-// src/model/statistics.ts — pure statistics derivations for the stats page.
+// src/model/statistics.ts - pure statistics derivations for the stats page.
 // Mirrors the Swift StatisticsView data helpers (price bins, color/race counts,
-// monthly price stats, monthly counts). No DOM, no network — testable.
+// monthly price stats, monthly counts). No DOM, no network - testable.
 
 import type { AdoptListing } from './types'
 import { colorNames, raceName, displayPrice, publishDate, isLocked } from './domain'
@@ -13,7 +13,7 @@ export const LOCK_LABELS: Record<LockFilter, string> = {
   unlocked: '未锁定',
 }
 
-// locked = isLocked() (isLock === 2) — matches Swift isLocked and the app semantics.
+// locked = isLocked() (isLock === 2) - matches Swift isLocked and the app semantics.
 export function filterByLock(listings: AdoptListing[], mode: LockFilter): AdoptListing[] {
   switch (mode) {
     case 'locked': return listings.filter(isLocked)
@@ -57,7 +57,7 @@ export function priceBins(prices: number[], bucket = 2000): Bin[] {
   return bins
 }
 
-// Bin EDGES (boundaries) for the histogram — the bins are contiguous [low, high),
+// Bin EDGES (boundaries) for the histogram - the bins are contiguous [low, high),
 // so the edges are [bins[0].low] + each bin's high.
 export function priceEdges(bins: Bin[]): number[] {
   if (bins.length === 0) return []
@@ -98,7 +98,7 @@ export function fmtMonth(label: string): string {
   return `${yy}年${parseInt(mm, 10)}月`
 }
 
-// Month key "YY/MM" (year % 100, zero-padded) — lexicographic sort == chronological.
+// Month key "YY/MM" (year % 100, zero-padded) - lexicographic sort == chronological.
 function monthKey(createTime: string): string {
   const d = publishDate({ createTime } as AdoptListing)
   if (d) {

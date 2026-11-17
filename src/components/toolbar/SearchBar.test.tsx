@@ -3,19 +3,18 @@ import { render } from 'solid-js/web'
 import { SearchBar } from './SearchBar'
 import { searchText, setSearchText } from '../../stores/filterStore'
 import { setSemanticSearch } from '../../stores/displayStore'
-import { semanticPending } from '../../store'
+import { semanticPending, setOnFilterChange } from '../../store'
 
-// The gate's own rules are covered in ../ui/imeGate.test.ts. These cover the wiring between
-// the browser and that gate: a dropped `onCompositionEnd` would leave the gate locked, so the
-// box would show every keystroke and the search would never receive one of them - a failure
-// that no desktop keyboard can produce, and that no store test can see.
+// imeGate.test.ts covers the gate's own rules. These cover the wiring between the browser and
+// that gate: a dropped `onCompositionEnd` would lock the gate, so the search would never receive
+// the finished text - a failure that no desktop keyboard can produce and no store test can see.
 const COMMIT_WAIT = 500
 
 let disposeApp: () => void
 let host: HTMLDivElement
 let box: HTMLInputElement
-// What the component received: the `insertCompositionText` assertions below depend on the
-// harness reaching that branch.
+// The `inputType` of every event that reached the box. The `insertCompositionText` assertions
+// below only mean something if the harness really reached that branch.
 let seen: string[]
 
 /** happy-dom, like Chromium, ignores `inputType` in the InputEvent constructor. */
@@ -27,15 +26,16 @@ function fireInput(value: string, inputType: string): void {
   box.dispatchEvent(ev)
 }
 
-/** The order Safari on iPhone sends, measured on a real device. */
+/** One of the two events that Safari on iPhone sends around a composition, measured on a
+ * real device. */
 function fireComposition(type: 'compositionstart' | 'compositionend'): void {
   box.dispatchEvent(new Event(type, { bubbles: true }))
 }
 
 const settle = () => vi.advanceTimersByTimeAsync(COMMIT_WAIT + 50)
 
-// The mark follows `semanticPending`, so those two tests need a request that they answer by
-// hand. The enhanced search switch is module state, so each test turns it back off again.
+// The mark follows `semanticPending`, so the pulse tests need a request that they answer by hand.
+// The enhanced search switch is module state, so afterEach turns it off again.
 let answer: (body: unknown) => void = () => {}
 
 beforeEach(() => {
@@ -56,6 +56,7 @@ afterEach(() => {
   disposeApp()
   host.remove()
   setSemanticSearch(false)
+  setOnFilterChange(null)
   vi.unstubAllGlobals()
   vi.useRealTimers()
 })
@@ -69,7 +70,7 @@ describe('the search box', () => {
       fireInput(held, 'insertCompositionText')
       await settle()
       expect(searchText()).toBe('')
-      // The box follows every keystroke: the gate holds back the query, not the typing.
+      // The gate holds back the query, and the typing still reaches the box.
       expect(box.value).toBe(held)
     }
     fireInput('苍雪蓝', 'insertFromComposition')
@@ -97,7 +98,7 @@ describe('the search box', () => {
   })
 
   // A lost compositionend would otherwise lock the gate for the rest of the visit. Leaving
-  // the box passes on the text the reader finished with.
+  // the box passes on the text that the reader finished with.
   it('commits the finished text on blur when compositionend never arrives', async () => {
     fireComposition('compositionstart')
     fireInput('lan\u2006se', 'insertCompositionText')
@@ -108,7 +109,7 @@ describe('the search box', () => {
   })
 
   // The same hatch with syllables still in the box: that is not a question, so the search
-  // keeps the query the reader asked before.
+  // keeps the query that the reader asked before.
   it('keeps the previous query when blur lands mid-composition', async () => {
     setSearchText('苍雪')
     fireComposition('compositionstart')
@@ -133,19 +134,17 @@ describe('the search box', () => {
     expect(glyph.className).toContain('spark-pulse')
     glyph.dispatchEvent(new Event('animationiteration'))
     expect(glyph.className).not.toContain('spark-pulse')
-    setSemanticSearch(false)
   })
 
   // A sentence that the service already answered comes back from the cache with no request, so
   // this test uses a different sentence and leaves it unanswered.
-  it('keeps pulsing while the next query is still in flight', async () => {
+  it('keeps pulsing while a query is still in flight', async () => {
     setSemanticSearch(true)
     setSearchText('白色的猫')
     await settle()
     const glyph = host.querySelector('.search-field span') as HTMLSpanElement
     glyph.dispatchEvent(new Event('animationiteration'))
     expect(glyph.className).toContain('spark-pulse')
-    setSemanticSearch(false)
   })
 
   // The animation supplies the accent now, so the resting class has to stay on the element.
@@ -160,6 +159,25 @@ describe('the search box', () => {
     glyph.dispatchEvent(new Event('animationiteration'))
     expect(glyph.className).not.toContain('spark-pulse')
     expect(glyph.className).toContain('text-faint')
-    setSemanticSearch(false)
+  })
+
+  // A reload hands the saved query to the store while the box is already on screen. The bar used
+  // to appear only after that restore finished, so reading the store once was enough.
+  it('shows the query that the store restores after the box is on screen', () => {
+    setSearchText('苍雪蓝龙')
+    expect(box.value).toBe('苍雪蓝龙')
+  })
+
+  // That restore can land while a commit is still in the air. The effect resets the gate, so the
+  // restore resets the list once and nothing resets it a moment later.
+  it('drops the commit it holds when the store brings another query', async () => {
+    const kinds: string[] = []
+    setOnFilterChange((kind) => kinds.push(kind))
+    fireInput('蓝色', 'insertText')
+    setSearchText('苍雪')
+    await settle()
+    expect(searchText()).toBe('苍雪')
+    expect(box.value).toBe('苍雪')
+    expect(kinds).toEqual(['search'])
   })
 })

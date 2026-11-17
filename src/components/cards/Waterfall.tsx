@@ -12,13 +12,13 @@ import { displayPrice } from '../../model/domain'
 import { SAVE_THROTTLE_MS, findIndex } from '../../draw/scrollRestore'
 import { ListingCard } from './ListingCard'
 import { FloatingActions } from '../fab/FloatingActions'
+import { watchViewport } from '../ui/viewport'
 
 export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () => number }) {
   // The list scrolls the document (html/body), not an inner div: tapping the iOS status bar
-  // and pressing Home on a desktop both act on the document's main scrollable. So these
-  // signals mirror window.scrollY and the window size.
-  const [viewportW, setViewportW] = createSignal(document.documentElement.clientWidth)
-  const [viewportH, setViewportH] = createSignal(window.innerHeight)
+  // and pressing Home on a desktop both act on the document's main scrollable. So these signals
+  // follow the window.
+  const { viewportW, viewportH } = watchViewport()
   const [scrollTop, setScrollTop] = createSignal(window.scrollY)
 
   // reset per-mount so scroll restores on return to `/`
@@ -71,16 +71,8 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   }
 
   onMount(() => {
-    const onResize = () => {
-      setViewportW(document.documentElement.clientWidth)
-      setViewportH(window.innerHeight)
-    }
-    window.addEventListener('resize', onResize)
     window.addEventListener('scroll', onScroll, { passive: true })
-    onCleanup(() => {
-      window.removeEventListener('resize', onResize)
-      window.removeEventListener('scroll', onScroll)
-    })
+    onCleanup(() => { window.removeEventListener('scroll', onScroll) })
   })
 
   createScrollRestore({
@@ -275,7 +267,7 @@ function createScrollRestore(args: {
   })
   onCleanup(() => {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
-    // final save on exit — read the CURRENT scrollTop (the memo may be mid-disposal)
+    // final save on exit - read the CURRENT scrollTop (the memo may be mid-disposal)
     saveRow(Math.floor(args.scrollTop() / args.rowHeight()))
   })
 }

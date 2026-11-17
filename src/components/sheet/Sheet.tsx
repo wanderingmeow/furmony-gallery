@@ -2,12 +2,13 @@ import { createEffect, createMemo, createSignal, onCleanup, Show, type JSX } fro
 import { scrollLock } from '../../draw/scrollLock'
 import { EASE, prefersReducedMotion, SHEET_MOVE_MS, ease } from '../../draw/anim'
 import { MAX_SAMPLES, flingVelocity, shouldDismiss, type Sample } from '../../draw/fling'
+import { SheetFooterSlot } from '../ui/boxes'
 
 // The sheet that Detail and Stats share. It slides up from the bottom, the backdrop behind
 // it dims and blurs, and the list under it stops scrolling. You can also close it by
-// dragging the content down, but only once the content is already at its top. children,
-// header and footer are render props that receive `dismiss`, so each sheet wires its own
-// close button.
+// dragging the content down, but only once the content is already at its top. children and
+// header are render props that receive `dismiss`, so each sheet wires its own close button.
+// The foot box is empty until a screen claims it: see useSheetFooter.
 
 // The slide runs 300ms, the length it was tuned to first. Scrolling the content back and
 // changing the height of the table run beside it, and those two share SHEET_MOVE_MS.
@@ -87,11 +88,9 @@ export function scrollSheetToTop(): void {
 export function Sheet(props: {
   open: () => boolean
   onDismiss: () => void
-  // Both sit outside the scroller, so the content cannot scroll over them. The detail
-  // toolbar used to be a sticky bar inside the scroller: it covered the full width, and on
-  // Safari that hid the scrollbar.
+  // The header sits outside the scroller, so nothing scrolls over it. The foot box does too: a
+  // sticky bar inside the scroller covered the full width and hid the Safari scrollbar.
   header?: (dismiss: () => void) => JSX.Element
-  footer?: (dismiss: () => void) => JSX.Element
   children: (dismiss: () => void) => JSX.Element
 }) {
   // props.open is usually `() => !!useMatch(...)`. A new id gives a new match object, so the
@@ -99,6 +98,7 @@ export function Sheet(props: {
   // the sheet plays its opening animation again. This memo stops that, because its value
   // only changes when the boolean does.
   const open = createMemo(() => props.open())
+  const [footerHost, setFooterHost] = createSignal<HTMLElement>()
   const [closing, setClosing] = createSignal(false)
   const [pos, setPos] = createSignal(1)
   const [dragging, setDragging] = createSignal(false)
@@ -212,25 +212,25 @@ export function Sheet(props: {
               transition: dragging() ? 'none' : `border-radius ${SLIDE_MS}ms ${EASE}`,
             }}
           >
-            {props.header && <div class="shrink-0">{props.header(dismiss)}</div>}
-            <div
-              data-sheet-scroll=""
-              ref={setScroller}
-              // overflow-y alone makes the other axis compute to auto, so a child that sticks
-              // out by a pixel would let the whole sheet slide sideways. Only the related row
-              // moves sideways, and it has its own scroller.
-              //
-              // We also turn off scroll anchoring. When the content changes, the table above
-              // the viewport changes height, and anchoring rewrites scrollTop every frame to
-              // hide that. On Safari it also undoes what the scroll animation writes. We
-              // manage this element's scroll position ourselves, so anchoring has nothing
-              // here to fix.
-              style={{ 'overflow-anchor': 'none' }}
-              class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
-            >
-              {props.children(dismiss)}
-            </div>
-            {props.footer && <div class="shrink-0">{props.footer(dismiss)}</div>}
+            <SheetFooterSlot.Provider value={footerHost}>
+              {props.header && <div class="shrink-0">{props.header(dismiss)}</div>}
+              <div
+                data-sheet-scroll=""
+                ref={setScroller}
+                // overflow-y alone makes the other axis compute to auto, so a child that sticks
+                // out by a pixel would let the whole sheet slide sideways. Only the related row
+                // moves sideways, and it has its own scroller.
+                //
+                // Scroll anchoring is off: the rows above grow as they load, and anchoring
+                // rewrites scrollTop to follow them. On Safari it also undoes the scroll
+                // position we write ourselves.
+                style={{ 'overflow-anchor': 'none' }}
+                class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+              >
+                {props.children(dismiss)}
+              </div>
+              <div class="shrink-0" ref={setFooterHost} />
+            </SheetFooterSlot.Provider>
           </div>
         </div>
       </div>

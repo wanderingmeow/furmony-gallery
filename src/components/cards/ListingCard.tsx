@@ -7,6 +7,9 @@ import { isWishlisted, priceMode, toggleWishlist } from '../../store'
 import { onImageError, stableImageUrl } from '../../data/image'
 import { AntIcon } from '../ui/AntIcon'
 import { LockedIcon } from '../ui/LockedIcon'
+import {
+  CARD_ARTIST, CARD_BASE, CARD_BODY, CARD_COVER, CARD_FOOT, CARD_NAME,
+} from '../ui/boxes'
 
 // One row of tags, 18px tall. Chips that do not fit wrap to a second row, which the fixed
 // height clips: the reader sees a clean edge instead of a sliver of a chip.
@@ -55,15 +58,15 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
 
   return (
     <div
-      class="rounded-xl bg-surface border border-border p-1.5 select-none"
+      class={`${CARD_BASE} select-none`}
       style={{ width: `${props.width}px` }}
     >
-      <div class="flex items-center gap-1.5 px-2 py-1.5">
+      <div class={CARD_ARTIST}>
         <span class="text-[11px] text-muted truncate">{artist}</span>
         <span class="ml-auto shrink-0 text-[11px] text-faint">#{id}</span>
       </div>
 
-      <div class="px-1.5">
+      <div class={CARD_COVER}>
         <div class="relative card-img w-full rounded-lg bg-surface overflow-hidden" style={{ 'aspect-ratio': String(THUMB_ASPECT) }}>
           <img
             ref={imgRef}
@@ -78,8 +81,8 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
         </div>
       </div>
 
-      <div class="px-2 pt-1.5 pb-1.5 space-y-1">
-        <div class="flex items-center gap-1.5">
+      <div class={CARD_BODY}>
+        <div class={CARD_NAME}>
           <span class="text-sm font-medium truncate">{l.adoptName ?? '未知'}</span>
           {/* The group carries ml-auto rather than the lock, because a card with no lock
               still needs something to push the heart to the right edge. */}
@@ -99,7 +102,7 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
           </div>
         </div>
 
-        <div class="flex min-h-5 items-center gap-1.5">
+        <div class={CARD_FOOT}>
           {/* A card is 191px wide: the price never shrinks, the tags take what is left.
               min-h-5 holds the row at 20px with the price hidden, so a card with no price is
               as tall as a card with one, and the row pitch in draw/layout.ts still holds. */}

@@ -1,6 +1,7 @@
 import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { onImageError } from '../../data/image'
 import { EASE } from '../../draw/anim'
+import { ART_PLACEHOLDER } from '../ui/boxes'
 
 export function Gallery(props: {
   images: string[]; index: () => number; setIndex: (i: number) => void; onOpenFull: () => void
@@ -9,7 +10,7 @@ export function Gallery(props: {
   const current = () => props.images[Math.min(props.index(), count - 1)]
 
   // two-layer crossfade: the old image stays visible, the target preloads, then
-  // fades in on top before being promoted — no blank flash / flicker on switch
+  // fades in on top before being promoted - no blank flash / flicker on switch
   const [displayed, setDisplayed] = createSignal(current())
   const [incoming, setIncoming] = createSignal<string | null>(null)
   const [ready, setReady] = createSignal(false)
@@ -74,7 +75,7 @@ export function Gallery(props: {
   })
 
   return (
-    <Show when={count > 0} fallback={<div class="h-72 rounded-xl bg-surface-2" />}>
+    <Show when={count > 0} fallback={<div class={`bg-surface-2 ${ART_PLACEHOLDER}`} />}>
       <div>
         <div class="relative" ref={wrapperEl}>
           <Show when={displayed()}>
@@ -105,7 +106,7 @@ export function Gallery(props: {
               onError={onImageError}
             />
           </Show>
-          {/* spinner while an image decodes (first open or thumbnail switch) — mutually
+          {/* spinner while an image decodes (first open or thumbnail switch) - mutually
               exclusive: first open has incoming=null, switches have mainLoaded already true */}
           <Show when={(incoming() && !ready()) || (displayed() && !mainLoaded())}>
             <div class="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-black/40 rounded-xl">
@@ -118,7 +119,7 @@ export function Gallery(props: {
             {props.index() + 1} / {count}
           </span>
         </div>
-        {/* thumbnail strip — keyed For so thumbnails reconcile by index (not rebuilt) */}
+        {/* thumbnail strip - keyed For so thumbnails reconcile by index (not rebuilt) */}
         <div class="flex gap-1.5 justify-center mt-2">
           <For each={props.images}>
             {(url, i) => (
@@ -131,7 +132,7 @@ export function Gallery(props: {
   )
 }
 
-// Selector thumbnail below the gallery — spinner overlay until the image loads
+// Selector thumbnail below the gallery - spinner overlay until the image loads
 // (same treatment as card thumbnails, so slow-3G doesn't show a blank frame).
 function SelectorThumb(props: { url: string; active: boolean; onSelect: () => void }) {
   const [loaded, setLoaded] = createSignal(false)

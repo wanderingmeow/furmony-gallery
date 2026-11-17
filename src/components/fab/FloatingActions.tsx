@@ -6,6 +6,7 @@ import { useNavigate } from '@solidjs/router'
 import { fetchFailed, loadData, priceMode, selectedColors, selectedRaces } from '../../store'
 import { AntIcon } from '../ui/AntIcon'
 import { FabMenu } from './FabMenu'
+import { STATS_TITLE } from '../../model/titles'
 import { FilterPanel } from './FilterPanel'
 
 /**
@@ -56,7 +57,7 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
       <button
         class="cursor-pointer w-12 h-12 rounded-full shadow shadow-orange-500/40 flex items-center justify-center bg-orange-500 text-white border border-orange-600/40"
         onClick={() => navigate('/stats', { scroll: false })}
-        title="数据统计"
+        title={STATS_TITLE}
       >
         <AntIcon icon={BarChartOutlined} size={"1.5em"} />
       </button>

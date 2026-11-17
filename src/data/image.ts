@@ -1,4 +1,4 @@
-// src/data/image.ts — signed-image URL resolution + persistence.
+// src/data/image.ts - signed-image URL resolution + persistence.
 //
 // Reads are synchronous through an in-memory Map; writes are debounced async and only touch
 // dirty (newly-seen) keys. Persistence lives in the `img_url_map` IndexedDB store via the
@@ -36,13 +36,13 @@ function persist() {
 }
 
 // Load persisted KV entries into memory. DB entries WIN over any session-fresh writes:
-// they're the remembered (cross-session cacheable) URLs — that's the whole point.
+// they're the remembered (cross-session cacheable) URLs - that's the whole point.
 export async function initImageUrlMap(): Promise<void> {
   loadMap()
   try {
     const dbMap = await readAll<string, string>(IMG_URL_STORE)
     for (const [path, url] of dbMap) imageUrlMap!.set(path, url)
-  } catch { /* IndexedDB unavailable — memory-only */ }
+  } catch { /* IndexedDB unavailable - memory-only */ }
 }
 
 /**
@@ -87,9 +87,25 @@ export function onImageError(e: Event): void {
   img.src = fresh && fresh !== src ? fresh : src
 }
 
-// Flush pending image-map writes immediately (best-effort for beforeunload — IndexedDB
+// Flush pending image-map writes immediately (best-effort for beforeunload - IndexedDB
 // writes are async, so this may not complete on an immediate close, but the debounced
 // write during normal use keeps the map durable).
+/**
+ * Flush the map when the page goes away. Both events are registered, because mobile Safari
+ * fires `pagehide` and often skips `beforeunload`. Only the first one writes: the flush is
+ * best-effort, and starting it twice adds nothing but a second IndexedDB write.
+ */
+export function flushUrlMapOnExit(): void {
+  let flushed = false
+  const once = (): void => {
+    if (flushed) return
+    flushed = true
+    void flushImageUrlMap()
+  }
+  window.addEventListener('beforeunload', once)
+  window.addEventListener('pagehide', once)
+}
+
 export function flushImageUrlMap(): Promise<void> {
   if (!imageUrlMap || !persistTimer) return Promise.resolve()
   clearTimeout(persistTimer)

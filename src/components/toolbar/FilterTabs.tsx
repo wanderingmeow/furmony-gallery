@@ -5,6 +5,7 @@ import {
   tab, setTab, countAll, countUnlocked, countLocked, wishlistCount,
   noSocialOnly, remainingLocked,
 } from '../../store'
+import { TABS_ROW } from '../ui/boxes'
 
 // 渐隐最宽 40px，在 80px 的滑动距离内退到 0。tab 排是自由滑动（不吸附），所以不用像
 // 卡片那一排把 range 拉到比一档 snap 宽
@@ -25,15 +26,19 @@ export function FilterTabs() {
   let scroller!: HTMLDivElement
   const [fade, setFade] = createSignal<EdgeFade>(NO_FADE)
 
-  // A mask, not an overlay: this row sits on .glass, and painting canvas colour over it
-  // would cover the blur behind.
+  // The row sits on .glass, so the fade is a mask: painting canvas colour over it would cover
+  // the blur behind.
   const update = () => setFade(edgeFade(scroller, FADE_RANGE))
 
   onMount(() => {
     update()
     scroller.addEventListener('scroll', update)
+    // The counts arrive after the first paint, and a tab gets wider once its number appears. The
+    // row's own box keeps its size through that, so watching only the row would leave the fade on
+    // the right edge at the old width. That is why each button is observed too.
     const ro = new ResizeObserver(update)
     ro.observe(scroller)
+    for (const child of Array.from(scroller.children)) ro.observe(child)
     onCleanup(() => {
       scroller.removeEventListener('scroll', update)
       ro.disconnect()
@@ -47,7 +52,7 @@ export function FilterTabs() {
       ref={scroller}
       // pr-2 stops the last tab (收藏) from sitting flush against the card edge when the
       // bar is scrolled to its far right
-      class="flex items-center gap-1.5 overflow-x-auto pr-2"
+      class={`${TABS_ROW} overflow-x-auto pr-2`}
       style={{ '-webkit-mask-image': mask(), 'mask-image': mask() }}
     >
       <For each={FILTER_TABS}>

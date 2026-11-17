@@ -1,11 +1,17 @@
-import { createMemo, createSignal, onCleanup, onMount, Show, type JSX } from 'solid-js'
+import { createMemo, createSignal, For, onCleanup, onMount, Show, type JSX } from 'solid-js'
+import { CloseOutlined } from '@ant-design/icons-svg'
 import { listings } from '../store'
 import { StatBarChart, StatHistChart, StatLineChart } from '../components/stats/StatChart'
 import {
   filterByLock, priceBins, priceEdges, colorCounts, raceCounts, monthlyPriceStats, monthlyCounts,
-  fmtMonth, medianPrice, type LockFilter,
+  fmtMonth, medianPrice, LOCK_FILTERS, LOCK_LABELS, type LockFilter,
 } from '../model/statistics'
+import { STATS_TITLE } from '../model/titles'
 import { displayPrice } from '../model/domain'
+import { AntIcon } from '../components/ui/AntIcon'
+import { SheetFab } from '../components/ui/SheetFab'
+import { SEG_ITEM, SEG_ITEM_STATE, SEG_ROW } from '../components/ui/segment'
+import { SHEET_HEADER_ROW, SHEET_TITLE } from '../components/ui/boxes'
 
 // Swift palette per chart: 价格蓝 / 颜色 mint / 物种绿 / 每月橙
 const PRICE_BLUE = '#3b82f6'
@@ -13,8 +19,43 @@ const COLOR_MINT = '#14b8a6'
 const RACE_GREEN = '#22c55e'
 const MONTH_ORANGE = '#f97316'
 
-// Lazy-loaded content — uplot + @dschz/solid-uplot load only when /stats is
-// opened. Rendered inside StatsSheet (the sheet owns the chrome + close button).
+/**
+ * The header of the statistics sheet: the ✕, the title, and the switch between all the
+ * settings, the locked ones and the unlocked ones. It sits in this lazy file next to the
+ * charts, so the sheet opens on the placeholder and everything real arrives together.
+ */
+export function StatsHeader(props: {
+  mode: () => LockFilter
+  setMode: (m: LockFilter) => void
+  onClose: () => void
+}): JSX.Element {
+  return (
+    <div class={SHEET_HEADER_ROW}>
+      <SheetFab label="关闭" onClick={props.onClose}>
+        <AntIcon icon={CloseOutlined} size={22} />
+      </SheetFab>
+      <h1 class={SHEET_TITLE}>{STATS_TITLE}</h1>
+      <div class={`ml-auto inline-flex items-center justify-center ${SEG_ROW}`}>
+        <For each={LOCK_FILTERS}>
+          {(f) => (
+            <button
+              class={SEG_ITEM}
+              classList={SEG_ITEM_STATE(props.mode() === f)}
+              onClick={() => props.setMode(f)}
+            >
+              {LOCK_LABELS[f]}
+            </button>
+          )}
+        </For>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The charts. uplot and @dschz/solid-uplot arrive with this file, so they stay out of the
+ * first screen. StatsSheet puts this inside the sheet's own scroller.
+ */
 export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
   const data = createMemo(() => filterByLock(listings(), props.mode()))
 
@@ -32,7 +73,7 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
   const prices = createMemo(() => data().map(displayPrice).filter((p) => p > 0))
   const bins = createMemo(() => priceBins(prices()))
   // Hovering/clicking any chart refreshes its section's summary span (the top-right
-  // `ml-auto` one) with the hovered data point's value — it doubles as the tooltip.
+  // `ml-auto` one) with the hovered data point's value - it doubles as the tooltip.
   const [priceHover, setPriceHover] = createSignal<number | null>(null)
   const priceSummary = createHoverSummary(
     bins, priceHover,

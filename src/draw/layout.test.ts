@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   GAP, MIN_CARD, MIN_COLS, RELATED_CARD_GAP, RELATED_CARD_MIN, VIEW_PAD,
   indexOfRow, relatedCardWidth, relatedCardsHeight, relatedPerView, relatedStripHeight,
-  rowOfIndex, waterfallCardWidth, waterfallCols, waterfallRowHeight,
+  rowOfIndex, skeletonRows, waterfallCardWidth, waterfallCols, waterfallRowHeight,
 } from './layout'
 
 // Each grid answers two questions: how many cards fit, and how wide each one is. The
-// named cases are the widths people actually get — a phone, a small window, and the
+// named cases are the widths people actually get - a phone, a small window, and the
 // detail sheet at its widest.
 describe('related row column math', () => {
   const rowAt = (sheetWidth: number) => {
@@ -53,7 +53,7 @@ describe('related row column math', () => {
 
   // One narrow band shows what that trade costs: a sheet of 517..539px asks for 3 cards,
   // and 3 cards at the floor need 508px. The floor wins, and the row scrolls by the
-  // difference — a readable cover beats a whole card too small to judge.
+  // difference - a readable cover beats a whole card too small to judge.
   it('scrolls instead of shrinking below the floor', () => {
     const avail = 490
     expect(relatedPerView(avail)).toBe(3)
@@ -147,5 +147,43 @@ describe('waterfall column math', () => {
   it('reads a missing item as the first row, and an empty view as no item', () => {
     expect(rowOfIndex(-1, 3)).toBe(0) // findIndex returns -1 when the filter hid the row
     expect(indexOfRow(0, 3, 0)).toBe(-1) // items()[-1] is undefined, and the caller checks
+  })
+})
+
+// The placeholder list draws the grid that the real list will use, so it needs the same number of
+// rows that a reader would see filled: every row that starts above the fold. The bar's bottom edge sits at 110px at
+// these widths, and the grid starts VIEW_PAD under it.
+describe('placeholder row math', () => {
+  const topPad = 110 + VIEW_PAD
+  const rowsAt = (viewportWidth: number, viewportHeight: number) => {
+    const row = waterfallRowHeight(waterfallCardWidth(viewportWidth, waterfallCols(viewportWidth)))
+    return skeletonRows(viewportHeight, topPad, row)
+  }
+
+  it('fills a 390x844 phone with 4 rows', () => {
+    expect(rowsAt(390, 844)).toBe(4)
+  })
+
+  it('keeps the row that only shows its top edge', () => {
+    // A 390px window's row pitch is 208.5, so the fourth row starts at 126 + 3 * 208.5 = 751.5.
+    expect(skeletonRows(752, topPad, 208.5)).toBe(4)
+    expect(skeletonRows(751, topPad, 208.5)).toBe(3)
+  })
+
+  it('draws one row in landscape, where the fold is shallower than a row', () => {
+    expect(rowsAt(844, 390)).toBe(1)
+  })
+
+  it('keeps 4 rows on a 21:9 phone, where the extra height is not a whole row', () => {
+    expect(rowsAt(390, 910)).toBe(4)
+  })
+
+  it('fills a 1280x800 window with 3 rows, and a 2560x1440 one with 6', () => {
+    expect(rowsAt(1280, 800)).toBe(3)
+    expect(rowsAt(2560, 1440)).toBe(6)
+  })
+
+  it('draws a row even when the window is shorter than the bar', () => {
+    expect(skeletonRows(100, topPad, 208)).toBe(1)
   })
 })

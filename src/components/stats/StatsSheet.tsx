@@ -1,14 +1,14 @@
-import { For, type JSX } from 'solid-js'
-import { AntIcon } from '../ui/AntIcon'
-import { CloseOutlined } from '@ant-design/icons-svg'
-import { LOCK_FILTERS, LOCK_LABELS, type LockFilter } from '../../model/statistics'
+import { lazy, Suspense, type JSX } from 'solid-js'
 import { Sheet } from '../sheet/Sheet'
-import { SheetFab } from '../ui/SheetFab'
-import { SEG_ITEM, SEG_ITEM_STATE, SEG_ROW } from '../ui/segment'
+import { SheetTitleSkeleton } from '../sheet/SheetSkeleton'
+import { type LockFilter } from '../../model/statistics'
+import { STATS_TITLE } from '../../model/titles'
 
-// The stats screen: the shared Sheet chrome, plus a header (close button, title, lock
-// filter) over the scrollable charts. The Sheet handles the slide, the drag that closes it,
-// the backdrop and the scroll lock; this component builds the header and the charts.
+// The statistics sheet: the shared Sheet chrome around charts that arrive in a lazy chunk.
+// The header comes from that same chunk, so the sheet opens on the same placeholder the
+// detail screen uses, and the title, the ✕ and the lock switch arrive with the charts.
+const StatsHeaderLazy = lazy(() => import('../../routes/Stats').then((m) => ({ default: m.StatsHeader })))
+
 export function StatsSheet(props: {
   open: () => boolean
   onDismiss: () => void
@@ -20,35 +20,14 @@ export function StatsSheet(props: {
     <Sheet
       open={props.open}
       onDismiss={props.onDismiss}
-      // The header sits above the scroller, so the charts cannot scroll under it.
+      // The header stays above the scroller, so the charts cannot scroll under it.
       header={(dismiss) => (
-        <div class="flex items-center gap-4 p-4 bg-canvas">
-          <SheetFab label="关闭" onClick={dismiss}>
-            <AntIcon icon={CloseOutlined} size={22} />
-          </SheetFab>
-          <h1 class="text-lg font-semibold text-ink">数据统计</h1>
-          <div class={`ml-auto inline-flex items-center justify-center ${SEG_ROW}`}>
-            <For each={LOCK_FILTERS}>
-              {(f) => (
-                <button
-                  class={SEG_ITEM}
-                  classList={SEG_ITEM_STATE(props.mode() === f)}
-                  onClick={() => props.setMode(f)}
-                >
-                  {LOCK_LABELS[f]}
-                </button>
-              )}
-            </For>
-          </div>
-        </div>
+        <Suspense fallback={<SheetTitleSkeleton title={STATS_TITLE} />}>
+          <StatsHeaderLazy mode={props.mode} setMode={props.setMode} onClose={dismiss} />
+        </Suspense>
       )}
     >
-      {/* scrollable stats content */}
-      {(dismiss) => (
-        <div class="min-h-full px-4 pb-6">
-          {props.children(dismiss)}
-        </div>
-      )}
+      {(dismiss) => <div class="min-h-full px-4 pb-6">{props.children(dismiss)}</div>}
     </Sheet>
   )
 }

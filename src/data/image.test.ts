@@ -40,6 +40,26 @@ describe('stableImageUrl (img_url_map)', () => {
   })
 })
 
+describe('flushUrlMapOnExit', () => {
+  // Mobile Safari fires pagehide and often skips beforeunload, so both are registered and the
+  // first one alone writes. A second write would put whatever the reader loaded in the last
+  // moments on disk, and that is not what the exit flush is for.
+  it('writes once, on whichever exit event arrives first', async () => {
+    img.stableImageUrl('https://a.jpg?x=1')
+    img.flushUrlMapOnExit()
+    window.dispatchEvent(new Event('pagehide'))
+    img.stableImageUrl('https://b.jpg?x=2')
+    window.dispatchEvent(new Event('beforeunload'))
+    await new Promise((done) => setTimeout(done, 10))
+
+    vi.resetModules()
+    img = await import('./image')
+    await img.initImageUrlMap()
+    expect(img.stableImageUrl('https://a.jpg?y=9')).toBe('https://a.jpg?x=1')
+    expect(img.stableImageUrl('https://b.jpg?z=9')).toBe('https://b.jpg?z=9')
+  })
+})
+
 describe('urlPath (the part that identifies an image)', () => {
   it('drops the signature', () => {
     expect(img.urlPath('https://cdn.example/1.jpg?q-signature=abc'))
