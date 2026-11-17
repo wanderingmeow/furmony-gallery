@@ -1,9 +1,7 @@
-// src/stores/filterStore.ts — filter state signals (tab / sort / colors / races / search).
+// src/stores/filterStore.ts: filter state signals (tab / sort / colors / races / search).
 //
-// Filters live in memory (NOT the URL — no history spam) and persist to localStorage so
-// they survive a refresh. Persistence is explicit: every setter writes immediately, so
-// there is no hidden global effect (no module-level createEffect). Internal only —
-// never touches the URL/history.
+// The filter signals live in memory, and the setters write them to localStorage on the spot,
+// so a refresh keeps the filters the reader left.
 import { batch, createSignal } from 'solid-js'
 import { FILTER_TABS, SORT_MODES, type FilterTab, type SortMode } from '../model/filter'
 import { hasUncommittedText } from '../model/composing'
@@ -15,9 +13,6 @@ const [sortMode, setSortModeSignal] = createSignal<SortMode>('timeDesc')
 const [selectedColors, setSelectedColorsSignal] = createSignal<Set<string>>(new Set())
 const [selectedRaces, setSelectedRacesSignal] = createSignal<Set<string>>(new Set())
 const [searchText, setSearchTextSignal] = createSignal('')
-// Debug/tracking aid: show only listings with NO social account. Driven by the URL
-// query (?nosocial=1) - deliberately NOT persisted to localStorage (it must never
-// leak into normal browsing).
 const [noSocialOnly, setNoSocialOnlySignal] = createSignal(false)
 
 function persistFilters(): void {
@@ -38,16 +33,14 @@ let onFilterChange: ((kind: FilterChangeKind) => void) | null = null
 export function setOnFilterChange(fn: ((kind: FilterChangeKind) => void) | null): void { onFilterChange = fn }
 function notify(kind: FilterChangeKind): void { onFilterChange?.(kind) }
 
-// Explicit setters — mutate the signal AND persist in the same call (no hidden effect).
-//
-// Set-changing setters (tab/search/colors/races) run in one `batch()` so the store change
-// + waterfall scroll-reset (notify → setScrollTop) land in a SINGLE render pass (else: new
-// items at old scrollTop, then re-render on reset ≈ 2× DOM). sort stays unbatched: its
-// scroll target derives from the NEW order, so notify must run after the signal.
+// Each setter runs in one `batch()`, so the store change and the waterfall scroll reset
+// (notify → setScrollTop) share a single render pass.
 export function setTab(v: FilterTab): void {
   batch(() => { setTabSignal(v); persistFilters(); notify('tab') })
 }
-export function setSortMode(v: SortMode): void { setSortModeSignal(v); persistFilters(); notify('sort') }
+export function setSortMode(v: SortMode): void {
+  batch(() => { setSortModeSignal(v); persistFilters(); notify('sort') })
+}
 export function setSelectedColors(v: Set<string>): void {
   batch(() => { setSelectedColorsSignal(v); persistFilters(); notify('colors') })
 }
@@ -57,7 +50,7 @@ export function setSelectedRaces(v: Set<string>): void {
 export function setSearchText(v: string): void {
   batch(() => { setSearchTextSignal(v); persistFilters(); notify('search') })
 }
-// no persistence — pure URL-driven debug flag
+// no persistence: the URL sets this flag
 export function setNoSocialOnly(v: boolean): void { setNoSocialOnlySignal(v) }
 
 export { tab, sortMode, selectedColors, selectedRaces, searchText, noSocialOnly }

@@ -29,7 +29,7 @@ export interface ComputeOptions {
   wishlist: Map<number, number>
   // owner/account search text, keyed by adoptId
   socials?: Map<number, SocialSearchEntry>
-  // debug/tracking aid: show only listings with NO social account (URL ?nosocial=1)
+  // ?nosocial=1: only the listings with no social account
   noSocial?: boolean
   // keep only these adoptIds - the semantic group reuses every filter but its own text
   // match, because 68% of the descriptions never mention what the piece looks like

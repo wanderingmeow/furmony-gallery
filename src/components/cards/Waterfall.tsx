@@ -52,9 +52,6 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     })
   }
 
-  // lastTopId is the id on the top visible row, tracked while scrolling: a sort change uses
-  // it to stay on that card instead of jumping to the top.
-  let lastTopId: number | null = null
   const updatePreview = () => {
     // How far the page can scroll. The browser measures this, and its answer includes the band
     // under the last row, whose height follows the text it holds. Reading the number once per
@@ -64,7 +61,6 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     const top = s <= 0 ? 0 : (scrollTop() / s) * (h - PREVIEW_H)
     const row = Math.floor(Math.max(0, scrollTop()) / rowHeight())
     const item = items()[indexOfRow(row, cols(), items().length)]
-    lastTopId = item ? item.adoptId : null
     const isPrice = sortMode() === 'priceAsc' || sortMode() === 'priceDesc'
     const label = item ? (isPrice ? `¥${Math.round(displayPrice(item))}` : `#${item.adoptId}`) : ''
     preview.update(label, top)
@@ -81,19 +77,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
   })
 
-  // A sort keeps the reader on the card they were looking at; any other filter change
-  // starts over from the top.
-  setOnFilterChange((kind) => {
-    if (kind === 'sort') {
-      const id = lastTopId
-      if (id != null) {
-        const row = rowOfIndex(findIndex(items(), id), cols())
-        const target = row * rowHeight()
-        window.scrollTo(0, target)
-        setScrollTop(target)
-      }
-      return
-    }
+  setOnFilterChange(() => {
     window.scrollTo(0, 0)
     setScrollTop(0)
   })
