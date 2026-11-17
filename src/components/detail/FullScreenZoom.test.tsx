@@ -126,3 +126,28 @@ describe('the whole picture arriving over the resized one', () => {
     expect(imgs[0].getAttribute('src')).toBe(RESIZED)
   })
 })
+
+describe('one tap closing the viewer', () => {
+  // A plain event is enough: the gate reads only the target, the position, and the time.
+  const tap = (el: HTMLElement): void => {
+    for (const type of ['pointerdown', 'pointerup']) {
+      el.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: 40, clientY: 40 }))
+    }
+  }
+
+  function mountWithClose(onClose: () => void): HTMLDivElement {
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    disposeApp = render(
+      () => <FullScreenZoom imageUrl={RESIZED} fullUrl={WHOLE} count={1} index={() => 0} onClose={onClose} />,
+      host,
+    )
+    return host.querySelector('.fixed') as HTMLDivElement
+  }
+
+  it('closes on a single tap', () => {
+    let closes = 0
+    tap(mountWithClose(() => { closes++ }))
+    expect(closes).toBe(1)
+  })
+})

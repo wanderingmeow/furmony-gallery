@@ -47,7 +47,9 @@ export const SHEET_TITLE = 'text-lg font-semibold text-ink'
 
 /**
  * The box at the foot of a sheet, empty until a screen claims it. A screen claims it with a
- * Portal, so its bottom bar travels in the same file as the rest of that screen.
+ * Portal, so its bottom bar travels in the same file as the rest of that screen. The sheet
+ * creates the box before any child renders, so a screen reads the box once, when the screen is
+ * created: there is nothing to wait for. Outside a sheet there is no box at all.
  */
-export const SheetFooterSlot = createContext<() => HTMLElement | undefined>(() => undefined)
+export const SheetFooterSlot = createContext<HTMLElement | undefined>(undefined)
 export const useSheetFooter = () => useContext(SheetFooterSlot)

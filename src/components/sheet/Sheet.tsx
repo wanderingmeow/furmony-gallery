@@ -98,7 +98,9 @@ export function Sheet(props: {
   // the sheet plays its opening animation again. This memo stops that, because its value
   // only changes when the boolean does.
   const open = createMemo(() => props.open())
-  const [footerHost, setFooterHost] = createSignal<HTMLElement>()
+  // The box that a screen's bottom bar travels into. Appending the node on every open moves it
+  // back into the sheet, and the bar inside it moves with it.
+  const footerHost = document.createElement('div')
   const [closing, setClosing] = createSignal(false)
   const [pos, setPos] = createSignal(1)
   const [dragging, setDragging] = createSignal(false)
@@ -229,7 +231,7 @@ export function Sheet(props: {
               >
                 {props.children(dismiss)}
               </div>
-              <div class="shrink-0" ref={setFooterHost} />
+              <div class="shrink-0" data-sheet-footer="" ref={(el) => el.appendChild(footerHost)} />
             </SheetFooterSlot.Provider>
           </div>
         </div>

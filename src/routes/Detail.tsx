@@ -24,8 +24,6 @@ export function Detail(props: { onClose: () => void }) {
   const navigate = useNavigate()
   const footerHost = useSheetFooter()
   const listing = createMemo(() => listings().find((l) => l.adoptId === Number(params.id)))
-  // The bar only exists once the shell has handed over the box to paint it in.
-  const footerItem = createMemo(() => (footerHost() ? listing() : undefined))
 
   const [index, setIndex] = createSignal(0)
   const [full, setFull] = createSignal(false)
@@ -133,16 +131,14 @@ export function Detail(props: { onClose: () => void }) {
         </Show>
       </div>
 
-      {/* The bar belongs to this screen, so it travels in this chunk. It goes into the box the
-          shell keeps outside the scroller: a sticky bar inside the scroller covered the full
+      {/* The bar belongs to this screen, so it travels in this chunk. It goes into the box that
+          the shell keeps outside the scroller: a sticky bar inside the scroller covered the full
           width and hid the Safari scrollbar. */}
-      <Show when={footerItem()}>
-        {(l) => {
-          const host = footerHost()
-          if (!host) return null
-          return <Portal mount={host} useShadow={false}><DetailToolbar item={l()} /></Portal>
-        }}
-      </Show>
+      {footerHost && (
+        <Show when={listing()}>
+          {(l) => <Portal mount={footerHost} useShadow={false}><DetailToolbar item={l()} /></Portal>}
+        </Show>
+      )}
 
       {/* The zoom goes to the body, so the sheet's overflow and transform cannot clip it */}
       <Show when={full()}>

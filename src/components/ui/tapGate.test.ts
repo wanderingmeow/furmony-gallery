@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeTapGate, watchTaps, type TapPointer } from './tapGate'
 
 const picture = { name: 'picture' } as unknown as EventTarget
@@ -14,6 +14,20 @@ function gate() {
   const g = makeTapGate({ owns: (target) => target === picture, onTap: () => taps.push(1) })
   return { taps, g }
 }
+
+// After an accepted tap, a click listener sits on the document for a short window. These tests run
+// on fake timers, and every test ends by advancing past that window, so a listener left by one
+// test cannot stop a click in the next.
+const PAST_WINDOW_MS = 1000
+
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.advanceTimersByTime(PAST_WINDOW_MS)
+  vi.useRealTimers()
+})
 
 /** Two fingers go down together and lift one at a time, ending where the first one started and
  *  inside the time that a tap is allowed. A pinch that ends like this looks exactly like a tap to
@@ -147,5 +161,34 @@ describe('tapGate', () => {
     picture.removeEventListener('pointerdown', stop)
     host.removeEventListener('pointerdown', stop)
     host.remove()
+  })
+
+  // The second half matters as much as the first: a listener that never left the document would
+  // block the reader's next tap.
+  it('stops the click that follows an accepted tap, then lets clicks through again', () => {
+    const surface = document.createElement('div')
+    const behind = document.createElement('img')
+    document.body.appendChild(surface)
+    document.body.appendChild(behind)
+    let clicks = 0
+    behind.addEventListener('click', () => { clicks += 1 })
+
+    let taps = 0
+    const dispose = watchTaps({ owns: () => true, onTap: () => { taps += 1 } })
+    const send = (type: string, on: HTMLElement) =>
+      on.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: 40, clientY: 40 }))
+    send('pointerdown', surface)
+    send('pointerup', surface)
+    send('click', behind)
+    expect(taps).toBe(1)
+    expect(clicks).toBe(0)
+
+    vi.advanceTimersByTime(PAST_WINDOW_MS)
+    send('click', behind)
+    expect(clicks).toBe(1)
+
+    dispose()
+    surface.remove()
+    behind.remove()
   })
 })

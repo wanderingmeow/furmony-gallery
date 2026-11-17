@@ -24,6 +24,10 @@ const TAP_MS = 400
 /** How far a finger may drift while it is down. A pan moves the picture by more than this. */
 const TAP_SLOP = 10
 
+/** The browser sends a click for a tap after the release. On Android WebView the gap was 5 ms.
+ *  This window leaves room for engines that send the click later. */
+const CLICK_AFTER_TAP_MS = 250
+
 export type TapGate = {
   /** For every `pointerdown`. Call it in the capture phase: a listener on the element can stop
    *  the press from bubbling, and then it never reaches here. */
@@ -76,13 +80,25 @@ export function makeTapGate(opts: {
 }
 
 /** Watch the window for a single tap, and call `onTap` once for each tap. It reads the press in
- *  the capture phase, because a widget that pans the picture stops it from bubbling. Returns the
- *  call that stops watching. */
+ *  the capture phase, because a widget that pans the picture stops it from bubbling. The browser
+ *  sends a click for a tap after the release, and by then the tap has often closed the surface
+ *  under the finger, so that click would land on whatever sits behind it. `watchTaps` stops it.
+ *  Returns the call that stops watching. */
 export function watchTaps(opts: {
   owns: (target: EventTarget | null) => boolean
   onTap: () => void
 }): () => void {
-  const gate = makeTapGate(opts)
+  // The removal sits on a bare timer. Cleanup owned by the closing surface would remove the
+  // listener before the click arrives.
+  const blockNextClick = () => {
+    const block = (e: MouseEvent) => e.stopPropagation()
+    document.addEventListener('click', block, true)
+    setTimeout(() => document.removeEventListener('click', block, true), CLICK_AFTER_TAP_MS)
+  }
+  const gate = makeTapGate({
+    owns: opts.owns,
+    onTap: () => { blockNextClick(); opts.onTap() },
+  })
   window.addEventListener('pointerdown', gate.down, true)
   window.addEventListener('pointerup', gate.up)
   window.addEventListener('pointercancel', gate.cancel)
