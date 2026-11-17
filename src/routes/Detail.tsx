@@ -1,11 +1,11 @@
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
-import { useParams, useNavigate } from '@solidjs/router'
+import { useParams, useLocation } from '@solidjs/router'
 import { ArrowLeftOutlined, CloseOutlined } from '@ant-design/icons-svg'
-import {
-  listings, isLoading, dataReady, canGoBack, clearDetailHistory, onDetailShow, popBack,
-} from '../store'
+import { listings, isLoading, dataReady } from '../store'
 import { detailImages } from '../model/domain'
+import type { AdoptListing } from '../model/types'
+import type { DetailEntry } from '../model/detailTrail'
 import { DETAIL_PAD_X } from '../draw/layout'
 import { sizedUrl, stableImageUrl } from '../data/image'
 import { AntIcon } from '../components/ui/AntIcon'
@@ -21,35 +21,43 @@ import { scrollSheetToTop } from '../components/sheet/Sheet'
 
 export function Detail(props: { onClose: () => void }) {
   const params = useParams()
-  const navigate = useNavigate()
+  const location = useLocation<DetailEntry>()
   const footerHost = useSheetFooter()
-  const listing = createMemo(() => listings().find((l) => l.adoptId === Number(params.id)))
+  // The sheet stays for one slide after the route is gone, and the id goes with it. Without
+  // the last setting, that slide would show "未找到该设定".
+  let lastSeen: AdoptListing | undefined
+  const listing = createMemo(() => {
+    const found = listings().find((l) => l.adoptId === Number(params.id))
+    if (found) lastSeen = found
+    return params.id ? found : lastSeen
+  })
 
   const [index, setIndex] = createSignal(0)
   const [full, setFull] = createSignal(false)
 
+  // Only a related tap sets this field. The grid, a link and the notification panel leave it
+  // empty, so there is no ← to draw. See model/detailTrail.
+  const cameFrom = () => location.state?.fromDetail
+  const backLabel = () => {
+    const from = cameFrom()
+    const l = listings().find((x) => x.adoptId === from)
+    return l?.adoptName ? `返回 #${from} ${l.adoptName}` : `返回 #${from}`
+  }
+
   createEffect(() => {
-    params.id
-    // Which trail this hop belongs to (related row, ←, or a new one from the grid) is
-    // the store's question: see stores/detailHistory.
-    if (params.id) onDetailShow(params.id)
+    const id = params.id
+    // No id means the sheet is sliding out: let the setting leave as it stands.
+    if (!id) return
     setIndex(0) // how far the old setting was paged through says nothing about this one
+    // Otherwise the zoom would still show the setting you came from.
+    setFull(false)
     // A related tap navigates detail → detail and leaves this component mounted, so
     // without this the reader stays where the old setting left them. The scroll is
     // animated: the new cover should arrive as travel, not as a cut.
     scrollSheetToTop()
   })
 
-  const close = () => {
-    clearDetailHistory() // closing ends the trail
-    props.onClose()
-  }
-
-  const goBack = () => {
-    const to = popBack()
-    if (!to) return
-    navigate(`/detail/${to}`, { replace: true, scroll: false })
-  }
+  const goBack = () => history.back()
 
   // The title follows the sheet: a detail reads "#ID NAME - Furmony Gallery".
   createEffect(() => {
@@ -75,7 +83,7 @@ export function Detail(props: { onClose: () => void }) {
   // closes one layer instead of both.
   onMount(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !full()) close()
+      if (e.key === 'Escape' && !full()) props.onClose()
     }
     document.addEventListener('keydown', handler)
     onCleanup(() => document.removeEventListener('keydown', handler))
@@ -83,16 +91,15 @@ export function Detail(props: { onClose: () => void }) {
 
   return (
     <div class="min-h-full w-full bg-canvas flex flex-col">
-      {/* Detail has no header bar: these float over content that spans the sheet and
-          scrolls under them. ✕ always closes to the grid. The ← appears only after a
-          related tap, and covers "the one I just looked at" - pressing ← never turns ✕
-          into a back action. */}
+      {/* Detail has no header bar: these float over content that spans the sheet and scrolls
+          under them. ✕ closes the sheet from any level. The ← appears only after a related
+          tap, and it follows the same history entries the browser's back follows. */}
       <div class={SHEET_FAB_ROW}>
-        <SheetFab label="关闭" onClick={close}>
+        <SheetFab label="关闭" onClick={props.onClose}>
           <AntIcon icon={CloseOutlined} size={22} />
         </SheetFab>
-        <Show when={canGoBack()}>
-          <SheetFab label="返回上一个设定" onClick={goBack}>
+        <Show when={cameFrom() !== undefined}>
+          <SheetFab label={backLabel()} onClick={goBack}>
             <AntIcon icon={ArrowLeftOutlined} size={20} />
           </SheetFab>
         </Show>

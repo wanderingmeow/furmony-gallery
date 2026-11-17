@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, onCleanup, Show, type JSX } from 'solid-js'
+import { createEffect, createMemo, createSignal, on, onCleanup, Show, type JSX } from 'solid-js'
 import { scrollLock } from '../../draw/scrollLock'
 import { EASE, prefersReducedMotion, SHEET_MOVE_MS, ease } from '../../draw/anim'
 import { MAX_SAMPLES, flingVelocity, shouldDismiss, type Sample } from '../../draw/fling'
@@ -134,16 +134,56 @@ export function Sheet(props: {
     requestAnimationFrame(() => setPos(0))
   })
 
+  // The layer keeps its own signal: a back press moves the route away from outside, and the
+  // layer still has one slide to finish.
+  const [shown, setShown] = createSignal(open())
+  let exitTimer: number | undefined
+
+  function slideOut(settle: () => void) {
+    setClosing(true)
+    setPos(1)
+    clearTimeout(exitTimer)
+    exitTimer = setTimeout(settle, DISMISS_WAIT_MS)
+  }
+  onCleanup(() => clearTimeout(exitTimer))
+
+  // ✕ or a fling: the route still points here, so it changes once the slide is over.
+  function dismiss() {
+    slideOut(() => {
+      setShown(false)
+      // A back press during the slide already moved the route away.
+      if (open()) props.onDismiss()
+    })
+  }
+
+  createEffect(
+    on(
+      open,
+      (isOpen) => {
+        if (isOpen) {
+          setShown(true)
+          return
+        }
+        if (!shown() || closing()) return // nothing on screen, or a slide is running
+        // The route moved away while the layer was up: wait out the slide, then drop it.
+        slideOut(() => {
+          // The route came back during the slide, so the sheet simply stays.
+          if (open()) {
+            setClosing(false)
+            setPos(0)
+            return
+          }
+          setShown(false)
+        })
+      },
+      { defer: true },
+    ),
+  )
+
   // The top corners round as the sheet comes away from the bottom of the screen. Only the
   // drag and the exit should round them: opening also moves pos from 1 to 0, and the sheet
   // should arrive with square corners.
   const pull = () => (dragging() || closing() ? Math.min(1, pos() / CORNER_TRAVEL) : 0)
-
-  function dismiss() {
-    setClosing(true)
-    setPos(1)
-    setTimeout(() => props.onDismiss(), DISMISS_WAIT_MS)
-  }
 
   // The drag listeners sit on the sheet's own scroller, not on the full-screen layer, so a
   // drag on the backdrop never closes the sheet.
@@ -192,7 +232,7 @@ export function Sheet(props: {
   }
 
   return (
-    <Show when={open()}>
+    <Show when={shown()}>
       <div class="fixed inset-0 z-50">
         <div
           class={`absolute inset-0 bg-black/30 backdrop-blur-md ${closing() ? 'overlay-fade-out' : 'overlay-fade-in'}`}

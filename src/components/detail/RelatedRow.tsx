@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show }
 import { useNavigate } from '@solidjs/router'
 import type { AdoptListing } from '../../model/types'
 import {
-  listings, loadRelated, markRelatedNav, related, relatedLoaded, relatedOnlyUnlocked,
+  listings, loadRelated, related, relatedLoaded, relatedOnlyUnlocked,
   setRelatedOnlyUnlocked,
 } from '../../store'
 import { MIN_RELATED, relatedIds, resolveRelated } from '../../model/related'
@@ -35,12 +35,10 @@ export function RelatedRow(props: { item: AdoptListing }) {
   // the switch too, and nobody could turn it back off.
   const hasEnoughNeighbours = () => neighbours().length >= MIN_RELATED
 
-  // replace: the close button always returns to the grid, so the back gesture must do the
-  // same. The route holds none of those hops, so the ← stack lives in stores/detailHistory.
-  const open = (id: number) => {
-    markRelatedNav(String(adoptId()))
-    navigate(`/detail/${id}`, { replace: true, scroll: false })
-  }
+  // A related tap goes one level deeper, so it stays in browser history: back walks
+  // C → B → A → the grid. model/detailTrail explains the marker in the state.
+  const open = (id: number) =>
+    navigate(`/detail/${id}`, { scroll: false, state: { fromDetail: adoptId() } })
 
   // The table loads after the sheet is open, so the block holds its space until it does;
   // the switch waits for the same reason - it changes a row that is not on screen yet.

@@ -12,7 +12,6 @@ export * from './stores/socialsStore'
 export * from './stores/relatedStore'
 export * from './stores/semanticStore'
 export * from './stores/displayStore'
-export * from './stores/detailHistory'
 export * from './stores/derivedStore'
 
 import { loadFilters } from './stores/filterStore'

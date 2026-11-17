@@ -78,7 +78,7 @@ describe('urlPath (the part that identifies an image)', () => {
 })
 
 describe('sizedUrl', () => {
-  const signed = 'https://furmony-1315130004.cos.ap-guangzhou.myqcloud.com/cover/2839.png' +
+  const signed = 'https://bucket.cos.ap-guangzhou.myqcloud.com/cover/2839.png' +
     '?sign=abc&q-sign-time=1700000000;1700003600'
 
   it('appends the card preset to a signed address', () => {
