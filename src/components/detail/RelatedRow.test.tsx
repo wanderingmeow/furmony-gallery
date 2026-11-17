@@ -1,5 +1,5 @@
-// A related card has to push a history entry naming the setting the reader came from. The row
-// is otherwise layout and pictures, so the router and the stores are stood in for here.
+// A related card has to push a history entry naming the listing that the reader came from. The
+// row is otherwise layout and pictures, so the router and the stores are stood in for here.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'solid-js/web'
 import type { AdoptListing } from '../../model/types'
@@ -54,7 +54,7 @@ describe('tapping a related card', () => {
     expect(neighbours.every((id) => card(id))).toBe(true)
   })
 
-  it('pushes an entry naming the setting it came from', () => {
+  it('pushes an entry naming the listing it came from', () => {
     mount()
     card(3)!.click()
     // The whole options object is compared, so a `replace` flag would fail here.

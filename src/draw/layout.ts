@@ -120,9 +120,10 @@ export function relatedStripHeight(cardWidth: number): number {
 }
 
 // ---- row preview chip ----
-// The chip rides the right edge while you scroll, and shows the id or price of the row at
-// the top of the window.
+// The chip sits at the right edge while you scroll. It shows the day of the row at the top of
+// the window, or that row's price when the list is sorted by price.
 export const PREVIEW_H = 36
+export const PREVIEW_SCROLLBAR_GAP = 8
 export const PREVIEW_IDLE_MS = 700
 // The chip's own CSS fade runs 300ms (duration-300). This waits longer on purpose, so the
 // element leaves after its fade instead of partway through it.

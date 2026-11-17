@@ -32,7 +32,7 @@ function Shell() {
   // one value and it survives opening and closing the sheet.
   const [mode, setMode] = createSignal<LockFilter>('all')
   const closeSheet = () => navigate('/', { scroll: false })
-  // ?nosocial=1 is a debugging filter for settings with no social account, to find adoptIds
+  // ?nosocial=1 is a debugging filter for listings with no social account, to find adoptIds
   // that still need a socials.json entry. The URL is read once, then the store owns the flag.
   const [searchParams] = useSearchParams()
 

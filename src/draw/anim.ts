@@ -1,6 +1,6 @@
 // src/draw/anim.ts — timing shared by the detail sheet animations.
 //
-// Opening another setting starts three animations: the sheet slides in, the content
+// Opening another listing starts three animations: the sheet slides in, the content
 // scrolls to the top, and InfoTable changes height. One duration and one curve end them
 // together; two durations look like two jumps.
 
@@ -10,7 +10,7 @@ export const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)'
 
 /**
  * The OS "reduce motion" switch. Ask where the animation starts rather than caching it at
- * mount: the setting can change while the app stays open.
+ * mount: the listing can change while the app stays open.
  */
 export function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches

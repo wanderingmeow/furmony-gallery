@@ -1,6 +1,6 @@
-// Tests for the progress bar maths (progress.ts). No DOM, no reactivity.
+// Tests for the scroll position maths (progress.ts). No DOM, no reactivity.
 import { describe, expect, it } from 'vitest'
-import { scrollThumb } from './progress'
+import { previewTop, scrollThumb } from './progress'
 
 // 1000px of content in a 400px window, so the row can scroll 600px, on a 200px track.
 // scrollThumb has no default floor, so these tests pass 24.
@@ -42,5 +42,40 @@ describe('scrollThumb', () => {
     // clamp is wrong, so comparing them proves nothing.
     expect(at(5000)).toEqual({ width: 80, offset: 120 })
     expect(at(-50)).toEqual({ width: 80, offset: 0 })
+  })
+})
+
+describe('previewTop', () => {
+  // A 3200px page in an 800px window leaves 2400px of scroll. The thumb takes the visible
+  // share: 800 * 800 / 3200 = 200px, so its centre runs from 100px to 700px.
+  const at = (scrollTop: number, scrollable = 2400) => previewTop(scrollTop, scrollable, 800, 36)
+
+  it('sits on the middle of the thumb, at the top', () => {
+    expect(at(0)).toBe(82)
+  })
+
+  it('sits on the middle of the thumb, at the bottom', () => {
+    expect(at(2400)).toBe(682)
+  })
+
+  it('holds the middle of the edge at the middle of the page', () => {
+    expect(at(1200)).toBe(382)
+  })
+
+  it('is null until the page has one full screen of scroll', () => {
+    expect(at(200, 799)).toBeNull()
+    expect(at(200, 0)).toBeNull()
+    expect(at(1200, 2400)).toBe(382)
+  })
+
+  it('stays on the thumb when the page is long and the thumb is at its floor', () => {
+    // 100800px of page puts the thumb at the 24px floor, so the chip can reach both ends.
+    expect(at(0, 100000)).toBe(0)
+    expect(at(50000, 100000)).toBe(382)
+    expect(at(100000, 100000)).toBe(764)
+  })
+
+  it('keeps a scroll past the end on the last thumb position', () => {
+    expect(at(9000)).toBe(682)
   })
 })

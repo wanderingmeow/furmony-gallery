@@ -24,7 +24,7 @@ export function Detail(props: { onClose: () => void }) {
   const location = useLocation<DetailEntry>()
   const footerHost = useSheetFooter()
   // The sheet stays for one slide after the route is gone, and the id goes with it. Without
-  // the last setting, that slide would show "未找到该设定".
+  // the last listing, that slide would show "未找到该设定".
   let lastSeen: AdoptListing | undefined
   const listing = createMemo(() => {
     const found = listings().find((l) => l.adoptId === Number(params.id))
@@ -46,13 +46,13 @@ export function Detail(props: { onClose: () => void }) {
 
   createEffect(() => {
     const id = params.id
-    // No id means the sheet is sliding out: let the setting leave as it stands.
+    // No id means the sheet is sliding out: keep the last listing on screen while it goes.
     if (!id) return
-    setIndex(0) // how far the old setting was paged through says nothing about this one
-    // Otherwise the zoom would still show the setting you came from.
+    setIndex(0) // how far the old listing was paged through says nothing about this one
+    // Otherwise the zoom would still show the listing you came from.
     setFull(false)
     // A related tap navigates detail → detail and leaves this component mounted, so
-    // without this the reader stays where the old setting left them. The scroll is
+    // without this the reader stays where the old listing left them. The scroll is
     // animated: the new cover should arrive as travel, not as a cut.
     scrollSheetToTop()
   })
@@ -127,7 +127,7 @@ export function Detail(props: { onClose: () => void }) {
               />
               <div class="mt-4">
                 {/* l() is an accessor: read it inline. Copying it into a const freezes
-                    the table on the first setting. */}
+                    the table on the first listing. */}
                 <AnimatedHeight>
                   <InfoTable listing={l()} />
                 </AnimatedHeight>

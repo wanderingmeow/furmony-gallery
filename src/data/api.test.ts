@@ -21,7 +21,7 @@ describe.skipIf(!haveFixtures)('fetchAllListings combines both endpoints', () =>
   })
 })
 
-// The API gives these two lists no fixed order, so one setting can come back with its colors
+// The API gives these two lists no fixed order, so one listing can come back with its colors
 // and its pictures swapped between two requests.
 describe('sortColorsAndPictures', () => {
   const row = (over: Partial<AdoptListing>): AdoptListing => ({

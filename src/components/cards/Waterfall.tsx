@@ -5,11 +5,12 @@ import {
   sortMode, setOnFilterChange,
 } from '../../store'
 import {
-  GAP, OVERSCAN_ROWS, PREVIEW_FADE_MS, PREVIEW_H, PREVIEW_IDLE_MS, VIEW_PAD,
+  GAP, OVERSCAN_ROWS, PREVIEW_FADE_MS, PREVIEW_H, PREVIEW_IDLE_MS, PREVIEW_SCROLLBAR_GAP, VIEW_PAD,
   indexOfRow, rowOfIndex, waterfallCardWidth, waterfallCols, waterfallRowHeight,
 } from '../../draw/layout'
-import { displayPrice } from '../../model/domain'
+import { displayPrice, publishDays } from '../../model/domain'
 import { SAVE_THROTTLE_MS, findIndex } from '../../draw/scrollRestore'
+import { previewTop } from '../../draw/progress'
 import { ListingCard } from './ListingCard'
 import { FloatingActions } from '../fab/FloatingActions'
 import { watchViewport } from '../ui/viewport'
@@ -25,6 +26,8 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   setRestored(false)
 
   const items = filteredListings
+  // One pass each time the list changes, so the scroll handler does no date work.
+  const days = createMemo(() => publishDays(items()))
   const cols = createMemo(() => waterfallCols(viewportW()))
   const cardWidth = createMemo(() => waterfallCardWidth(viewportW(), cols()))
   const rowHeight = createMemo(() => waterfallRowHeight(cardWidth()))
@@ -52,18 +55,27 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     })
   }
 
+  // A classic scrollbar sits between the edge and the chip, so the chip leaves room for it.
+  // Overlay bars (iOS, and macOS by default) report no width, so the chip uses VIEW_PAD.
+  const barGap = () => {
+    const bar = window.innerWidth - document.documentElement.clientWidth
+    return bar > 0 ? bar + PREVIEW_SCROLLBAR_GAP : VIEW_PAD
+  }
+
   const updatePreview = () => {
     // How far the page can scroll. The browser measures this, and its answer includes the band
     // under the last row, whose height follows the text it holds. Reading the number once per
     // frame here means nothing else has to reserve a height for that band.
     const s = Math.max(0, document.documentElement.scrollHeight - viewportH())
-    const h = viewportH()
-    const top = s <= 0 ? 0 : (scrollTop() / s) * (h - PREVIEW_H)
-    const row = Math.floor(Math.max(0, scrollTop()) / rowHeight())
-    const item = items()[indexOfRow(row, cols(), items().length)]
+    const top = previewTop(scrollTop(), s, viewportH(), PREVIEW_H)
+    // The content starts below the floating toolbar, so the row at the top of the window is the
+    // one covering (scrollY - topPad). ScrollY on its own points at a card one row lower.
+    const row = Math.floor(Math.max(0, scrollTop() - topPad()) / rowHeight())
+    const index = indexOfRow(row, cols(), items().length)
+    const item = items()[index]
     const isPrice = sortMode() === 'priceAsc' || sortMode() === 'priceDesc'
-    const label = item ? (isPrice ? `¥${Math.round(displayPrice(item))}` : `#${item.adoptId}`) : ''
-    preview.update(label, top)
+    const label = item ? (isPrice ? `¥${Math.round(displayPrice(item))}` : days()[index] || `#${item.adoptId}`) : ''
+    if (top !== null && label) preview.update(label, top, barGap())
   }
 
   onMount(() => {
@@ -139,9 +151,9 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
         {(p) => (
           <div
             // z-50 sits above the toolbar (z-40); opacity-0 is the fade-out
-            class="fixed z-50 glass rounded-lg px-3 py-2 text-sm font-semibold shadow pointer-events-none transition-opacity duration-300"
+            class="fixed z-50 glass rounded-lg px-3 py-2 text-sm font-semibold tabular-nums shadow pointer-events-none transition-opacity duration-300"
             classList={{ 'opacity-0': preview.leaving() }}
-            style={{ top: `${Math.min(p().top, viewportH() - PREVIEW_H)}px`, right: `${VIEW_PAD}px` }}
+            style={{ top: `${p().top}px`, right: `${p().right}px` }}
           >
             {p().label}
           </div>
@@ -161,13 +173,13 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
 // the last one the fade starts. The element unmounts only when the fade ends, and a new
 // scroll cancels a pending fade instead of restarting it, which would read as a blink.
 function createPreviewController() {
-  const [preview, setPreview] = createSignal<{ label: string; top: number } | null>(null)
+  const [preview, setPreview] = createSignal<{ label: string; top: number; right: number } | null>(null)
   const [leaving, setLeaving] = createSignal(false)
   let hideTimer: number | null = null
   let fadeTimer: number | null = null
 
-  const update = (label: string, top: number) => {
-    setPreview({ label, top })
+  const update = (label: string, top: number, right: number) => {
+    setPreview({ label, top, right })
     setLeaving(false)
     if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null }
     if (hideTimer) clearTimeout(hideTimer)

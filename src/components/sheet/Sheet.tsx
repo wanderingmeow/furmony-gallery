@@ -32,8 +32,8 @@ let stopYielding: (() => void) | null = null
 
 /**
  * Scroll the sheet's content back to the top after the content changes in place, which is
- * what tapping a related setting does. Without this, the new setting opens at the depth you
- * left the last one at. That setting sits at the bottom of the sheet, so the change looks
+ * what tapping a related listing does. Without this, the new listing opens at the depth where
+ * you left the last one. That listing sits at the bottom of the sheet, so the change looks
  * like nothing happened.
  *
  * Call this after the new content is in place. Setting scrollTop to 0 before the navigation

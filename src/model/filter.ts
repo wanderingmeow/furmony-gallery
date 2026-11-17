@@ -3,7 +3,7 @@
 import type { AdoptListing } from './types'
 import type { SocialSearchEntry } from '../data/socials'
 import {
-  colorNames, displayPrice, isLocked, isSelfCommission, publishDate, raceName,
+  colorNames, displayPrice, isLocked, isSelfCommission, raceName,
 } from './domain'
 
 export type SortMode = 'timeDesc' | 'timeAsc' | 'priceAsc' | 'priceDesc'
@@ -41,13 +41,16 @@ export interface ComputeOptions {
   keepOrder?: boolean
 }
 
-const timeOf = (l: AdoptListing) => publishDate(l)?.getTime() ?? 0
+// The time order is the id order. On the full list an id and a publish time agree on every row
+// that has a time at all, and an id is never missing, so a row without one keeps the place that
+// its neighbours hold.
+const timeRank = (l: AdoptListing) => l.adoptId
 
 const by = (key: (l: AdoptListing) => number) => (a: AdoptListing, b: AdoptListing) => key(a) - key(b)
 
 const SORTS: Record<SortMode, (a: AdoptListing, b: AdoptListing) => number> = {
-  timeDesc: by((l) => -timeOf(l)),
-  timeAsc: by(timeOf),
+  timeDesc: by((l) => -timeRank(l)),
+  timeAsc: by(timeRank),
   priceAsc: by(displayPrice),
   priceDesc: by((l) => -displayPrice(l)),
 }

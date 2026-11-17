@@ -1,9 +1,11 @@
-// Functional tests for the price-display rules (domain.ts). All numbers are FAKE.
+// Functional tests for the price and publish-day rules in domain.ts. All numbers are FAKE.
 import { describe, expect, it } from 'vitest'
 import type { AdoptListing } from './types'
-import { installmentTotal, monthlyPayment, priceParts, type PriceMode } from './domain'
+import {
+  installmentTotal, monthlyPayment, priceParts, publishDay, publishDays, type PriceMode,
+} from './domain'
 
-// The fake setting: 30000 across 12 periods (allcost), a 6000 deposit (earnest), and
+// The fake listing: 30000 across 12 periods (allcost), a 6000 deposit (earnest), and
 // 24000 to settle once (nonrecurringExpense), which is 8折 of the total.
 function fake(over: Partial<AdoptListing> = {}): AdoptListing {
   return {
@@ -116,7 +118,7 @@ describe('priceParts — installment', () => {
 
   it('falls back to the monthly amount on the card when there is no deposit', () => {
     const p = planParts(fake({ earnest: 0 }))
-    // null means "this setting has no deposit", which is not 0. The detail sheet picks
+    // null means "this listing has no deposit", which is not 0. The detail sheet picks
     // its rows on this. Falling back to 0 told the user nobody had to pay a deposit:
     // #848 and the five others drew 首付¥0 and 定金¥0 in the same sheet.
     expect(p.down).toBeNull()
@@ -170,5 +172,39 @@ describe('priceParts — every mode', () => {
         }
       }
     }
+  })
+})
+
+describe('publishDay', () => {
+  it('keeps the day and drops the clock', () => {
+    expect(publishDay(fake({ createTime: '2025-03-21 08:07:06' }))).toBe('2025-03-21')
+  })
+
+  it('is empty when the time is missing or unreadable', () => {
+    expect(publishDay(fake())).toBe('')
+    expect(publishDay(fake({ createTime: '春天发布的' }))).toBe('')
+  })
+})
+
+describe('publishDays', () => {
+  const at = (id: number, createTime?: string) => fake({ adoptId: id, createTime })
+
+  it('keeps the day of every row that has one', () => {
+    expect(publishDays([at(1, '2025-03-21 10:00:00'), at(2, '2025-03-28 10:00:00')]))
+      .toEqual(['2025-03-21', '2025-03-28'])
+  })
+
+  it('takes the day of the row before', () => {
+    expect(publishDays([at(846, '2025-03-21 10:00:00'), at(848), at(850, '2025-03-28 10:00:00')]))
+      .toEqual(['2025-03-21', '2025-03-21', '2025-03-28'])
+  })
+
+  it('takes the day of the row after when nothing before has one', () => {
+    expect(publishDays([at(1), at(2), at(3, '2025-05-24 10:00:00')]))
+      .toEqual(['2025-05-24', '2025-05-24', '2025-05-24'])
+  })
+
+  it('is empty when no row has a day', () => {
+    expect(publishDays([at(1), at(2)])).toEqual(['', ''])
   })
 })

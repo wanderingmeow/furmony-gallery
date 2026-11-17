@@ -20,7 +20,7 @@ const PLATFORM_META: Record<PlatformKey, ChipMeta> = {
   xiaohongshu: { icon: LinkOutlined, custom: XiaohongshuIcon, color: '#ff2442', label: '小红书' },
 }
 
-// Social chips (rounded-square icon buttons) for a locked setting's owner. Reactive on
+// Social chips (rounded-square icon buttons) for a locked listing's owner. Reactive on
 // `socials()` — starts empty and rehydrates when the runtime fetch resolves, so it never
 // blocks the sheet. Opens each platform URL in a new tab; no URL → chip omitted.
 function SocialChips(props: { item: AdoptListing }) {
@@ -58,7 +58,7 @@ function SocialChips(props: { item: AdoptListing }) {
   )
 }
 
-// Sticky bottom toolbar for the detail sheet: 收藏 toggle (works for locked settings too) +
+// Sticky bottom toolbar for the detail sheet: 收藏 toggle (works for locked listings too) +
 // social chips (locked only) + 前往官网.
 export function DetailToolbar(props: { item: AdoptListing }) {
   const wishlisted = () => isWishlisted(props.item.adoptId)

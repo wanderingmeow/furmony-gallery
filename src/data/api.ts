@@ -39,7 +39,7 @@ function byKey<T>(key: (v: T) => number | string) {
   }
 }
 
-// The API gives the color list and the picture list no fixed order, so one setting can come
+// The API gives the color list and the picture list no fixed order, so one listing can come
 // back as [红, 蓝] and, on the next request, as [蓝, 红]. The chips and the gallery would
 // shuffle on every visit, and the merge would treat every row as new.
 export function sortColorsAndPictures(row: AdoptListing): AdoptListing {

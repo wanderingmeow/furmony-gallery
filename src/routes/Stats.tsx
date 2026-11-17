@@ -21,7 +21,7 @@ const MONTH_ORANGE = '#f97316'
 
 /**
  * The header of the statistics sheet: the ✕, the title, and the switch between all the
- * settings, the locked ones and the unlocked ones. It sits in this lazy file next to the
+ * listings, the locked ones and the unlocked ones. It sits in this lazy file next to the
  * charts, so the sheet opens on the placeholder and everything real arrives together.
  */
 export function StatsHeader(props: {

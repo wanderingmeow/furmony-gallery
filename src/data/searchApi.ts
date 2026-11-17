@@ -158,7 +158,7 @@ export function parsePicture(body: unknown): PictureResult | null {
   }
 }
 
-/** Which settings look like this picture. The bytes are the body, not a form field, and
+/** Which listings look like this picture. The bytes are the body, not a form field, and
  *  `cutout` is always on: a design sheet loses nothing, and a photograph only finds its own
  *  design once the background is gone.
  *

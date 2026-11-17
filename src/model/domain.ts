@@ -68,6 +68,35 @@ export function publishDate(listing: AdoptListing): Date | null {
   return getDateParser()(listing.createTime)
 }
 
+/** The day that the listing went up, as "2025-03-21". An empty string when its createTime is
+ *  missing or unreadable. */
+export function publishDay(listing: AdoptListing): string {
+  const d = publishDate(listing)
+  if (!d) return ''
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mm}-${dd}`
+}
+
+/** One day per listing, in the same order as the input. A row with no readable time takes its
+ *  day from the nearest row before it that has one, or from the nearest row after it when no
+ *  earlier row has one. */
+export function publishDays(listings: AdoptListing[]): string[] {
+  const days = listings.map(publishDay)
+  const missing = days.map((day) => day === '')
+  let seen = ''
+  for (let i = 0; i < days.length; i++) {
+    if (missing[i]) days[i] = seen
+    else seen = days[i]
+  }
+  seen = ''
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (!missing[i]) seen = days[i]
+    else if (!days[i]) days[i] = seen
+  }
+  return days
+}
+
 export function detailImages(listing: AdoptListing): string[] {
   const fromDetails = listing.harmonyAdoptDetails?.map((d) => d.detailPicture).filter((s): s is string => !!s && s.length > 0).map((s) => stableImageUrl(s)!) ?? []
   if (fromDetails.length === 0 && listing.adoptPicture) return [stableImageUrl(listing.adoptPicture)!]
@@ -158,7 +187,7 @@ export interface OncePrice {
 /** 12 periods: a deposit plus a monthly amount. */
 export interface InstallmentPrice {
   mode: 'installment'
-  /** the deposit. null means the setting has no deposit, which is not the same as 0. */
+  /** the deposit. null means the listing has no deposit, which is not the same as 0. */
   down: number | null
   /** the monthly amount; null when it cannot be worked out */
   main: number | null
@@ -199,7 +228,7 @@ export function priceParts(listing: AdoptListing, mode: PriceMode): PriceParts |
     mode: 'once',
     main: once,
     // secondary means "the original price", so it shares the discount's condition. Two
-    // settings cost more in one payment than in 12 periods (#578: 21000 / 19680, #2832:
+    // listings cost more in one payment than in 12 periods (#578: 21000 / 19680, #2832:
     // 36300 / 33800). Under `allcost > 0` they drew a number below the price with no
     // strike-through and no badge.
     secondary: discount > 0 ? listing.allcost! : null,

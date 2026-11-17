@@ -3,7 +3,7 @@ import { SHEET_FAB_BOX } from './boxes'
 
 /**
  * The round button that floats over a sheet: the ✕ that closes it, and the ← that goes
- * back to the setting you looked at just before.
+ * back to the listing you looked at just before.
  *
  * This row is `position: absolute` with the sheet card as its containing block, so a pan
  * that starts here belongs to the document. The browser reads `touch-action` up the DOM and
