@@ -9,7 +9,7 @@ import type { ListingChange } from '../../store'
 // - collapsed: compact widget with a count badge; click to expand
 // - expanded: all notifications stacked; click a row to open detail + dismiss, or 忽略
 // - no auto-dismiss; persists until manually removed
-// Rows stay plain text — ↑/↓ carries the direction; coloured badges belong on the cards.
+// Rows stay plain text — ↑/↓ carries the direction; colored badges belong on the cards.
 export function NotificationCenter() {
   const navigate = useNavigate()
   const [expanded, setExpanded] = createSignal(false)

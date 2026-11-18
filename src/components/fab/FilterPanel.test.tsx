@@ -47,7 +47,7 @@ function draw() {
 const press = (text: string) => {
   const button = Array.from(host.querySelectorAll<HTMLButtonElement>('button'))
     .find((b) => b.textContent?.trim() === text)
-  if (!button) throw new Error(`no button labelled ${text}`)
+  if (!button) throw new Error(`no button labeled ${text}`)
   button.click()
 }
 
@@ -69,7 +69,7 @@ const folds = () =>
 const chip = (text: string) => {
   const button = Array.from(host.querySelectorAll<HTMLButtonElement>('button'))
     .find((b) => b.textContent?.trim() === text)
-  if (!button) throw new Error(`no chip labelled ${text}`)
+  if (!button) throw new Error(`no chip labeled ${text}`)
   button.click()
 }
 
@@ -116,7 +116,7 @@ describe('FilterPanel', () => {
     expect(calls).toContain('sort:timeAsc')
   })
 
-  it('greys the order buttons while a search answer is on screen', () => {
+  it('grays the order buttons while a search answer is on screen', () => {
     facts.semantic = true
     draw()
     expect(disabled('价格')).toBe(true)
@@ -135,7 +135,7 @@ describe('FilterPanel', () => {
     expect(timeIcon()).toBe(ClockCircleOutlined)
   })
 
-  it('reads top to bottom: order, colours, species, price display, search switch', () => {
+  it('reads top to bottom: order, colors, species, price display, search switch', () => {
     draw()
     const text = host.textContent ?? ''
     const at = ['排序', '颜色', '物种', '价格显示', '设定搜索增强'].map((s) => text.indexOf(s))

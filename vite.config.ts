@@ -98,7 +98,7 @@ function inlineStyles(): Plugin {
 }
 
 /** The first paint has to arrive inside the 10-MSS window: the amount a server sends before it
- *  waits for an acknowledgement. This number leaves room for the response headers and the other
+ *  waits for an acknowledgment. This number leaves room for the response headers and the other
  *  bytes that share the connection. */
 const DOCUMENT_BUDGET_KB = 13.5
 

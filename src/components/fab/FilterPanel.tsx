@@ -30,7 +30,7 @@ const RACE_ICON: Record<string, string> = {
 }
 
 /** Ant's arrow glyphs leave more room on one side, so turning one 180° makes a folding row
- *  jump. This one is centred in its own box. */
+ *  jump. This one is centerd in its own box. */
 function Chevron(props: { open: boolean }) {
   return (
     <svg

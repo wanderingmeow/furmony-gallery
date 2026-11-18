@@ -1,7 +1,7 @@
 import { BAR_BANNER, BAR_ROW, BAR_TABS, TABS_ROW } from '../ui/boxes'
 import { SK_BOX } from '../ui/skeletonView'
 
-/** `.sk-bar` is the grey fill, SK_BOX the hook that the dev overlay outlines. */
+/** `.sk-bar` is the gray fill, SK_BOX the hook that the dev overlay outlines. */
 const CHIP = `sk-bar ${SK_BOX}`
 
 /**

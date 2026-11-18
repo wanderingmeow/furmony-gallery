@@ -201,7 +201,7 @@ export interface InstallmentPrice {
   note: string | null
   /** the total; null with main, because a total with no monthly amount is wrong */
   total: number | null
-  /** the deposit, or the monthly amount when there is no deposit; an unlabelled 0 when the
+  /** the deposit, or the monthly amount when there is no deposit; an unlabeled 0 when the
    *  listing has no price */
   card: CardPrice
 }
@@ -216,7 +216,7 @@ export function priceParts(listing: AdoptListing, mode: PriceMode): PriceParts |
     const down = earnest > 0 ? earnest : null
     const per = monthlyPayment(listing)
     // A listing with no price has neither a deposit nor a monthly amount. The card shows a
-    // price slot either way, so this one holds an unlabelled 0.
+    // price slot either way, so this one holds an unlabeled 0.
     const card: CardPrice = down !== null ? { label: '首付', value: down }
       : per !== null ? { label: '月供', value: per } : { label: null, value: 0 }
     return {

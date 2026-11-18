@@ -5,7 +5,7 @@
  * ?skeleton=overlay  the real screen with the placeholders on top as outlines, so you can check
  *                    that the two line up
  *
- * Nothing on screen sets either one. The overlay draws orange outlines, because a grey
+ * Nothing on screen sets either one. The overlay draws orange outlines, because a gray
  * placeholder over a real card is nearly invisible and an edge a few pixels off would stay hidden.
  */
 export type SkeletonView = 'off' | 'on' | 'overlay'

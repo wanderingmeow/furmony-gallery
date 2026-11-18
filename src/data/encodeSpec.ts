@@ -18,7 +18,7 @@ export const targetSize = (width: number, height: number): [number, number] => {
   return [Math.max(1, Math.round(width * scale)), Math.max(1, Math.round(height * scale))]
 }
 
-/** The ground goes down first because JPEG has no alpha: the model reads the colour underneath,
+/** The ground goes down first because JPEG has no alpha: the model reads the color underneath,
  *  which under a cut-out is usually black, and a black picture finds the blackest, most generic
  *  listings on the shelf. */
 export function paintOnWhite(

@@ -1,14 +1,14 @@
 // Parsing and lookup for the related row. No solid import, so a test can call these
 // directly.
 //
-// The neighbour table is built offline from cover thumbnails and ships as
+// The neighbor table is built offline from cover thumbnails and ships as
 // public/related.json. It stores adoptIds only: signed image URLs expire, and the app
 // re-derives a URL with stableImageUrl() anyway, so ids stay small and never go stale.
 // The listing objects themselves come from the current listings() at render time.
 import type { AdoptListing } from './types'
 
 export interface RelatedTable {
-  /** How many neighbours each row holds. A file without this number is not our file, so
+  /** How many neighbors each row holds. A file without this number is not our file, so
    * parse treats it as malformed and the row disappears. */
   topN: number
   neighbors: Map<number, number[]>
@@ -17,7 +17,7 @@ export interface RelatedTable {
 /** Before the first fetch lands, and after a malformed one. */
 export const EMPTY_TABLE: RelatedTable = { topN: 0, neighbors: new Map() }
 
-/** Below this many live neighbours the strip looks broken rather than empty, so we hide it. */
+/** Below this many live neighbors the strip looks broken rather than empty, so we hide it. */
 export const MIN_RELATED = 3
 
 /** Parse `public/related.json`. Anything malformed degrades to an empty table → no strip. */
@@ -41,7 +41,7 @@ export function parseRelated(data: unknown): RelatedTable {
 }
 
 /**
- * Neighbours of one id, in the generator's order. Read-only, because the array is the
+ * Neighbors of one id, in the generator's order. Read-only, because the array is the
  * stored row rather than a copy.
  */
 export function relatedIds(table: RelatedTable, adoptId: number): readonly number[] {
@@ -49,7 +49,7 @@ export function relatedIds(table: RelatedTable, adoptId: number): readonly numbe
 }
 
 /**
- * Keep the neighbours that are still listed, in table order. A neighbour can be missing:
+ * Keep the neighbors that are still listed, in table order. A neighbor can be missing:
  * upstream deleted it, or the network refresh has not merged while the first frame
  * renders. The ranking is the whole content, so this filters and never re-sorts.
  */

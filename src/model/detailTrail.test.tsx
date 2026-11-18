@@ -94,7 +94,7 @@ describe('the marker a detail entry carries', () => {
     mount()
     expect(text('path')).toBe('/detail/7')
     expect(text('from')).toBe('')
-    hop('/detail/3') // the grid, a link, or the notification centre: no state at all
+    hop('/detail/3') // the grid, a link, or the notification center: no state at all
     await settle()
     expect(text('from')).toBe('')
   })

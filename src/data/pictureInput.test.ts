@@ -122,8 +122,8 @@ describe('prepare', () => {
   }
 
   // The white ground is what makes this retrieval work, not a decoration. The model has no
-  // notion of a transparent pixel: it reads the colour underneath, and under a cut-out that
-  // colour is usually black. So the order is the contract - fill white first, then draw.
+  // notion of a transparent pixel: it reads the color underneath, and under a cut-out that
+  // color is usually black. So the order is the contract - fill white first, then draw.
   it('lays a white ground before the picture is drawn on it', async () => {
     const { canvas, ops } = watchingCanvas()
     fakeImage(3000, 1500)

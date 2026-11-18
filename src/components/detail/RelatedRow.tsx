@@ -26,14 +26,14 @@ export function RelatedRow(props: { item: AdoptListing }) {
 
   createEffect(() => { if (adoptId()) void loadRelated() })
 
-  const neighbours = createMemo(() => resolveRelated(relatedIds(related(), adoptId()), listings()))
+  const neighbors = createMemo(() => resolveRelated(relatedIds(related(), adoptId()), listings()))
   const items = createMemo(() =>
-    relatedOnlyUnlocked() ? neighbours().filter((l) => !isTaken(l)) : neighbours(),
+    relatedOnlyUnlocked() ? neighbors().filter((l) => !isTaken(l)) : neighbors(),
   )
 
   // Counted before the switch filters: hiding the block while the switch is on would hide
   // the switch too, and nobody could turn it back off.
-  const hasEnoughNeighbours = () => neighbours().length >= MIN_RELATED
+  const hasEnoughNeighbors = () => neighbors().length >= MIN_RELATED
 
   // A related tap goes one level deeper, so it stays in browser history: back walks
   // C → B → A → the grid. model/detailTrail explains the marker in the state.
@@ -45,7 +45,7 @@ export function RelatedRow(props: { item: AdoptListing }) {
   const loading = () => !relatedLoaded()
 
   return (
-    <Show when={hasEnoughNeighbours() || loading()}>
+    <Show when={hasEnoughNeighbors() || loading()}>
       <section class="mt-4" aria-label="类似设定">
         {/* min-h matches the switch's h-8: without it the heading is 8px shorter while the
             table loads, and the row below moves by that much when the switch appears. */}
@@ -81,7 +81,7 @@ function UnlockedOnlySwitch() {
 const COAST_IDLE_MS = 120
 
 // The row itself, and the message that replaces it when the switch filters out every
-// neighbour. Both states are here because the message takes the same height as a full strip:
+// neighbor. Both states are here because the message takes the same height as a full strip:
 // the sheet does not jump between them.
 function RelatedStrip(props: {
   items: readonly AdoptListing[]
@@ -203,7 +203,7 @@ function RelatedStrip(props: {
           </div>
         </div>
         {/* The row has no scrollbar. This bar shows how much of the list is off screen and
-            where the reader is in it. Both colours are the ones the back-to-top ring uses,
+            where the reader is in it. Both colors are the ones the back-to-top ring uses,
             and both flip with the theme. The space stays in the layout when the thumb is 0px
             wide, so the sheet's height does not change. */}
         <div
@@ -262,7 +262,7 @@ function Card(props: { listing: AdoptListing; width: number; onOpen: (id: number
         />
       </div>
       {/* No artist line: the pool mixes anonymous and named work, so that line would sit
-          empty on half the cards. The ID is what lets you recognise a piece you have seen.
+          empty on half the cards. The ID is what lets you recognize a piece you have seen.
           The 2px of side padding matches the gap that the main card leaves between cover and
           text. */}
       <div class="px-0.5 pt-1 flex items-baseline gap-1">

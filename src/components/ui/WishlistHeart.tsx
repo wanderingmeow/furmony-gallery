@@ -2,7 +2,7 @@ import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 's
 import { HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
 import { AntIcon } from './AntIcon'
 
-// All six lines stay in the red family. One colour each would look like confetti.
+// All six lines stay in the red family. One color each would look like confetti.
 const SPARKS = Array.from({ length: 6 }, (_, i) => ({
   theta: `${(i / 6) * 360}deg`,
   color: ['var(--color-red-400)', 'var(--color-red-500)', 'var(--color-red-600)'][i % 3],

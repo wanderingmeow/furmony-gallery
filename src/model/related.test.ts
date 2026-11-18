@@ -9,14 +9,14 @@ function fake(adoptId: number, paintersId = 11): AdoptListing {
 }
 
 describe('parseRelated', () => {
-  it('reads the neighbour table', () => {
+  it('reads the neighbor table', () => {
     const table = parseRelated({ topN: 2, neighbors: { '10': [11, 12], '11': [10, 12] } })
     expect(table.topN).toBe(2)
     expect(relatedIds(table, 10)).toEqual([11, 12])
     expect(relatedIds(table, 11)).toEqual([10, 12])
   })
 
-  it('drops a neighbour that points at the query itself', () => {
+  it('drops a neighbor that points at the query itself', () => {
     const table = parseRelated({ topN: 3, neighbors: { '10': [10, 11] } })
     expect(relatedIds(table, 10)).toEqual([11])
   })
@@ -46,12 +46,12 @@ describe('resolveRelated', () => {
     expect(resolveRelated([12, 10, 11], listings).map((l) => l.adoptId)).toEqual([12, 10, 11])
   })
 
-  it('drops neighbours that are no longer in the listing set', () => {
+  it('drops neighbors that are no longer in the listing set', () => {
     expect(resolveRelated([12, 99, 10], listings).map((l) => l.adoptId)).toEqual([12, 10])
   })
 
   // The self-entry guard lives in the parser, so the card you are on cannot come back
-  // as a neighbour. Tested through the real path rather than a parameter.
+  // as a neighbor. Tested through the real path rather than a parameter.
   it('never recommends the card you are already on', () => {
     const table = parseRelated({ topN: 2, neighbors: { '10': [10, 11] } })
     expect(resolveRelated(relatedIds(table, 10), listings).map((l) => l.adoptId)).toEqual([11])

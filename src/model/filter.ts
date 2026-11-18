@@ -54,7 +54,7 @@ export interface ComputeOptions {
 
 // The time order is the id order. On the full list an id and a publish time agree on every row
 // that has a time at all, and an id is never missing, so a row without one keeps the place that
-// its neighbours hold.
+// its neighbors hold.
 const timeRank = (l: AdoptListing) => l.adoptId
 
 const by = (key: (l: AdoptListing) => number) => (a: AdoptListing, b: AdoptListing) => key(a) - key(b)

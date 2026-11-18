@@ -74,7 +74,7 @@ createRoot(() => {
   })
 
   // One paint per query: while the model is thinking the grid keeps the picture it already
-  // had, so the neighbours arrive with the exact matches instead of the list growing twice.
+  // had, so the neighbors arrive with the exact matches instead of the list growing twice.
   const [held, setHeld] = createSignal<AdoptListing[]>([])
   createEffect(on([merged, semanticPending], ([list, waiting]) => {
     if (!waiting) setHeld(list as AdoptListing[])

@@ -20,7 +20,7 @@ export function Toolbar() {
           </Show>
         </Show>
       </div>
-      {/* Colour and species filters sit in the bottom-right FAB column: the thumb reaches
+      {/* Color and species filters sit in the bottom-right FAB column: the thumb reaches
           them there, and their panel has to float over the list anyway. */}
       <Show when={!picture.on()}>
         <div class={BAR_TABS}><FilterTabs /></div>

@@ -204,7 +204,7 @@ body {
    Only the color moves, and both ends of the cycle are the color that the resting mark already
    has. The mark stops on `animationiteration`, which is one of those ends, so handing it back
    is a no-op. An opacity pulse could not do that: it stopped at full brightness, and the resting
-   mark is the tertiary grey, a color that no dimmed accent reaches. */
+   mark is the tertiary gray, a color that no dimmed accent reaches. */
 @keyframes spark-pulse {
   0%, 100% { color: var(--color-faint); }
   50% { color: var(--spark-on); }
@@ -213,7 +213,7 @@ body {
   --spark-on: var(--color-accent);
   animation: spark-pulse 0.9s ease-in-out infinite;
 }
-/* With no animation the mark would sit in the resting grey and look idle while it is working,
+/* With no animation the mark would sit in the resting gray and look idle while it is working,
    so the accent is stated here too. */
 @media (prefers-reduced-motion: reduce) {
   .spark-pulse {
@@ -327,7 +327,7 @@ body {
 
 /* A full-bleed sheet rests square against the screen edge. Sheet.tsx writes --sheet-pull
    (0..1, how far the current drag has travelled), and that rounds the top corners as the
-   sheet detaches. From 640px it is a centred card with one fixed radius. */
+   sheet detaches. From 640px it is a centerd card with one fixed radius. */
 .sheet-card {
   --sheet-corner: calc(var(--sheet-pull, 0) * 24px);
   border-radius: var(--sheet-corner) var(--sheet-corner) 0 0;

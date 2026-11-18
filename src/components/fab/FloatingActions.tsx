@@ -61,7 +61,7 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
           <AntIcon icon={() => (isRefresh() ? SyncOutlined : VerticalAlignTopOutlined)} size={"1.25em"} />
         </FabCircle>
       </Show>
-      {/* One button for the whole panel: the order, colours, species, price display and the
+      {/* One button for the whole panel: the order, colors, species, price display and the
           search switch. It opens upward, which FabMenu handles */}
       <FabMenu
         label={orderLabel()}

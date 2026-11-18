@@ -21,7 +21,7 @@ function Row(props: { label: string; children: JSXElement }) {
       <span class="text-xs text-muted pt-1">{props.label}</span>
       {/* 24px is one line of body text, so a row of badges is not shorter than a row of
           words. items-center keeps a 20.5px badge in the middle of that line, and grid
-          rather than flex leaves the child full width, which lets the colour chips wrap. */}
+          rather than flex leaves the child full width, which lets the color chips wrap. */}
       <div class="min-w-0 min-h-6 grid items-center">{props.children}</div>
     </div>
   )

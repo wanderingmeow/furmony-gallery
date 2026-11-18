@@ -23,7 +23,7 @@ export function SearchBar() {
     if (semanticPending()) setPulsing(true)
   })
   // Stopping partway leaves the accent at whatever brightness it had reached, and no transition
-  // softens that jump. Every cycle ends on the resting grey, so the code drops the class at that
+  // softens that jump. Every cycle ends on the resting gray, so the code drops the class at that
   // moment and the mark rests where it sits when idle.
   const endPulse = (): void => {
     if (!semanticPending()) setPulsing(false)

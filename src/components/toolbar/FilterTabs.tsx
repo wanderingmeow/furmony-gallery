@@ -26,7 +26,7 @@ export function FilterTabs() {
   let scroller!: HTMLDivElement
   const [fade, setFade] = createSignal<EdgeFade>(NO_FADE)
 
-  // The row sits on .glass, so the fade is a mask: painting canvas colour over it would cover
+  // The row sits on .glass, so the fade is a mask: painting canvas color over it would cover
   // the blur behind.
   const update = () => setFade(edgeFade(scroller, FADE_RANGE))
 

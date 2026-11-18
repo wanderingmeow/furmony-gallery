@@ -200,7 +200,7 @@ describe('preloadImage', () => {
     expect(FakeImage.last!.src).toBe('https://a.jpg')
   })
 
-  it('a cancelled job ignores the answer that arrives later', async () => {
+  it('a canceled job ignores the answer that arrives later', async () => {
     let settled = false
     const job = img.preloadImage('https://a.jpg')
     job.ready.then(() => { settled = true })

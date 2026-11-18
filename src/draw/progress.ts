@@ -49,6 +49,6 @@ export function previewTop(
   if (scrollable < viewport) return null
   const thumb = Math.max(THUMB_MIN, (viewport * viewport) / (viewport + scrollable))
   const ratio = Math.min(1, Math.max(0, scrollTop / scrollable))
-  const centre = ratio * (viewport - thumb) + thumb / 2
-  return Math.min(viewport - height, Math.max(0, centre - height / 2))
+  const center = ratio * (viewport - thumb) + thumb / 2
+  return Math.min(viewport - height, Math.max(0, center - height / 2))
 }

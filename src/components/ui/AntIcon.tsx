@@ -22,7 +22,7 @@ function renderNode(node: IconNode): any {
 
 // Most ant-design glyphs are drawn inside a 64 64 896 896 box, so that is the box assumed when
 // a glyph does not say. A few - the spinner is one - use the whole 0 0 1024 1024, and assuming
-// the common box clips those to an off-centre fragment: a clipped ring looks like a wobble
+// the common box clips those to an off-center fragment: a clipped ring looks like a wobble
 // rather than a rotation.
 const FALLBACK_VIEW_BOX = '64 64 896 896'
 

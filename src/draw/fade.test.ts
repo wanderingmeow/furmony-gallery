@@ -32,7 +32,7 @@ describe('edgeFade', () => {
       .toEqual({ left: 0, right: 0 })
   })
 
-  it('quantises to 5% steps so scrolling does not spam the DOM', () => {
+  it('quantizes to 5% steps so scrolling does not spam the DOM', () => {
     for (const px of [11, 17, 23, 29]) {
       expect(at(px).left * 20 % 1).toBeCloseTo(0, 9)
     }

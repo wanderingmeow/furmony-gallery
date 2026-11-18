@@ -308,7 +308,7 @@ export function PictureMode() {
             <PreviewWithBox onClick={pick} />
             <Show when={line().spark}><Spark /></Show>
             {/* The row stretches its children; without this the word hangs at the top of a
-                tall row next to a centred picture. */}
+                tall row next to a centerd picture. */}
             <div class="self-center min-w-0 text-sm text-muted">{line().word()}</div>
           </>
         )}

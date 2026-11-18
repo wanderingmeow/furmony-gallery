@@ -23,6 +23,6 @@ export const SPARK: IconDefinition = {
 }
 
 /** The class on a sparkle while it is working. The keyframes hold the accent, and both ends of
- *  the cycle are the resting grey, so the mark stops on the color it already has. One place, so
+ *  the cycle are the resting gray, so the mark stops on the color it already has. One place, so
  *  the search box and the picture row always match. */
 export const SPARK_WORKING = 'spark-pulse'

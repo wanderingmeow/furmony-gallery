@@ -69,7 +69,7 @@ describe('monthlyPayment', () => {
     expect(p.total).toBe(30600)
   })
 
-  it('rounds UP, so a card never promises less than the real instalment', () => {
+  it('rounds UP, so a card never promises less than the real installment', () => {
     expect(monthlyPayment(fake({ allcost: 1000, earnest: 0 }))).toBe(84)
   })
 
@@ -150,7 +150,7 @@ describe('priceParts — installment', () => {
     expect(p.main).toBeNull()
     expect(p.down).toBeNull()
     expect(p.total).toBeNull()
-    // The card draws `?` from an unlabelled 0.
+    // The card draws `?` from an unlabeled 0.
     expect(p.card).toEqual({ label: null, value: 0 })
     expect(p.mainLabel).toBeNull()
     expect(p.note).toBeNull()

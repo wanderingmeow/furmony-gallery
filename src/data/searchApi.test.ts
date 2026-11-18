@@ -32,7 +32,7 @@ describe('askSettings', () => {
     return urls
   }
 
-  // The gate lives in the caller too, but a guard that only the polite caller honours is
+  // The gate lives in the caller too, but a guard that only the polite caller honors is
   // not a guard.
   it.each(['1234567', '42', '12 34', '1234，5678'])('keeps %o off the network', async (query) => {
     const urls = spyFetch()

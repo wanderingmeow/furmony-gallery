@@ -275,14 +275,14 @@ describe('compute - semantic group', () => {
 
   // The text match is the one filter the group skips - its whole purpose is the listing
   // whose description never says what the piece looks like. Everything else still bites.
-  it('still filters by colour, tab and lock state', () => {
-    const coloured = [
+  it('still filters by color, tab and lock state', () => {
+    const colored = [
       listing(1, { harmonyAdoptColorVos: [{ harmonyColor: { colorName: '蓝' } }] }),
       listing(2, { harmonyAdoptColorVos: [{ harmonyColor: { colorName: '红' } }] }),
       listing(3, { harmonyAdoptColorVos: [{ harmonyColor: { colorName: '蓝' } }], isLock: 2 }),
     ]
-    expect(ids(compute({ ...base, rows: coloured, colors: new Set(['蓝']) }))).toEqual([1, 3])
-    expect(ids(compute({ ...base, rows: coloured, colors: new Set(['蓝']), tab: 'unlocked' as const }))).toEqual([1])
+    expect(ids(compute({ ...base, rows: colored, colors: new Set(['蓝']) }))).toEqual([1, 3])
+    expect(ids(compute({ ...base, rows: colored, colors: new Set(['蓝']), tab: 'unlocked' as const }))).toEqual([1])
   })
 
   it('an empty only set is nothing, not everything', () => {

@@ -3,7 +3,7 @@
 // much is left to scroll.
 //
 // Each row draws these numbers its own way — the card row sits on a plain canvas and
-// overlays a canvas-coloured gradient, while the tab row sits on .glass and can only mask
+// overlays a canvas-colored gradient, while the tab row sits on .glass and can only mask
 // its own content — so this module stops at the maths.
 
 export interface EdgeFade {

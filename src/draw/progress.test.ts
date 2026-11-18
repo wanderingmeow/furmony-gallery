@@ -47,7 +47,7 @@ describe('scrollThumb', () => {
 
 describe('previewTop', () => {
   // A 3200px page in an 800px window leaves 2400px of scroll. The thumb takes the visible
-  // share: 800 * 800 / 3200 = 200px, so its centre runs from 100px to 700px.
+  // share: 800 * 800 / 3200 = 200px, so its center runs from 100px to 700px.
   const at = (scrollTop: number, scrollable = 2400) => previewTop(scrollTop, scrollable, 800, 36)
 
   it('sits on the middle of the thumb, at the top', () => {

@@ -7,9 +7,9 @@ import { RelatedRow } from './RelatedRow'
 
 // vi.mock factories run while this file's imports resolve, so the values they hand over come
 // from vi.hoisted, which lands above those imports.
-const { navigate, listings, first, neighbours } = vi.hoisted(() => {
-  const neighbours = [2, 3, 4, 5]
-  const listings = [1, ...neighbours].map((id) => ({
+const { navigate, listings, first, neighbors } = vi.hoisted(() => {
+  const neighbors = [2, 3, 4, 5]
+  const listings = [1, ...neighbors].map((id) => ({
     adoptId: id,
     adoptName: `设定 ${id}`,
     paintersId: 1,
@@ -17,14 +17,14 @@ const { navigate, listings, first, neighbours } = vi.hoisted(() => {
     adoptPicture: `https://bucket.cos.ap-guangzhou.myqcloud.com/cover-${id}.png`,
     adoptHeadPicture: `https://bucket.cos.ap-guangzhou.myqcloud.com/head-${id}.png`,
   })) as AdoptListing[]
-  return { navigate: vi.fn(), listings, first: listings[0], neighbours }
+  return { navigate: vi.fn(), listings, first: listings[0], neighbors }
 })
 
 vi.mock('@solidjs/router', () => ({ useNavigate: () => navigate }))
 
 vi.mock('../../store', () => ({
   listings: () => listings,
-  related: () => ({ topN: neighbours.length, neighbors: new Map([[1, neighbours]]) }),
+  related: () => ({ topN: neighbors.length, neighbors: new Map([[1, neighbors]]) }),
   relatedLoaded: () => true,
   relatedOnlyUnlocked: () => false,
   setRelatedOnlyUnlocked: () => {},
@@ -49,9 +49,9 @@ afterEach(() => {
 })
 
 describe('tapping a related card', () => {
-  it('shows one card per neighbour', () => {
+  it('shows one card per neighbor', () => {
     mount()
-    expect(neighbours.every((id) => card(id))).toBe(true)
+    expect(neighbors.every((id) => card(id))).toBe(true)
   })
 
   it('pushes an entry naming the listing it came from', () => {

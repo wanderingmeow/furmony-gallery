@@ -104,9 +104,9 @@ describe('tapGate', () => {
     expect(taps).toHaveLength(1)
   })
 
-  // A cancelled gesture says nothing about what the reader meant, so it neither closes the
+  // A canceled gesture says nothing about what the reader meant, so it neither closes the
   // viewer nor leaves a finger counted as still down.
-  it('takes a tap that follows a cancelled gesture', () => {
+  it('takes a tap that follows a canceled gesture', () => {
     const { taps, g } = gate()
     g.down(at(picture, 100, 300, 0))
     g.cancel()
