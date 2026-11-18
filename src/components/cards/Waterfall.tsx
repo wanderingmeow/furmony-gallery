@@ -11,6 +11,7 @@ import {
 import { displayPrice, formatPrice, publishDays } from '../../model/domain'
 import { SAVE_THROTTLE_MS, findIndex } from '../../draw/scrollRestore'
 import { previewTop } from '../../draw/progress'
+import { createScrollMotion } from '../../draw/scrollMotion'
 import { ListingCard } from './ListingCard'
 import { FloatingActions } from '../fab/FloatingActions'
 import { EmptyState } from '../ui/EmptyState'
@@ -44,6 +45,11 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   const renderEnd = createMemo(() => Math.min(rowCount(), lastRow() + OVERSCAN_ROWS))
 
   const preview = createPreviewController()
+  // A thumb dragged along the track replaces the whole window of cards every few frames, so the
+  // pictures hold until the motion settles. draw/scrollMotion.ts holds the rule and the window.
+  const [fastMotion, setFastMotion] = createSignal(false)
+  const motion = createScrollMotion(setFastMotion)
+
   let raf = 0
   // Scroll fires several times per frame, so the signal is written once per frame and the
   // layout memos run once instead of once per event.
@@ -52,6 +58,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     raf = requestAnimationFrame(() => {
       raf = 0
       setScrollTop(window.scrollY)
+      motion.step(window.scrollY, performance.now())
       updatePreview()
     })
   }
@@ -81,7 +88,10 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
 
   onMount(() => {
     window.addEventListener('scroll', onScroll, { passive: true })
-    onCleanup(() => { window.removeEventListener('scroll', onScroll) })
+    onCleanup(() => {
+      window.removeEventListener('scroll', onScroll)
+      motion.dispose()
+    })
   })
 
   createScrollRestore({
@@ -117,6 +127,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
             cardWidth={cardWidth}
             rowHeight={rowHeight}
             onOpen={props.onOpen}
+            hold={fastMotion}
           />
         </div>
       </div>
@@ -279,6 +290,7 @@ function createScrollRestore(args: {
 function VirtualCards(props: {
   items: () => AdoptListing[]; start: () => number; end: () => number; cols: () => number
   cardWidth: () => number; rowHeight: () => number; onOpen: (id: number) => void
+  hold: () => boolean
 }) {
   const first = () => props.start() * props.cols()
   const count = () => (props.end() - props.start()) * props.cols()
@@ -295,6 +307,7 @@ function VirtualCards(props: {
           cardWidth={props.cardWidth}
           rowHeight={props.rowHeight}
           onOpen={props.onOpen}
+          hold={props.hold}
         />
       )}
     </For>
@@ -303,6 +316,7 @@ function VirtualCards(props: {
 
 function CardSlot(props: {
   listing: AdoptListing; offset: () => number; cols: () => number; cardWidth: () => number; rowHeight: () => number; onOpen: (id: number) => void
+  hold: () => boolean
 }) {
   const row = () => Math.floor(props.offset() / props.cols())
   const col = () => props.offset() % props.cols()
@@ -316,7 +330,7 @@ function CardSlot(props: {
       }}
     >
       <button class="text-left" onClick={() => props.onOpen(props.listing.adoptId)}>
-        <ListingCard listing={props.listing} width={props.cardWidth()} />
+        <ListingCard listing={props.listing} width={props.cardWidth()} hold={props.hold} />
       </button>
     </div>
   )

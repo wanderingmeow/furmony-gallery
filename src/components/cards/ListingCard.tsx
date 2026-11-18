@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
 import { colorNames, formatPrice, isLocked, painterName, priceParts, raceName } from '../../model/domain'
 import { THUMB_ASPECT } from '../../draw/layout'
@@ -25,7 +25,7 @@ function Tags(props: { tags: string[] }) {
   )
 }
 
-export function ListingCard(props: { listing: AdoptListing; width: number }) {
+export function ListingCard(props: { listing: AdoptListing; width: number; hold?: () => boolean }) {
   const l = props.listing
   const parts = createMemo(() => priceParts(l, priceMode()))
   const id = l.adoptId
@@ -48,11 +48,15 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
 
   // The src waits for the next frame: mounting a tab of 209 cards at once took 1-2s,
   // against ~20-50ms for the DOM alone. Each image then fades in as it decodes.
+  //
+  // hold keeps the address off while the page moves fast. The DOM is built as before, and the
+  // picture waits.
   let imgRef!: HTMLImageElement
-  let raf = 0
-  onMount(() => {
-    raf = requestAnimationFrame(() => { imgRef.src = sizedUrl(stableImageUrl(l.adoptPicture), 'card') ?? '' })
-    onCleanup(() => { if (raf) cancelAnimationFrame(raf) })
+  createEffect(() => {
+    if (props.hold?.()) return
+    const url = sizedUrl(stableImageUrl(l.adoptPicture), 'card')
+    const raf = requestAnimationFrame(() => { if (url) imgRef.src = url })
+    onCleanup(() => cancelAnimationFrame(raf))
   })
 
   return (
