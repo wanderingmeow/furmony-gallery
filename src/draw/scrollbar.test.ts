@@ -1,6 +1,6 @@
-// Tests for the scroll position maths (progress.ts). No DOM, no reactivity.
+// Tests for the scrollbar maths (scrollbar.ts). No DOM, no reactivity.
 import { describe, expect, it } from 'vitest'
-import { previewTop, scrollThumb } from './progress'
+import { previewTop, scrollThumb } from './scrollbar'
 
 // 1000px of content in a 400px window, so the row can scroll 600px, on a 200px track.
 // scrollThumb has no default floor, so these tests pass 24.
@@ -48,7 +48,7 @@ describe('scrollThumb', () => {
 describe('previewTop', () => {
   // A 3200px page in an 800px window leaves 2400px of scroll. The thumb takes the visible
   // share: 800 * 800 / 3200 = 200px, so its center runs from 100px to 700px.
-  const at = (scrollTop: number, scrollable = 2400) => previewTop(scrollTop, scrollable, 800, 36)
+  const at = (scrollTop: number, scrollRange = 2400) => previewTop(scrollTop, scrollRange, 800, 36)
 
   it('sits on the middle of the thumb, at the top', () => {
     expect(at(0)).toBe(82)
@@ -77,5 +77,13 @@ describe('previewTop', () => {
 
   it('keeps a scroll past the end on the last thumb position', () => {
     expect(at(9000)).toBe(682)
+  })
+
+  it('centers the chip when the window is shorter than the thumb floor', () => {
+    // A thumb cannot run longer than its track. That is the rule scrollThumb follows and the one
+    // the chip's own copy of the maths broke: a 20px window measured a 24px thumb, so the top of
+    // the page and the bottom of it landed 4px apart instead of both on the middle of the edge.
+    expect(previewTop(0, 200, 20, 8)).toBe(6)
+    expect(previewTop(200, 200, 20, 8)).toBe(6)
   })
 })

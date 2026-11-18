@@ -3,7 +3,7 @@
 import type { AdoptListing } from './types'
 import type { SocialSearchEntry } from '../data/socials'
 import {
-  colorNames, displayPrice, isLocked, isSelfCommission, raceName,
+  colorNames, displayPrice, formatPrice, isLocked, isSelfCommission, raceName,
 } from './domain'
 
 export type SortMode = 'timeDesc' | 'timeAsc' | 'priceAsc' | 'priceDesc'
@@ -23,6 +23,21 @@ export const SORT_FACE: Record<SortMode, { up: boolean; say: string }> = {
 /** A search answer is ranked by the service, and none of our own sorts applies to it. */
 export const RELEVANCE_SAY = '按相似度从高到低'
 
+/** What the preview at the right edge reads out about a row: the price in a price order, the
+ *  posting day otherwise, and the listing's own number when no day is readable.
+ *
+ *  An order by relevance has no such value, so `ranked` gives an empty string. */
+export function orderLabel(a: {
+  item: AdoptListing | undefined
+  day: string
+  ranked: boolean
+  sort: SortMode
+}): string {
+  if (a.ranked || !a.item) return ''
+  if (a.sort === 'priceAsc' || a.sort === 'priceDesc') return formatPrice(displayPrice(a.item))
+  return a.day || `#${a.item.adoptId}`
+}
+
 export const TAB_LABELS: Record<FilterTab, string> = {
   all: '全部',
   unlocked: '未锁定',
@@ -40,8 +55,9 @@ export interface ComputeOptions {
   wishlist: Map<number, number>
   // owner/account search text, keyed by adoptId
   socials?: Map<number, SocialSearchEntry>
-  // ?nosocial=1: only the listings with no social account
-  noSocial?: boolean
+  // 只显示有主人账号的: leave the listings whose owner has an account we can link to. Only a
+  // few dozen listings have one, so this list is short by design - the panel says so.
+  socialOnly?: boolean
   // keep only these adoptIds - the semantic group reuses every filter but its own text
   // match, because 68% of the descriptions never mention what the piece looks like
   only?: Set<number>
@@ -87,14 +103,14 @@ function matchesQuery(query: string, socials?: Map<number, SocialSearchEntry>) {
 }
 
 export function compute(o: ComputeOptions): AdoptListing[] {
-  const { rows, tab, sort, colors, races, query, wishlist, socials, noSocial, only, skip, keepOrder } = o
+  const { rows, tab, sort, colors, races, query, wishlist, socials, socialOnly, only, skip, keepOrder } = o
   let result = rows.filter((l) => !isSelfCommission(l))
 
   // Both set filters run first: they are the cheapest test and everything after them works on
   // the smaller list. They apply to every tab, the wishlist early-return included.
   if (only) result = result.filter((l) => only.has(l.adoptId))
   if (skip && skip.size > 0) result = result.filter((l) => !skip.has(l.adoptId))
-  if (noSocial) result = result.filter((l) => isNoSocial(l.adoptId, socials))
+  if (socialOnly) result = result.filter((l) => hasSocial(l.adoptId, socials))
 
   if (colors.size > 0) result = result.filter((l) => colorNames(l).some((c) => colors.has(c)))
   if (races.size > 0) {
@@ -121,14 +137,8 @@ export function compute(o: ComputeOptions): AdoptListing[] {
   return result
 }
 
-/** Shared by compute()'s filter and the locked-tab count so the two never drift. An entry with
- *  zero processable platforms counts as no-social too. */
-export function isNoSocial(id: number, socials?: Map<number, SocialSearchEntry>): boolean {
-  return !(socials?.get(id)?.hasSocial)
-}
-
-/** Locked, not self-commission, no social entry. Ignores color/race/search: the badge counts
- *  what is left to do in the whole feed, not what happens to be on screen. */
-export function countLockedRemaining(rows: AdoptListing[], socials?: Map<number, SocialSearchEntry>): number {
-  return rows.filter((l) => isLocked(l) && !isSelfCommission(l) && isNoSocial(l.adoptId, socials)).length
+/** Whether the owner of this listing has an account we can link to. An entry with zero
+ *  processable platforms counts as having none: 主人 would show a name with nothing to open. */
+export function hasSocial(id: number, socials?: Map<number, SocialSearchEntry>): boolean {
+  return socials?.get(id)?.hasSocial === true
 }

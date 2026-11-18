@@ -3,8 +3,8 @@ import { render } from 'solid-js/web'
 import { SearchBar } from './SearchBar'
 import { searchText, setSearchText } from '../../stores/filterStore'
 import { setSemanticSearch } from '../../stores/displayStore'
-import { semanticPending, setOnFilterChange } from '../../store'
-
+import { semanticPending } from '../../stores/semanticStore'
+import { setOnFilterChange } from '../../stores/filterStore'
 // imeGate.test.ts covers the gate's own rules. These cover the wiring between the browser and
 // that gate, and the wait that the field keeps before it asks: a dropped `onCompositionEnd` would
 // lock the gate, so the search would never receive the finished text. No desktop keyboard can
@@ -88,6 +88,40 @@ describe('the search box', () => {
     fireInput('蓝色', 'insertText')
     await settle()
     expect(searchText()).toBe('蓝色')
+  })
+
+  // Emptying the box in one edit arrives as a single `input` event. The names fired below are the
+  // browser's own, whatever the keyboard did. An empty box holds no unfinished text, so the wait is
+  // dropped: the store takes the answer in the same frame, and the list moves with it.
+  it('brings the whole list back as soon as the box goes empty', async () => {
+    const kinds: string[] = []
+    setOnFilterChange((kind) => kinds.push(kind))
+    fireInput('蓝色', 'insertText')
+    await settle()
+    expect(searchText()).toBe('蓝色')
+    kinds.length = 0
+    fireInput('', 'deleteContentBackward')
+    expect(searchText()).toBe('')
+    expect(kinds).toEqual(['search'])
+  })
+
+  // Cutting the text out arrives the same way, under another event name. Nothing here reads it.
+  it('brings the whole list back when a cut empties the box', async () => {
+    fireInput('蓝色', 'insertText')
+    await settle()
+    fireInput('', 'deleteByCut')
+    expect(searchText()).toBe('')
+  })
+
+  // The same edit with syllables in the box: they went with the rest of it, so there is nothing
+  // left for the gate to hold. The list comes back at once, and a `compositionend` that would only
+  // repeat this can arrive later or not at all.
+  it('brings the whole list back when the reader deletes the syllables', () => {
+    setSearchText('苍雪')
+    fireComposition('compositionstart')
+    fireInput('lan', 'insertCompositionText')
+    fireInput('', 'deleteCompositionText')
+    expect(searchText()).toBe('')
   })
 
   // A tap on 图片 comes a moment after typing, and the field leaves the screen with a commit still

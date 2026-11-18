@@ -1,16 +1,19 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
+import { filteredListings } from '../../stores/derivedStore'
 import {
-  filteredListings, firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
-  sortMode, setOnFilterChange,
-} from '../../store'
+  firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
+} from '../../stores/sessionStore'
+import { semanticActive } from '../../stores/semanticStore'
+import { sortMode, setOnFilterChange } from '../../stores/filterStore'
 import {
   GAP, OVERSCAN_ROWS, PREVIEW_FADE_MS, PREVIEW_H, PREVIEW_IDLE_MS, PREVIEW_SCROLLBAR_GAP, VIEW_PAD,
   indexOfRow, rowOfIndex, waterfallCardWidth, waterfallCols, waterfallRowHeight,
 } from '../../draw/layout'
-import { displayPrice, formatPrice, publishDays } from '../../model/domain'
+import { publishDayAt } from '../../model/domain'
+import { orderLabel } from '../../model/filter'
 import { SAVE_THROTTLE_MS, findIndex } from '../../draw/scrollRestore'
-import { previewTop } from '../../draw/progress'
+import { previewTop } from '../../draw/scrollbar'
 import { createScrollMotion } from '../../draw/scrollMotion'
 import { ListingCard } from './ListingCard'
 import { FloatingActions } from '../fab/FloatingActions'
@@ -24,12 +27,11 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   const { viewportW, viewportH } = watchViewport()
   const [scrollTop, setScrollTop] = createSignal(window.scrollY)
 
-  // reset per-mount so scroll restores on return to `/`
-  setRestored(false)
+  // A store write, so it goes in an effect rather than the body. This effect must be created
+  // before `createScrollRestore` reads the flag: Solid runs effects in creation order.
+  onMount(() => setRestored(false))
 
   const items = filteredListings
-  // One pass each time the list changes, so the scroll handler does no date work.
-  const days = createMemo(() => publishDays(items()))
   const cols = createMemo(() => waterfallCols(viewportW()))
   const cardWidth = createMemo(() => waterfallCardWidth(viewportW(), cols()))
   const rowHeight = createMemo(() => waterfallRowHeight(cardWidth()))
@@ -76,15 +78,22 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     // frame here means nothing else has to reserve a height for that band.
     const s = Math.max(0, document.documentElement.scrollHeight - viewportH())
     const top = previewTop(scrollTop(), s, viewportH(), PREVIEW_H)
+    // No room for the chip: the page is barely one screen of scroll. Nothing is drawn, and a chip
+    // that is already up fades on its own.
+    if (top === null) return
     // The content starts below the floating toolbar, so the row at the top of the window is the
     // one covering (scrollY - topPad). ScrollY on its own points at a card one row lower.
     const row = Math.floor(Math.max(0, scrollTop() - topPad()) / rowHeight())
     const index = indexOfRow(row, cols(), items().length)
-    const item = items()[index]
-    const isPrice = sortMode() === 'priceAsc' || sortMode() === 'priceDesc'
-    const label = item ? (isPrice ? formatPrice(displayPrice(item)) : days()[index] || `#${item.adoptId}`) : ''
-    if (top !== null && label) preview.update(label, top, barGap())
+    preview.sync(orderLabel({
+      item: items()[index], day: publishDayAt(items(), index),
+      ranked: semanticActive(), sort: sortMode(),
+    }), top, barGap())
   }
+
+  // A sort can change while the chip is up, between two scroll frames, and the label on screen
+  // would be the old order's answer. Scroll alone cannot catch that.
+  createEffect(() => { if (semanticActive()) preview.hide() })
 
   onMount(() => {
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -100,10 +109,12 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
   })
 
-  setOnFilterChange(() => {
+  // A filter change starts the list from the top. The store slot is written here rather than in
+  // the body, because the body runs on every render.
+  onMount(() => setOnFilterChange(() => {
     window.scrollTo(0, 0)
     setScrollTop(0)
-  })
+  }))
   onCleanup(() => setOnFilterChange(null))
 
   return (
@@ -165,7 +176,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
       <Show when={preview.preview()}>
         {(p) => (
           <div
-            // z-50 sits above the toolbar (z-40); opacity-0 is the fade-out
+            // z-50 sits above the toolbar (z-40). opacity-0 is the fade-out
             class="fixed z-50 glass rounded-lg px-3 py-2 text-sm font-semibold tabular-nums shadow pointer-events-none transition-opacity duration-300"
             classList={{ 'opacity-0': preview.leaving() }}
             style={{ top: `${p().top}px`, right: `${p().right}px` }}
@@ -184,8 +195,8 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   )
 }
 
-// The chip's show and fade state: a scroll frame calls update(), and PREVIEW_IDLE_MS after
-// the last one the fade starts. The element unmounts only when the fade ends, and a new
+// The chip's show and fade state. `sync` runs on every scroll frame, and the fade starts
+// PREVIEW_IDLE_MS after the last one. The element unmounts only when the fade ends, and a new
 // scroll cancels a pending fade instead of restarting it, which would read as a blink.
 function createPreviewController() {
   const [preview, setPreview] = createSignal<{ label: string; top: number; right: number } | null>(null)
@@ -208,11 +219,20 @@ function createPreviewController() {
       }, PREVIEW_FADE_MS)
     }, PREVIEW_IDLE_MS)
   }
-  onCleanup(() => {
-    if (hideTimer) clearTimeout(hideTimer)
-    if (fadeTimer) clearTimeout(fadeTimer)
-  })
-  return { preview, leaving, update }
+  /** Hide the chip now. The fade is skipped, and both timers are cleared. */
+  const hide = () => {
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null }
+    if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null }
+    setLeaving(false)
+    setPreview(null)
+  }
+  /** Draw the chip. An empty label means this order has nothing to read out, so the chip hides. */
+  const sync = (label: string, top: number, right: number) => {
+    if (label === '') hide()
+    else update(label, top, right)
+  }
+  onCleanup(() => hide())
+  return { preview, leaving, sync, hide }
 }
 
 // Restores the saved top row once per mount, then keeps it saved. It is a function rather

@@ -295,6 +295,11 @@ const store = createRoot(() => {
   /** Whether a model ranking orders the list. */
   const semanticActive = createMemo(() => route().by !== 'none')
 
+  /** The rows on screen are a photograph's answer. An answer of "nothing" counts too, because the
+   *  emptiness came from the picture. With no answer yet, the list is the reader's own text
+   *  search, and the tab filters it. */
+  const pictureAnswers = createMemo(() => route().by === 'picture')
+
   // ---------- the question the box asks ----------
 
   // picture.holds is a dependency so that dropping a picture re-asks the sentence still in the
@@ -325,12 +330,14 @@ const store = createRoot(() => {
   const retryAsk = () => setRetryNonce((n) => n + 1)
 
   return {
-    pending, semanticOn, searchPlaceholder, picture, semanticActive, route, askFailure, retryAsk,
+    pending, semanticOn, searchPlaceholder, picture, semanticActive, pictureAnswers, route,
+    askFailure, retryAsk,
   }
 })
 
 export const {
-  semanticOn, searchPlaceholder, semanticActive, route, picture, askFailure, retryAsk,
+  semanticOn, searchPlaceholder, semanticActive, pictureAnswers, route, picture, askFailure,
+  retryAsk,
 } = store
 const { pending } = store
 export { pending as semanticPending }

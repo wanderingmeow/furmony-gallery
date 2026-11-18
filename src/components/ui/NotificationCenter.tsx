@@ -1,9 +1,9 @@
 import { createSignal, For, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
-import { getNotifications, removeNotification } from '../../store'
+import { getNotifications, removeNotification } from '../../stores/notificationStore'
 import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
 import { formatPrice } from '../../model/domain'
-import type { ListingChange } from '../../store'
+import type { ListingChange } from '../../stores/notificationStore'
 
 // Collapsed notification center (top-right):
 // - collapsed: compact widget with a count badge; click to expand

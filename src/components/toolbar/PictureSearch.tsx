@@ -3,7 +3,7 @@
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import type { JSX } from 'solid-js'
 import { PictureOutlined } from '@ant-design/icons-svg'
-import { picture, type PictureState } from '../../store'
+import { picture, type PictureState } from '../../stores/semanticStore'
 import { warmSearch, type PictureError } from '../../data/searchApi'
 import { AntIcon } from '../ui/AntIcon'
 import { SparkMark } from '../ui/spark'

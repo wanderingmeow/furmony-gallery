@@ -1,8 +1,9 @@
 // Functional tests for the pure filtering/sorting layer (filter.ts). No reactivity, no I/O.
 import { describe, expect, it } from 'vitest'
-import { compute, countLockedRemaining, isNoSocial, type SortMode } from './filter'
+import { compute, hasSocial, orderLabel, type SortMode } from './filter'
 import type { SocialSearchEntry } from '../data/socials'
 import type { AdoptListing } from './types'
+import { MISSING_PRICE } from './domain'
 
 function listing(id: number, overrides: Partial<AdoptListing> = {}): AdoptListing {
   return { adoptId: id, paintersId: 1, productId: 1, ...overrides }
@@ -200,9 +201,9 @@ describe('compute - socials search', () => {
   })
 })
 
-describe('compute - noSocial filter', () => {
+describe('compute - socialOnly filter', () => {
   // fake data: 1/2 have a processable platform (hasSocial), 3 has an entry but zero
-  // platforms (also no-social), 4 has no entry at all
+  // platforms (so no account to link to), 4 has no entry at all
   const SOCIALS = new Map<number, SocialSearchEntry>([
     [1, { ownerName: 'TestOwnerOne', searchables: ['TestHandleOne'], uidPrefixes: [], hasSocial: true }],
     [2, { ownerName: 'TestOwnerTwo', searchables: [], uidPrefixes: ['12345678'], hasSocial: true }],
@@ -210,50 +211,30 @@ describe('compute - noSocial filter', () => {
   ])
   const rows = [listing(1), listing(2), listing(3), listing(4)]
 
-  it('keeps only listings with no social (absent entry OR zero-platform entry)', () => {
-    expect(ids(compute({ rows, tab: 'all', sort: 'timeAsc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP, socials: SOCIALS, noSocial: true }))).toEqual([3, 4])
+  it('keeps only listings with an account to link to (zero-platform entry is not one)', () => {
+    expect(ids(compute({ rows, tab: 'all', sort: 'timeAsc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP, socials: SOCIALS, socialOnly: true }))).toEqual([1, 2])
   })
 
   it('applies within the locked tab', () => {
     const locked = [listing(1, { isLock: 2 }), listing(4, { isLock: 2 })]
-    expect(ids(compute({ rows: locked, tab: 'locked', sort: 'timeAsc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP, socials: SOCIALS, noSocial: true }))).toEqual([4])
+    expect(ids(compute({ rows: locked, tab: 'locked', sort: 'timeAsc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP, socials: SOCIALS, socialOnly: true }))).toEqual([1])
   })
 
-  it('noSocial absent → unchanged', () => {
+  it('socialOnly absent → unchanged', () => {
     expect(ids(compute({ rows, tab: 'all', sort: 'timeAsc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP, socials: SOCIALS }))).toEqual([1, 2, 3, 4])
   })
 })
 
-describe('isNoSocial', () => {
-  it('true when entry absent or has no processable platform', () => {
+describe('hasSocial', () => {
+  it('true only for an entry with a processable platform', () => {
     const SOCIALS = new Map<number, SocialSearchEntry>([
       [1, { ownerName: 'TestOwnerOne', searchables: ['TestHandleOne'], uidPrefixes: [], hasSocial: true }],
       [2, { ownerName: 'TestOwnerTwo', searchables: ['TestOwnerTwo'], uidPrefixes: [], hasSocial: false }],
     ])
-    expect(isNoSocial(1, SOCIALS)).toBe(false)
-    expect(isNoSocial(2, SOCIALS)).toBe(true)
-    expect(isNoSocial(99, SOCIALS)).toBe(true)
-    expect(isNoSocial(1)).toBe(true) // absent socials map
-  })
-})
-
-describe('countLockedRemaining', () => {
-  const SOCIALS = new Map<number, SocialSearchEntry>([
-    [1, { ownerName: 'TestOwnerOne', searchables: ['TestHandleOne'], uidPrefixes: [], hasSocial: true }],
-  ])
-  const rows = [
-    listing(1, { isLock: 2 }),                 // locked + has social → not remaining
-    listing(2, { isLock: 2 }),                 // locked + no social → remaining
-    listing(3, { isLock: 1 }),                 // unlocked (isLock=1) → excluded
-    listing(4, { harmonyPainterVo: { painterid: 1, painterName: '自设委托' }, isLock: 2 }), // self-commission → excluded
-  ]
-
-  it('counts locked non-self listings with no social, ignoring unlock status', () => {
-    expect(countLockedRemaining(rows, SOCIALS)).toBe(1)
-  })
-
-  it('absent socials map → every locked non-self listing counts as remaining', () => {
-    expect(countLockedRemaining(rows)).toBe(2)
+    expect(hasSocial(1, SOCIALS)).toBe(true)
+    expect(hasSocial(2, SOCIALS)).toBe(false)
+    expect(hasSocial(99, SOCIALS)).toBe(false)
+    expect(hasSocial(1)).toBe(false) // absent socials map
   })
 })
 
@@ -287,5 +268,35 @@ describe('compute - semantic group', () => {
 
   it('an empty only set is nothing, not everything', () => {
     expect(ids(compute({ ...base, only: new Set<number>() }))).toEqual([])
+  })
+})
+
+describe('orderLabel', () => {
+  const priced = () => listing(42, { nonrecurringExpense: 24000 })
+  const at = (over: Partial<Parameters<typeof orderLabel>[0]> = {}) =>
+    orderLabel({ item: priced(), day: '2025-03-14', ranked: false, sort: 'timeDesc', ...over })
+
+  it('shows the posting day in a time order', () => {
+    expect(at()).toBe('2025-03-14')
+  })
+
+  it('shows the price in a price order', () => {
+    expect(at({ sort: 'priceAsc' })).toBe('¥24000')
+  })
+
+  it('marks a listing with no price', () => {
+    expect(at({ sort: 'priceDesc', item: listing(42) })).toBe(MISSING_PRICE)
+  })
+
+  it('falls back to the listing number where no day is readable', () => {
+    expect(at({ day: '' })).toBe('#42')
+  })
+
+  it('shows nothing when relevance orders the list', () => {
+    expect(at({ ranked: true })).toBe('')
+  })
+
+  it('shows nothing for a row that holds no listing', () => {
+    expect(at({ item: undefined })).toBe('')
   })
 })

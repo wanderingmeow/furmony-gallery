@@ -1,6 +1,6 @@
 import { createSignal, lazy, onMount, Suspense } from 'solid-js'
-import { Router, Route, useMatch, useNavigate, useSearchParams } from '@solidjs/router'
-import { initStore, setNoSocialOnly } from './store'
+import { Router, Route, useMatch, useNavigate } from '@solidjs/router'
+import { initStore } from './initStore'
 import { flushUrlMapOnExit, initImageUrlMap } from './data/image'
 import { Home } from './routes/Home'
 import { Sheet } from './components/sheet/Sheet'
@@ -32,12 +32,8 @@ function Shell() {
   // one value and it survives opening and closing the sheet.
   const [mode, setMode] = createSignal<LockFilter>('all')
   const closeSheet = () => navigate('/', { scroll: false })
-  // ?nosocial=1 is a debugging filter for listings with no social account, to find adoptIds
-  // that still need a socials.json entry. The URL is read once, then the store owns the flag.
-  const [searchParams] = useSearchParams()
 
   onMount(() => {
-    setNoSocialOnly(searchParams.nosocial === '1')
     // The saved image URLs load first, so the listings that follow find the cache warm.
     initImageUrlMap().then(() => initStore())
     flushUrlMapOnExit()

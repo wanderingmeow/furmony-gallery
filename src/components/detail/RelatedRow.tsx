@@ -1,17 +1,16 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import type { AdoptListing } from '../../model/types'
-import {
-  listings, loadRelated, related, relatedLoaded, relatedOnlyUnlocked,
-  setRelatedOnlyUnlocked,
-} from '../../store'
+import { listings } from '../../stores/listingsStore'
+import { loadRelated, related, relatedLoaded } from '../../stores/relatedStore'
+import { relatedOnlyUnlocked, setRelatedOnlyUnlocked } from '../../stores/displayStore'
 import { MIN_RELATED, relatedIds, resolveRelated } from '../../model/related'
 import {
   DETAIL_PAD_X, RELATED_BAR_GAP, RELATED_BAR_H, RELATED_BAR_MIN_THUMB, RELATED_BAR_W,
   RELATED_CARD_GAP, RELATED_CARD_TARGET, RELATED_PER_VIEW_MAX, relatedCardWidth,
   relatedPerView, relatedStripHeight, THUMB_ASPECT,
 } from '../../draw/layout'
-import { scrollThumb, type Thumb } from '../../draw/progress'
+import { scrollThumb, type Thumb } from '../../draw/scrollbar'
 import { isAdopted, isLocked } from '../../model/domain'
 import { LockedIcon } from '../ui/LockedIcon'
 import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'

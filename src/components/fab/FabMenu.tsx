@@ -1,43 +1,61 @@
-// 右下角 FAB 列里的一个圆钮，加它自己的弹出面板。
+// 右下角 FAB 列里的一个圆钮，加它自己的弹出面板。面板只往上开：这些钮贴在屏幕角上，
+// 往下开就掉出屏幕。
 //
-// 面板只能往上开（下沿停在自家按钮上方 8px）：这些钮贴在屏幕角上，往下开就掉出屏幕。
 // 面板 Portal 到 <body>：在瀑布流的固定层里再套一层 .glass，backdrop-filter 会被外层图
 // 层裁掉，模糊出不来。
 import { createEffect, createSignal, onCleanup, Show, type JSX } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { AntIcon } from '../ui/AntIcon'
-import { FabCircle } from './FabCircle'
+import { FAB_SIZE, FabCircle } from './FabCircle'
+
+// The count sits on the button's edge, on the 45° line to the top-right corner.
+const EDGE = (FAB_SIZE / 2) * Math.SQRT1_2
+
+// The centre is pinned rather than the box's corner: `-50%` is the pill's own half-size, so a
+// two-digit count grows along the edge instead of sliding off it.
+const ON_EDGE: JSX.CSSProperties = {
+  left: '50%',
+  top: '50%',
+  transform: `translate(calc(-50% + ${EDGE}px), calc(-50% - ${EDGE}px))`,
+}
+
+// The popup's bottom edge rests POPUP_GAP above the button, and POPUP_AIR stays free above it.
+const POPUP_GAP = 8
+const POPUP_AIR = 8
+
+/** The box is the chrome and the height the screen allows, and nothing else. The panel inside owns
+ *  the padding and the scrolling, so the content reaches the glass edge, and `overflow-hidden` is
+ *  what keeps the rounded corner cutting what scrolls into it. */
+const POPUP_BOX = `fixed z-40 glass rounded-xl shadow-xl border border-black/10
+                   overflow-hidden flex flex-col`
 
 export function FabMenu(props: {
   label: string
   icon: IconDefinition | (() => IconDefinition)
   /** Replaces the glyph when it returns an element. Returning null falls back to `icon`. */
   face?: () => JSX.Element | null
-  /** 高亮 + 右上角数字：让「筛选开着 N 项」在收起面板时也看得见 */
+  /** 右上角数字：面板关上后，「筛选开着 N 项」还得看得见 */
   badge?: () => number
-  active?: () => boolean
   panelClass?: string
   children?: JSX.Element
 }) {
   const [open, setOpen] = createSignal(false)
-  const active = () => props.active?.() ?? false
   const badge = () => props.badge?.() ?? 0
 
   let wrap!: HTMLDivElement
   let popup!: HTMLDivElement
-  const [pos, setPos] = createSignal<{ bottom: number; right: number; room: number } | null>(null)
+  const [pos, setPos] = createSignal<{ bottom: number; right: number; roomAbove: number } | null>(null)
 
   createEffect(() => {
     if (!open()) { setPos(null); return }
     // 每次量都重新算：FAB 列会因为「回到顶部」出现/消失而整体上下移动
     const measure = () => {
       const r = wrap.getBoundingClientRect()
-      // room = how much screen is left above the button, minus the 8px gap and some air.
       setPos({
-        bottom: window.innerHeight - r.top + 8,
+        bottom: window.innerHeight - r.top + POPUP_GAP,
         right: window.innerWidth - r.right,
-        room: r.top - 16,
+        roomAbove: r.top - (POPUP_GAP + POPUP_AIR),
       })
     }
     measure()
@@ -49,8 +67,7 @@ export function FabMenu(props: {
     })
   })
 
-  // 面板浮在列表上方，所以「点别处」和 Esc 都得能关掉它（捕获阶段监听，避免被卡片
-  // 自己的 click 拦掉）
+  // 用捕获阶段：卡片自己的 click 会 stopPropagation，冒泡阶段就收不到「点别处」了
   createEffect(() => {
     if (!open()) return
     const onClick = (e: MouseEvent) => {
@@ -72,12 +89,17 @@ export function FabMenu(props: {
       <FabCircle
         title={props.label}
         expanded={open()}
-        accent={() => active() || open()}
+        accent={open}
         onClick={() => setOpen((o) => !o)}
       >
         {props.face?.() ?? <AntIcon icon={props.icon} size="1.25em" />}
         <Show when={badge() > 0}>
-          <span class="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-surface text-accent-ink text-[9px] font-bold flex items-center justify-center border border-border">
+          {/* The same orange as the fill, so the number and the button mean one thing. The ring
+              takes the circle's own colour, so the number stays cut out when the button is orange
+              too. */}
+          <span style={ON_EDGE}
+            class="absolute min-w-4 h-4 px-1 rounded-full bg-accent text-white text-[9px] font-bold
+                   flex items-center justify-center border border-surface">
             {badge()}
           </span>
         </Show>
@@ -87,12 +109,9 @@ export function FabMenu(props: {
         <Portal>
           <div
             ref={popup}
-            // A column, so a panel can put its own scroller on the content and keep a row
-            // (like 重置) pinned at the bottom instead of scrolling it in and out.
-            class={`fixed z-40 glass rounded-xl shadow-xl border border-black/10 p-2 flex flex-col ${props.panelClass ?? ''}`}
-            // A long panel scrolls inside itself instead of running off the top of the screen.
+            class={`${POPUP_BOX} ${props.panelClass ?? ''}`}
             style={{ bottom: `${pos()!.bottom}px`, right: `${pos()!.right}px`,
-              'max-height': `${pos()!.room}px`, 'overflow-y': 'auto' }}
+              'max-height': `${pos()!.roomAbove}px` }}
           >
             {props.children}
           </div>

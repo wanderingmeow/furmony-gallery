@@ -4,9 +4,7 @@ import { EMPTY_ACTION_LABELS, pickEmptyState, type EmptyFacts, type EmptyState }
 const none: EmptyFacts = {
   loadFailed: false,
   asking: false,
-  noSocial: false,
-  remaining: 0,
-  total: 0,
+  socialOnly: false,
   onWishlistTab: false,
   savedCount: 0,
   query: '',
@@ -35,11 +33,12 @@ describe('pickEmptyState', () => {
     expect(s.action).toBe('retry')
   })
 
-  it('names the debug filter and counts what it left', () => {
-    const s = pick({ noSocial: true, remaining: 0, total: 521 })
-    expect(s.title).toBe('没有无社媒的设定')
-    expect(s.line).toBe('剩余 0 / 共 521')
-    expect(s.action).toBe('noSocial')
+  it('names the 主人账号 filter, and the way to switch it off', () => {
+    const s = pick({ socialOnly: true })
+    expect(s.title).toBe('没有查到主人账号的设定')
+    // No line: the switch is the whole reason, so a second sentence would only repeat it.
+    expect(s.line).toBeUndefined()
+    expect(s.action).toBe('socialOnly')
   })
 
   it('says an empty wishlist on its own, with nothing to press', () => {
@@ -91,8 +90,9 @@ describe('pickEmptyState', () => {
 
   it('holds the order the reasons are told in', () => {
     expect(pickEmptyState({ ...none, asking: true, loadFailed: true })).toBeNull()
-    expect(pick({ loadFailed: true, noSocial: true }).title).toBe('没能载入设定')
-    expect(pick({ noSocial: true, onWishlistTab: true, savedCount: 0 }).title).toBe('没有无社媒的设定')
+    expect(pick({ loadFailed: true, socialOnly: true }).title).toBe('没能载入设定')
+    expect(pick({ socialOnly: true, onWishlistTab: true, savedCount: 0 }).title)
+      .toBe('没有查到主人账号的设定')
     expect(pick({ onWishlistTab: true, savedCount: 0, query: '狼' }).title).toBe('还没有收藏')
     expect(pick({ pictureSay: 'failed', query: '狼' }).title).toBe('没找到结果')
     expect(pick({ sentenceFailed: true, query: '狼', picked: 3 }).title).toBe('增强搜索失败')
@@ -133,7 +133,7 @@ describe('pickEmptyState', () => {
   it('has a label for every action it can name', () => {
     const actions = new Set(
       [
-        {}, { loadFailed: true }, { noSocial: true },
+        {}, { loadFailed: true }, { socialOnly: true },
         { pictureSay: 'noMatch' }, { query: 'x' }, { picked: 1 },
       ].map((over) => pick(over as Partial<EmptyFacts>).action).filter(Boolean),
     )

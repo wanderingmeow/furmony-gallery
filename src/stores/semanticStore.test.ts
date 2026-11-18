@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { settled } from '../testSetup'
 import { PICTURE_TIMEOUT_MS, SEARCH_TIMEOUT_MS } from '../data/searchApi'
 import { setSemanticSearch } from './displayStore'
 import { setSearchText } from './filterStore'
@@ -65,12 +66,6 @@ const ids = (): number[] => {
 
 /** Reads the wait itself: the state label translates it into other words. */
 const pictureWaitingNow = () => picture.state() === 'searching'
-
-/** Solid runs queued effects at the end of the update, not inside the setter, and the queue
- *  drains over more than one microtask - a macrotask boundary is what it settles by. */
-function settled(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0))
-}
 
 beforeEach(() => {
   asked.length = 0

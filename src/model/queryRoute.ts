@@ -1,8 +1,8 @@
 // src/model/queryRoute.ts - which route the list follows, and what is worth asking the model.
 //
-// The toolbar, the grid and the request all read these answers, so the rules live in one
-// file: a picture outranks the sentence still in the box, a bare number belongs to the local
-// search, and an empty answer is still an answer.
+// The toolbar, the grid and the request all read these answers, so the rules live in one file: a
+// picture comes before the sentence in the box, a bare number is what the local search matches,
+// and a picture's answer of "nothing" still counts as an answer.
 
 /** Digits and nothing but separators: `12 34`, `1234,5678`. A pile of numbers gives the model
  *  nothing to rank. */
@@ -37,8 +37,8 @@ function boxHoldsQuestion(i: { semanticOn: boolean; query: string }): boolean {
   return i.semanticOn && worthAsking(i.query)
 }
 
-/** A picture that is up holds the service's one upload slot, so it holds the question. The
- *  overlay alone holds nothing: an open drop zone with no picture asks the sentence in the box. */
+/** A picture that is up has the service's one upload slot, so it has the question. An open drop
+ *  zone with no picture has nothing, which leaves the sentence in the box as the question. */
 export function shouldAskText(i: {
   pictureHolds: boolean
   semanticOn: boolean
@@ -48,8 +48,8 @@ export function shouldAskText(i: {
 }
 
 export function routeFor(i: RouteInput): Route {
-  // An empty picture answer still empties the list. Until a picture answers, the sentence's
-  // results stay: the local search cannot match a sentence.
+  // A picture's answer of nothing still rules: the list stays empty. The sentence's results stand
+  // only while no picture has answered, because the local search cannot match a sentence.
   if (i.pictureOn && i.pictureIds !== null) return { by: 'picture', ids: i.pictureIds }
   return boxHoldsQuestion(i) ? { by: 'text', ids: i.textIds } : { by: 'none' }
 }

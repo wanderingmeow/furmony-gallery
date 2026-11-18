@@ -5,9 +5,10 @@ import {
 } from '@ant-design/icons-svg'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { useNavigate } from '@solidjs/router'
-import {
-  fetchFailed, loadData, priceMode, selectedColors, selectedRaces, semanticActive, sortMode,
-} from '../../store'
+import { fetchFailed, loadData } from '../../stores/listingsStore'
+import { filtersOnCount } from '../../stores/derivedStore'
+import { semanticActive } from '../../stores/semanticStore'
+import { sortMode } from '../../stores/filterStore'
 import { AntIcon } from '../ui/AntIcon'
 import { SortMark } from '../ui/SortMark'
 import { FabCircle } from './FabCircle'
@@ -29,11 +30,6 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
   const isRefresh = fetchFailed
   const navigate = useNavigate()
   const show = () => props.scrollTop() > 0 || fetchFailed()
-  // The badge has to survive the panel closing: N filters are still on.
-  const filterCount = () => selectedColors().size + selectedRaces().size
-  // Orange means "you changed something here", so a price-display change lights the button
-  // even when nothing is selected.
-  const anySetting = () => filterCount() > 0 || priceMode() !== 'once'
   // The button shows the order the grid is in. A search answer is ranked by the service, so while
   // one is on screen the button goes back to the funnel.
   const orderFace = () => semanticActive()
@@ -61,14 +57,14 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
           <AntIcon icon={() => (isRefresh() ? SyncOutlined : VerticalAlignTopOutlined)} size={"1.25em"} />
         </FabCircle>
       </Show>
-      {/* One button for the whole panel: the order, colors, species, price display and the
-          search switch. It opens upward, which FabMenu handles */}
+      {/* One button for the whole panel: the order, colors, species, the owner-account switch,
+          the price display and the search switch. It opens upward, which FabMenu handles. The
+          fill is the panel being open; the number is what stays on. */}
       <FabMenu
         label={orderLabel()}
-        icon={() => (filterCount() > 0 ? FilterFilled : FilterOutlined)}
+        icon={() => (filtersOnCount() > 0 ? FilterFilled : FilterOutlined)}
         face={orderFace}
-        active={anySetting}
-        badge={filterCount}
+        badge={filtersOnCount}
         panelClass="w-72"
       >
         <FilterPanel />

@@ -3,13 +3,19 @@ import type { JSXElement } from 'solid-js'
 import {
   ArrowDownOutlined, ArrowUpOutlined, BgColorsOutlined, BulbOutlined,
   ClockCircleOutlined, DollarOutlined, ExperimentOutlined, SettingOutlined, SortAscendingOutlined,
+  UserOutlined,
 } from '@ant-design/icons-svg'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import {
-  availableColors, availableRaces, selectedColors, setSelectedColors, selectedRaces, setSelectedRaces,
-  priceMode, searchConfigured, semanticActive, setPriceMode, semanticOn, setSemanticSearch,
-  setSortMode, sortMode,
-} from '../../store'
+  availableColors, availableRaces, panelHasChanges, resetPanel, socialCount, socialFilterOn,
+  socialsReady,
+} from '../../stores/derivedStore'
+import {
+  selectedColors, setSelectedColors, selectedRaces, setSelectedRaces, setSortMode, setSocialOnly,
+  sortMode,
+} from '../../stores/filterStore'
+import { priceMode, setPriceMode, setSemanticSearch } from '../../stores/displayStore'
+import { searchConfigured, semanticActive, semanticOn } from '../../stores/semanticStore'
 import { PRICE_MODES, PRICE_MODE_LABELS, type PriceMode } from '../../model/domain'
 import type { SortMode } from '../../model/filter'
 import { SegmentedControl, type Segment } from '../ui/SegmentedControl'
@@ -71,6 +77,9 @@ function PanelHeader(props: { icon: JSXElement; children: JSXElement }) {
 
 /** So section content starts under the name, not under the icon beside it: 6 + 12 + 8. */
 const UNDER_TEXT = 'pl-[26px] pr-1.5'
+// The line that explains the row above it. One class for all of them, so no note ends up a
+// different size from its neighbours.
+const UNDER_NOTE = `mt-1 mb-2 ${UNDER_TEXT} text-[11px] leading-relaxed text-muted`
 
 /** The rule that keeps a block apart from what came before, so the panel reads as the same blocks
  *  whether or not the foldable sections above it are open. */
@@ -95,29 +104,25 @@ function Section(props: {
   const fold = () => setOpen((o) => !o)
   return (
     <div class={PANEL_BLOCK}>
-      <div class="flex items-center">
-        <button
-          class="flex-1 min-h-9 flex items-center gap-2 px-1.5 text-xs font-semibold"
-          aria-expanded={open()}
-          onClick={fold}
-        >
-          {props.icon} {props.title}
-        </button>
-        <span class="text-[10px] text-faint">{props.selected.size}/{props.items.length}</span>
-        {/* The title button already folds the row and carries aria-expanded, so this is a
-            second hit area and nothing else. */}
-        <button
-          class="w-7 h-9 flex items-center justify-center text-faint"
-          aria-hidden="true"
-          tabindex={-1}
-          onClick={fold}
-        >
+      {/* One button for the whole row, so the name, the count and the chevron all fold. The count
+          sits where a thumb lands when the row already shows a pick, so it has to answer. */}
+      <button
+        class="w-full min-h-9 flex items-center gap-2 px-1.5 text-xs font-semibold"
+        aria-expanded={open()}
+        onClick={fold}
+      >
+        {props.icon} {props.title}
+        {/* Inside the button, so a screen reader says the count with the row it describes. */}
+        <span class="ml-auto text-[10px] font-normal text-faint">
+          {props.selected.size}/{props.items.length}
+        </span>
+        <span class="w-7 flex items-center justify-center text-faint" aria-hidden="true">
           {/* Set by eye: the arrow shares no baseline with the digit count beside it. */}
           <span class="relative top-[1px] flex items-center">
             <Chevron open={open()} />
           </span>
-        </button>
-      </div>
+        </span>
+      </button>
 
       <Show when={open()}>
         <div class={`mt-1 ${UNDER_TEXT} flex flex-wrap gap-1`}>
@@ -201,6 +206,34 @@ function SortBlock() {
   )
 }
 
+/**
+ * 只显示有主人账号的. Only a small share of the listings have an owner account, so the line names
+ *  the count before the reader cuts the list down to it.
+ *
+ *  The switch reads `socialFilterOn` and writes `socialOnly`. The two differ when socials.json is
+ *  missing: the row is gray, the list is unfiltered, and a switch the reader left on is kept for
+ *  the case where the table does arrive.
+ */
+function OwnerBlock() {
+  const note = () => socialsReady()
+    ? `查得到主人账号的只有 ${socialCount()} 只，列表会短很多。`
+    : '主人账号的资料没有加载成功，这个筛选暂时用不了。'
+  return (
+    <div class={PANEL_BLOCK}>
+      <PanelHeader icon={<AntIcon icon={UserOutlined} />}>
+        只显示有主人账号的
+        <div class="ml-auto">
+          <Switch on={socialFilterOn()} onChange={setSocialOnly}
+            label="只显示有主人账号的" disabled={!socialsReady()} />
+        </div>
+      </PanelHeader>
+      <div class={UNDER_NOTE}>
+        <span class="block">{note()}</span>
+      </div>
+    </div>
+  )
+}
+
 const PRICE_ITEMS: Segment<PriceMode>[] = PRICE_MODES.map((m) => ({
   value: m,
   label: PRICE_MODE_LABELS[m],
@@ -232,19 +265,39 @@ function SemanticBlock() {
       {/* Where what the reader sends goes, said once at the switch: a tooltip does not
           exist on a touch screen, and repeating it under every query would be noise. Every
           clause is true of the service, so none of it is softened. */}
-      <div class={`mt-1 mb-2 ${UNDER_TEXT} text-[11px] leading-relaxed text-muted`}>
-        <span class="block">语义和图像搜索由 Embedding 模型驱动，需要上传检索信息至服务器。</span>
-        <span class="block">零数据保留（ZDR）：文字和图片只在服务器内存中用于生成结果，返回即消失，不被记录，也不用于模型训练。</span>
+      <div class={UNDER_NOTE}>
+        {/* One line, kept on one source line: JSX turns a break between Chinese characters into
+            a visible space, and there is no space to spare before （ZDR）. */}
+        <span class="block">语义和图像搜索由 Embedding 模型驱动，把检索的文字和图片传到服务器，服务器零数据保留。</span>
       </div>
     </div>
   )
 }
 
-// The panel the corner button opens: the order, then colors and species, then the two settings,
-// 价格显示 and 设定搜索增强. Opening and closing the panel is FabMenu's business.
+/**
+ * 重置, in red because this is the row that takes things away. `resetPanel` says what it gives back.
+ *
+ *  The row stays and goes gray when there is nothing to take back. A row that arrived and left at
+ *  the foot of the panel would push the note above it up and down while the reader worked.
+ */
+function ResetRow() {
+  return (
+    <div class={PANEL_BLOCK}>
+      <button
+        class="w-full min-h-7 px-1.5 text-right text-xs font-semibold
+               text-red-500 dark:text-red-400 disabled:text-faint"
+        disabled={!panelHasChanges()}
+        onClick={resetPanel}
+      >重置</button>
+    </div>
+  )
+}
+
+// The panel the corner button opens. It does the scrolling and owns the padding, so the blocks run
+// to the glass edge and `FabMenu` only has to draw the box.
 export function FilterPanel() {
   return (
-    <div class="min-h-0 overflow-y-auto">
+    <div class="min-h-0 overflow-y-auto p-2">
       <SortBlock />
       <Section
         title="颜色"
@@ -262,12 +315,14 @@ export function FilterPanel() {
         onToggle={(v) => setSelectedRaces(toggleIn(selectedRaces(), v))}
         mark={(v) => <span class="w-4 text-center">{RACE_ICON[v] ?? '❔'}</span>}
       />
+      <OwnerBlock />
       <PriceModeBlock />
       {/* A build without a search address hides the switch rather than offering a search that
           quietly does nothing. */}
       <Show when={searchConfigured}>
         <SemanticBlock />
       </Show>
+      <ResetRow />
     </div>
   )
 }

@@ -15,10 +15,12 @@ const { listing } = vi.hoisted(() => ({
   } as AdoptListing,
 }))
 
-vi.mock('../../store', () => ({
+vi.mock('../../stores/wishlistStore', () => ({
   isWishlisted: () => false,
-  priceMode: () => 'once',
   toggleWishlist: () => {},
+}))
+vi.mock('../../stores/displayStore', () => ({
+  priceMode: () => 'once',
 }))
 
 let dispose: (() => void) | undefined

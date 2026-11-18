@@ -2,6 +2,10 @@
 // centering and border; a caller picks the fill and the shadow.
 import type { JSX } from 'solid-js'
 
+/** Must match the `w-12 h-12` below. A caller that places something against the edge needs the
+ *  number, and it cannot read a class string. */
+export const FAB_SIZE = 48
+
 export function FabCircle(props: {
   title: string
   /** set while the control's own panel is open */

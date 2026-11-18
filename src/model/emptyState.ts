@@ -11,18 +11,15 @@ export type EmptyIcon = 'heart' | 'search' | 'filter' | 'spark' | 'warning'
 export type PictureSay = 'failed' | 'noMatch'
 
 /** What the reader can press. The component knows what each one does. */
-export type EmptyAction = 'search' | 'filters' | 'retry' | 'retryAsk' | 'noSocial'
+export type EmptyAction = 'search' | 'filters' | 'retry' | 'retryAsk' | 'socialOnly'
 
 export interface EmptyFacts {
   loadFailed: boolean
   /** Something is still working: the enhanced search has not answered for the sentence in the
    *  box, or the picture search is still running. */
   asking: boolean
-  /** The debug filter that keeps only the listings with no social account. */
-  noSocial: boolean
-  /** What that filter leaves, and how many there are in all. */
-  remaining: number
-  total: number
+  /** The switch that keeps only the listings whose owner has an account we can link to. */
+  socialOnly: boolean
   onWishlistTab: boolean
   savedCount: number
   query: string
@@ -62,13 +59,8 @@ export function pickEmptyState(f: EmptyFacts): EmptyState | null {
   if (f.loadFailed) {
     return { icon: 'warning', title: '没能载入设定', line: '检查网络后重试', action: 'retry' }
   }
-  if (f.noSocial) {
-    return {
-      icon: 'filter',
-      title: '没有无社媒的设定',
-      line: `剩余 ${f.remaining} / 共 ${f.total}`,
-      action: 'noSocial',
-    }
+  if (f.socialOnly) {
+    return { icon: 'filter', title: '没有查到主人账号的设定', action: 'socialOnly' }
   }
   if (f.onWishlistTab && f.savedCount === 0) {
     // The tab pills stay on screen, so this case has nothing to hand back.
@@ -101,5 +93,5 @@ export const EMPTY_ACTION_LABELS: Record<EmptyAction, string> = {
   // sees one word either way, because the line above the button says what failed.
   retry: '重试',
   retryAsk: '重试',
-  noSocial: '关闭该筛选',
+  socialOnly: '关闭该筛选',
 }

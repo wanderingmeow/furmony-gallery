@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'solid-js/web'
+import { settled } from '../../testSetup'
 import { PictureMode } from './PictureSearch'
 import { setSemanticSearch } from '../../stores/displayStore'
-
 // The store's tests cover when each state happens. These cover what the row says and offers:
 // nothing else checks that 加载中 belongs to the local decode while 上传中 belongs to the wifi.
 const sent = vi.hoisted(() => ({
@@ -35,14 +35,10 @@ vi.mock('../../data/pictureInput', () => ({
   },
 }))
 
-const { picture } = await import('../../store')
+const { picture } = await import('../../stores/semanticStore')
 
 let disposeApp: () => void
 let host: HTMLDivElement
-
-/** Solid drains its update queue over more than one microtask, so a test settles by a
- *  macrotask boundary. */
-const settled = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 const text = () => (host.textContent ?? '').replace(/\s+/g, '')
 /** What the reader can press: the name a screen reader would read. */

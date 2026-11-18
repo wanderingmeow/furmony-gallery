@@ -24,7 +24,12 @@ const TRAVEL = TRACK_W - BORDER * 2 - KNOB - INSET * 2
 // panel got a horizontal scrollbar.
 const HIT_AREA = "after:absolute after:inset-y-[-10px] after:left-0 after:right-[-6px] after:content-['']"
 
-export function Switch(props: { on: boolean; onChange: (on: boolean) => void; label: string }) {
+export function Switch(props: {
+  on: boolean
+  onChange: (on: boolean) => void
+  label: string
+  disabled?: boolean
+}) {
   return (
     <button
       type="button"
@@ -32,14 +37,17 @@ export function Switch(props: { on: boolean; onChange: (on: boolean) => void; la
       aria-checked={props.on}
       aria-label={props.label}
       title={props.label}
+      disabled={props.disabled}
       class={`relative shrink-0 rounded-full border transition-colors duration-200
               motion-reduce:transition-none ${HIT_AREA}`}
       style={{ width: `${TRACK_W}px`, height: `${TRACK_H}px` }}
       classList={{
-        'bg-accent border-accent': props.on,
-        'bg-surface-2 border-border': !props.on,
+        'bg-accent border-accent': props.on && !props.disabled,
+        'bg-surface-2 border-border': !props.on || !!props.disabled,
+        'opacity-45 cursor-not-allowed': !!props.disabled,
       }}
-      onClick={() => props.onChange(!props.on)}
+      // The attribute stops a pointer; the guard stops a click that code sends.
+      onClick={() => { if (!props.disabled) props.onChange(!props.on) }}
     >
       <span
         class="absolute rounded-full bg-white transition-transform duration-200

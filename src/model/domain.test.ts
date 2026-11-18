@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AdoptListing } from './types'
 import {
-  formatPrice, installmentTotal, monthlyPayment, priceParts, publishDay, publishDays, type PriceMode,
+  formatPrice, installmentTotal, monthlyPayment, priceParts, publishDay, publishDayAt, type PriceMode,
 } from './domain'
 
 // The fake listing: 30000 across 12 periods (allcost), a 6000 deposit (earnest), and
@@ -205,25 +205,37 @@ describe('publishDay', () => {
   })
 })
 
-describe('publishDays', () => {
+describe('publishDayAt', () => {
   const at = (id: number, createTime?: string) => fake({ adoptId: id, createTime })
+  // 846, 848 and 850 are real listings, and 848 is one whose createTime is missing.
+  const rows = () => [at(846, '2025-03-21 10:00:00'), at(848), at(850, '2025-03-28 10:00:00')]
 
-  it('keeps the day of every row that has one', () => {
-    expect(publishDays([at(1, '2025-03-21 10:00:00'), at(2, '2025-03-28 10:00:00')]))
-      .toEqual(['2025-03-21', '2025-03-28'])
+  it('keeps the day of the row that has one', () => {
+    expect(publishDayAt(rows(), 0)).toBe('2025-03-21')
+    expect(publishDayAt(rows(), 2)).toBe('2025-03-28')
   })
 
-  it('takes the day of the row before', () => {
-    expect(publishDays([at(846, '2025-03-21 10:00:00'), at(848), at(850, '2025-03-28 10:00:00')]))
-      .toEqual(['2025-03-21', '2025-03-21', '2025-03-28'])
+  it('takes the day of the row before, not the one after', () => {
+    expect(publishDayAt(rows(), 1)).toBe('2025-03-21')
   })
 
   it('takes the day of the row after when nothing before has one', () => {
-    expect(publishDays([at(1), at(2), at(3, '2025-05-24 10:00:00')]))
-      .toEqual(['2025-05-24', '2025-05-24', '2025-05-24'])
+    expect(publishDayAt([at(1), at(2), at(3, '2025-05-24 10:00:00')], 1)).toBe('2025-05-24')
+  })
+
+  it('walks past the rows with no day of their own', () => {
+    const wide = [at(846, '2025-03-21 10:00:00'), at(848), at(849), at(850)]
+    expect(publishDayAt(wide, 3)).toBe('2025-03-21')
   })
 
   it('is empty when no row has a day', () => {
-    expect(publishDays([at(1), at(2)])).toEqual(['', ''])
+    expect(publishDayAt([at(1), at(2)], 0)).toBe('')
+  })
+
+  it('is empty for a row that is not in the list', () => {
+    // The grid reads the top row of the window, and an empty list has no such row.
+    expect(publishDayAt(rows(), -1)).toBe('')
+    expect(publishDayAt(rows(), 3)).toBe('')
+    expect(publishDayAt([], 0)).toBe('')
   })
 })

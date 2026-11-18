@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from
 import { Portal } from 'solid-js/web'
 import { useParams, useLocation } from '@solidjs/router'
 import { ArrowLeftOutlined, CloseOutlined } from '@ant-design/icons-svg'
-import { listings, isLoading, dataReady } from '../store'
+import { listings, isLoading, dataReady } from '../stores/listingsStore'
 import { detailImages } from '../model/domain'
 import type { AdoptListing } from '../model/types'
 import type { DetailEntry } from '../model/detailTrail'

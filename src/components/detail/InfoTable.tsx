@@ -6,7 +6,8 @@ import {
 } from '../../model/domain'
 import { sizedUrl, stableImageUrl } from '../../data/image'
 import { SkelImg } from '../ui/SkelImg'
-import { priceMode, socials } from '../../store'
+import { priceMode } from '../../stores/displayStore'
+import { socials } from '../../stores/socialsStore'
 import { StatusBadge } from '../ui/StatusBadge'
 
 // The first column is the head picture's width (w-15 is 60px), so values start under the title

@@ -1,8 +1,7 @@
 import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
-import {
-  dataReady, fetchFailed, errorMessage, picture, setErrorMessage,
-} from '../store'
+import { dataReady, fetchFailed, errorMessage, setErrorMessage } from '../stores/listingsStore'
+import { picture } from '../stores/semanticStore'
 import { Toolbar } from '../components/toolbar/Toolbar'
 import { ToolbarSkeleton } from '../components/toolbar/ToolbarSkeleton'
 import { Waterfall } from '../components/cards/Waterfall'

@@ -7,7 +7,8 @@ import { PRICE_MODES, type PriceMode } from '../model/domain'
 const DISPLAY_KEY = 'price_display'
 const RELATED_KEY = 'related_only_unlocked'
 const SEMANTIC_KEY = 'semantic_search'
-const DEFAULT_MODE: PriceMode = 'once'
+/** The display the page starts in. */
+export const DEFAULT_PRICE_MODE: PriceMode = 'once'
 
 /** The three methods readMode needs, so a test can pass a Map instead of localStorage. */
 export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
@@ -18,7 +19,7 @@ export function readMode(store: StorageLike): PriceMode {
   const raw = store.getItem(DISPLAY_KEY)
   // Only a value from PRICE_MODES passes. This catches a hand-edited localStorage and
   // a mode that a later version adds.
-  return PRICE_MODES.includes(raw as PriceMode) ? (raw as PriceMode) : DEFAULT_MODE
+  return PRICE_MODES.includes(raw as PriceMode) ? (raw as PriceMode) : DEFAULT_PRICE_MODE
 }
 
 /** Only "1" reads as on, so a hand-edited value cannot switch a view on by accident. */
@@ -30,7 +31,7 @@ function initial(): PriceMode {
   try {
     return readMode(localStorage)
   } catch {
-    return DEFAULT_MODE
+    return DEFAULT_PRICE_MODE
   }
 }
 

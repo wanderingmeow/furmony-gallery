@@ -22,13 +22,17 @@ const { navigate, listings, first, neighbors } = vi.hoisted(() => {
 
 vi.mock('@solidjs/router', () => ({ useNavigate: () => navigate }))
 
-vi.mock('../../store', () => ({
+vi.mock('../../stores/listingsStore', () => ({
   listings: () => listings,
+}))
+vi.mock('../../stores/relatedStore', () => ({
   related: () => ({ topN: neighbors.length, neighbors: new Map([[1, neighbors]]) }),
   relatedLoaded: () => true,
+  loadRelated: () => Promise.resolve(),
+}))
+vi.mock('../../stores/displayStore', () => ({
   relatedOnlyUnlocked: () => false,
   setRelatedOnlyUnlocked: () => {},
-  loadRelated: () => Promise.resolve(),
 }))
 
 let dispose: (() => void) | undefined

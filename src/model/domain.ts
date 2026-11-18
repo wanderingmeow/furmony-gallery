@@ -78,23 +78,27 @@ export function publishDay(listing: AdoptListing): string {
   return `${d.getFullYear()}-${mm}-${dd}`
 }
 
-/** One day per listing, in the same order as the input. A row with no readable time takes its
- *  day from the nearest row before it that has one, or from the nearest row after it when no
- *  earlier row has one. */
-export function publishDays(listings: AdoptListing[]): string[] {
-  const days = listings.map(publishDay)
-  const missing = days.map((day) => day === '')
-  let seen = ''
-  for (let i = 0; i < days.length; i++) {
-    if (missing[i]) days[i] = seen
-    else seen = days[i]
+/** The day to show for the listing at `index`. When that row has no readable `createTime`, the day
+ *  comes from the closest row before it that has one, or from the closest row after it when none
+ *  is earlier. The order passed in is part of the answer: under another sort, the same row takes
+ *  its day from another row. An index outside the list gives an empty string.
+ *
+ *  Each call scans outward from `index` until it finds a day, so calling it for every row is
+ *  quadratic in the length of the list. */
+export function publishDayAt(listings: AdoptListing[], index: number): string {
+  const item = listings[index]
+  if (!item) return ''
+  const own = publishDay(item)
+  if (own) return own
+  for (let i = index - 1; i >= 0; i--) {
+    const day = publishDay(listings[i])
+    if (day) return day
   }
-  seen = ''
-  for (let i = days.length - 1; i >= 0; i--) {
-    if (!missing[i]) seen = days[i]
-    else if (!days[i]) days[i] = seen
+  for (let i = index + 1; i < listings.length; i++) {
+    const day = publishDay(listings[i])
+    if (day) return day
   }
-  return days
+  return ''
 }
 
 export function detailImages(listing: AdoptListing): string[] {

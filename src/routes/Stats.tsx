@@ -1,7 +1,7 @@
 import { createMemo, createSignal, onCleanup, onMount, Show, type JSX } from 'solid-js'
 import { CloseOutlined } from '@ant-design/icons-svg'
 import type uPlot from 'uplot'
-import { listings } from '../store'
+import { listings } from '../stores/listingsStore'
 import { StatBarChart, StatHistChart, StatLineChart } from '../components/stats/StatChart'
 import {
   filterByLock, priceBins, priceEdges, colorCounts, raceCounts, monthlyPriceStats, monthlyCounts,

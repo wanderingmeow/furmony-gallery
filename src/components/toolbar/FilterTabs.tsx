@@ -1,10 +1,8 @@
 import { createSignal, For, onCleanup, onMount } from 'solid-js'
 import { FILTER_TABS, TAB_LABELS, type FilterTab } from '../../model/filter'
 import { edgeFade, fadeMask, NO_FADE, type EdgeFade } from '../../draw/fade'
-import {
-  tab, setTab, countAll, countUnlocked, countLocked, wishlistCount,
-  noSocialOnly, remainingLocked,
-} from '../../store'
+import { tab, setTab } from '../../stores/filterStore'
+import { countAll, countUnlocked, countLocked, wishlistCount } from '../../stores/derivedStore'
 import { TABS_ROW } from '../ui/boxes'
 
 // 渐隐最宽 40px，在 80px 的滑动距离内退到 0。tab 排是自由滑动（不吸附），所以不用像
@@ -58,11 +56,7 @@ export function FilterTabs() {
       <For each={FILTER_TABS}>
         {(t) => {
           const selected = () => tab() === t
-          // While the no-social debug filter is active, the locked tab shows annotation
-          // progress as 剩余/总数 (remaining no-social locked / total locked). Unfiltered.
-          const count = () => (t === 'locked' && noSocialOnly()
-            ? `${remainingLocked()}/${countLocked()}`
-            : COUNT_FOR[t]())
+          const count = COUNT_FOR[t]
           return (
             <button
               class="h-8 px-3 rounded-lg text-sm whitespace-nowrap"

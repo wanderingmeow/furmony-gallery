@@ -1,14 +1,24 @@
 // src/stores/derivedStore.ts - everything the grid and the tab badges read, in one pass from
 // listings + filters + wishlist + what the enhanced search returned.
-import { createEffect, createMemo, createRoot, createSignal, on } from 'solid-js'
+import { batch, createEffect, createMemo, createRoot, createSignal, on } from 'solid-js'
 import type { AdoptListing } from '../model/types'
-import { compute, countLockedRemaining } from '../model/filter'
+import { compute, hasSocial } from '../model/filter'
 import { colorNames, isLocked, isSelfCommission, raceName } from '../model/domain'
-import { listings } from './listingsStore'
-import { tab, sortMode, selectedColors, selectedRaces, searchText, noSocialOnly } from './filterStore'
+import { pickEmptyState, type EmptyAction, type EmptyState as EmptyChoice } from '../model/emptyState'
+import { fetchFailed, listings, loadData } from './listingsStore'
+import {
+  DEFAULT_SORT, selectedColors, selectedRaces, setSearchText, setSelectedColors,
+  setSelectedRaces, setSocialOnly, setSortMode, socialOnly, searchText, sortMode, tab,
+} from './filterStore'
+import {
+  DEFAULT_PRICE_MODE, priceMode, semanticSearch, setPriceMode, setSemanticSearch,
+} from './displayStore'
 import { wishlist } from './wishlistStore'
 import { socialSearch } from './socialsStore'
-import { route, semanticActive, semanticPending } from './semanticStore'
+import {
+  askFailure, picture, pictureAnswers, pictureMeaning, retryAsk, route, semanticActive,
+  semanticPending,
+} from './semanticStore'
 
 export let filteredListings: () => AdoptListing[]
 export let availableColors: () => string[]
@@ -17,9 +27,20 @@ export let countAll: () => number
 export let countUnlocked: () => number
 export let countLocked: () => number
 export let wishlistCount: () => number
-// Locked listings still needing a social entry - the numerator of the locked-tab progress
-// badge (剩余/总数) while the no-social debug filter is active.
-export let remainingLocked: () => number
+/** Whether socials.json brought in anything usable. Without the table every listing reads as
+ *  having no owner account, so the filter would empty the list and look like the reader's own
+ *  mistake. */
+export let socialsReady: () => boolean
+/** How many listings on the shelf have an account we can link to. The panel names this number
+ *  before the switch cuts the list down to it. */
+export let socialCount: () => number
+/** The 主人账号 filter as the list runs it. With socials.json missing, `hasSocial` is false for
+ *  every listing, so a switch left on would empty the page. A switch on with nothing to filter on
+ *  is not on. */
+export let socialFilterOn: () => boolean
+/** Why the list is empty and the one thing the reader can press, or null while there is nothing
+ *  to say. The empty state box shows this and nothing else. */
+export let emptyState: () => EmptyChoice | null
 
 /** Code that needs the answer to "what would this list look like" starts here, so a new filter
  *  dimension is added in one place.
@@ -27,13 +48,15 @@ export let remainingLocked: () => number
 export function listFilterBase() {
   return {
     rows: listings(),
-    tab: tab(),
+    // A photograph's answer belongs to no tab: one picture returns locked and unlocked listings
+    // together. The other filters still apply, because the reader can reach their panel.
+    tab: pictureAnswers() ? 'all' : tab(),
     sort: sortMode(),
     colors: selectedColors(),
     races: selectedRaces(),
     wishlist: wishlist(),
     socials: socialSearch(),
-    noSocial: noSocialOnly(),
+    socialOnly: socialFilterOn(),
     // A semantic result list is ordered by relevance, so the sort buttons are hidden while
     // one is on screen - and hiding them would be a lie if the sort still applied.
     keepOrder: semanticActive(),
@@ -43,6 +66,13 @@ export function listFilterBase() {
 // Global on purpose: nothing disposes these memos, and createRoot keeps Solid from warning
 // about that.
 createRoot(() => {
+  // These three are created first. `merged` below calls `listFilterBase()`, which reads
+  // `socialFilterOn`, and a memo created after that call would still be undefined inside it.
+  socialsReady = createMemo(() => socialSearch().size > 0)
+  socialCount = createMemo(() =>
+    listings().filter((l) => hasSocial(l.adoptId, socialSearch())).length)
+  socialFilterOn = createMemo(() => socialOnly() && socialsReady())
+
   /** The model's own order. `only` filters, it does not order: without this the hits come back
    *  in feed order and the ranking the reader asked for is gone. */
   const byRank = (rank: Map<number, number>) =>
@@ -96,13 +126,31 @@ createRoot(() => {
   countAll = createMemo(() => shoppable().length)
   countUnlocked = createMemo(() => shoppable().filter((l) => !isLocked(l)).length)
   countLocked = createMemo(() => shoppable().filter((l) => isLocked(l)).length)
-  remainingLocked = createMemo(() => countLockedRemaining(listings(), socialSearch()))
-
   // A wishlist outlives the feed: it keeps ids that are no longer on the shelf, and the tab
   // counts what it can actually show.
   wishlistCount = createMemo(() => {
     const onShelf = new Set(listings().map((l) => l.adoptId))
     return [...wishlist().keys()].filter((id) => onShelf.has(id)).length
+  })
+
+  emptyState = createMemo(() => {
+    const query = searchText().trim()
+    const picked = selectedColors().size + selectedRaces().size
+    const say = picture.on() ? pictureMeaning() : 'nothing'
+    return pickEmptyState({
+      loadFailed: fetchFailed(),
+      asking: semanticPending() || say === 'working',
+      socialOnly: socialFilterOn(),
+      // A photograph's answer covers every tab, so the wishlist's own wording applies only while
+      // the tab row is on screen.
+      onWishlistTab: !pictureAnswers() && tab() === 'wishlist',
+      savedCount: wishlistCount(),
+      query,
+      picked,
+      filtersAreTheCause: picked > 0 && matchesWithoutPicks(query),
+      pictureSay: say === 'failed' || say === 'noMatch' ? say : null,
+      sentenceFailed: askFailure(),
+    })
   })
 })
 
@@ -110,4 +158,62 @@ createRoot(() => {
  *  call is enough. */
 export function matchesWithoutPicks(query: string): boolean {
   return compute({ ...listFilterBase(), colors: new Set(), races: new Set(), query }).length > 0
+}
+
+/** Run the action the empty state named. Every action is a store call, so this is the only place
+ *  that maps an action to what it does, and no empty state needs the router. */
+export function applyEmptyAction(action: EmptyAction): void {
+  switch (action) {
+    case 'search':
+      setSearchText('')
+      return
+    case 'filters':
+      batch(() => {
+        setSelectedColors(new Set())
+        setSelectedRaces(new Set())
+      })
+      return
+    case 'retry':
+      void loadData()
+      return
+    case 'retryAsk':
+      // The words stay in the input: the service never saw them.
+      retryAsk()
+      return
+    case 'socialOnly':
+      setSocialOnly(false)
+  }
+}
+
+/** How many filters are on. The number on the corner button and the 重置 row both read this, so
+ *  the two cannot disagree. The 主人账号 switch counts while it runs, not while the flag sits in
+ *  storage with nothing to filter on. */
+export function filtersOnCount(): number {
+  return selectedColors().size + selectedRaces().size + (socialFilterOn() ? 1 : 0)
+}
+
+/** Every row the panel offers, back to the state the page starts in: the order, the picks, the
+ *  主人账号 switch, the price display, the search switch. The query stays, because the input carries
+ *  its own ✕, and the tab stays, because it sits outside the panel. */
+export function resetPanel(): void {
+  batch(() => {
+    setSortMode(DEFAULT_SORT)
+    setSelectedColors(new Set())
+    setSelectedRaces(new Set())
+    setSocialOnly(false)
+    setPriceMode(DEFAULT_PRICE_MODE)
+    setSemanticSearch(false)
+  })
+}
+
+/** The three settings that change how the list reads but hide no listing: the order, the price
+ *  display, the search switch. Because they hide nothing, the number on the corner stays empty
+ *  while the reader is still one tap away from wanting them back. */
+function prefsChanged(): boolean {
+  return sortMode() !== DEFAULT_SORT || priceMode() !== DEFAULT_PRICE_MODE || semanticSearch()
+}
+
+/** Whether 重置 has anything to give back. */
+export function panelHasChanges(): boolean {
+  return filtersOnCount() > 0 || prefsChanged()
 }
