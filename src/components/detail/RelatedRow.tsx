@@ -8,13 +8,15 @@ import {
 import { MIN_RELATED, relatedIds, resolveRelated } from '../../model/related'
 import {
   DETAIL_PAD_X, RELATED_BAR_GAP, RELATED_BAR_H, RELATED_BAR_MIN_THUMB, RELATED_BAR_W,
-  RELATED_CARD_GAP, RELATED_CARD_TARGET, relatedCardWidth, relatedPerView, relatedStripHeight,
+  RELATED_CARD_GAP, RELATED_CARD_TARGET, RELATED_PER_VIEW_MAX, relatedCardWidth,
+  relatedPerView, relatedStripHeight, THUMB_ASPECT,
 } from '../../draw/layout'
 import { scrollThumb, type Thumb } from '../../draw/progress'
 import { isAdopted, isLocked } from '../../model/domain'
 import { LockedIcon } from '../ui/LockedIcon'
 import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
-import { Spinner } from '../ui/Spinner'
+import { SK_FILL } from '../ui/boxes'
+import { relatedSkeleton } from '../ui/skeletonView'
 
 // An adopted piece is also unbuyable: adopting means it was locked first. The lock badge
 // on a card and the 只看未锁定 switch both read this, so they cannot disagree.
@@ -42,7 +44,8 @@ export function RelatedRow(props: { item: AdoptListing }) {
 
   // The table loads after the sheet is open, so the block holds its space until it does;
   // the switch waits for the same reason - it changes a row that is not on screen yet.
-  const loading = () => !relatedLoaded()
+  // ?skeleton=related keeps this true after the table lands, so you can look at the row.
+  const loading = () => !relatedLoaded() || relatedSkeleton()
 
   return (
     <Show when={hasEnoughNeighbors() || loading()}>
@@ -163,21 +166,30 @@ function RelatedStrip(props: {
       style={{ 'margin-left': `${-DETAIL_PAD_X}px`, 'margin-right': `${-DETAIL_PAD_X}px` }}
     >
       <Show
-        when={props.items.length > 0}
+        when={props.items.length > 0 && !props.loading}
         fallback={
           // Both empty states take the height a full strip takes, measured the same way as
-          // the cards, so the sheet does not move when the spinner leaves or when the filter
+          // the cards, so the sheet does not move when the skeleton leaves or when the filter
           // empties the row.
-          <div
-            class="flex items-center justify-center text-xs text-faint"
-            style={{ height: `${relatedStripHeight(cardW())}px` }}
-            role="status"
-            aria-label={props.loading ? '类似设定载入中' : undefined}
+          <Show
+            when={props.loading}
+            fallback={
+              <div
+                class="flex items-center justify-center text-xs text-faint"
+                style={{ height: `${relatedStripHeight(cardW())}px` }}
+              >
+                没有未锁定的类似设定
+              </div>
+            }
           >
-            <Show when={props.loading} fallback="没有未锁定的类似设定">
-              <Spinner size={18} />
-            </Show>
-          </div>
+            <div
+              role="status"
+              aria-label="类似设定载入中"
+              style={{ height: `${relatedStripHeight(cardW())}px` }}
+            >
+              <RelatedSkeleton width={cardW()} />
+            </div>
+          </Show>
         }
       >
         {/* Safari paints this kind of horizontal scroller as a composited layer above the
@@ -227,6 +239,30 @@ function RelatedStrip(props: {
   )
 }
 
+/** The row before the table arrives. The boxes have the sizes a card takes at this width: the
+ *  cover at the strip's own aspect, then the 24px caption line, so the cards land in place. */
+function RelatedSkeleton(props: { width: number }) {
+  return (
+    <div
+      class="flex overflow-hidden"
+      style={{ gap: `${RELATED_CARD_GAP}px`, 'padding-left': `${DETAIL_PAD_X}px` }}
+      aria-hidden="true"
+    >
+      <For each={Array.from({ length: RELATED_PER_VIEW_MAX })}>
+        {() => (
+          <div class="shrink-0" style={{ width: `${props.width}px` }}>
+            <div
+              class={`${SK_FILL} w-full rounded-lg`}
+              style={{ height: `${props.width / THUMB_ASPECT}px` }}
+            />
+            <div class={`${SK_FILL} mt-1 h-5 w-2/3 rounded`} />
+          </div>
+        )}
+      </For>
+    </div>
+  )
+}
+
 function Card(props: { listing: AdoptListing; width: number; onOpen: (id: number) => void }) {
   const l = props.listing
   const locked = isTaken(l)
@@ -250,16 +286,22 @@ function Card(props: { listing: AdoptListing; width: number; onOpen: (id: number
       aria-label={`看 #${l.adoptId} ${l.adoptName ?? ''}`}
     >
       <div class="relative card-img w-full rounded-lg bg-surface-2 overflow-hidden">
-        <img
-          ref={imgRef}
-          alt={l.adoptName ?? '设定'}
-          decoding="async"
-          class="w-full h-full object-cover transition-opacity"
-          style={{ 'transition-duration': '300ms' }}
+        {/* Legacy WebKit draws the layer that an opacity animation creates with square
+            corners, and the corners become round again once the animation ends. So the fade runs
+            on a box that has the corner and the clip of its own. */}
+        <div
+          class="w-full h-full rounded-lg overflow-hidden transition-opacity duration-300"
           classList={{ 'opacity-0': !loaded() }}
-          onLoad={() => setLoaded(true)}
-          onError={(e) => { setLoaded(true); onImageError(e) }}
-        />
+        >
+          <img
+            ref={imgRef}
+            alt={l.adoptName ?? '设定'}
+            decoding="async"
+            class="w-full h-full object-cover rounded-lg"
+            onLoad={() => setLoaded(true)}
+            onError={(e) => { setLoaded(true); onImageError(e) }}
+          />
+        </div>
       </div>
       {/* No artist line: the pool mixes anonymous and named work, so that line would sit
           empty on half the cards. The ID is what lets you recognize a piece you have seen.
