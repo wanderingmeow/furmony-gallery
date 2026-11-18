@@ -97,14 +97,14 @@ function PreviewWithBox(props: { onClick: () => void }) {
       }}
     >
       <button
-        class="relative block overflow-hidden rounded-xl bg-black/5"
+        class="relative block overflow-hidden rounded-lg bg-black/5"
         onClick={props.onClick}
         aria-label={ACTION_LABEL.pick}
       >
         <Show
           when={picture.preview()}
           fallback={(
-            <div class="w-[var(--pic-row)] h-[var(--pic-row)] rounded-xl border border-dashed border-black/15
+            <div class="w-[var(--pic-row)] h-[var(--pic-row)] rounded-lg border border-dashed border-black/15
                         dark:border-white/20 flex items-center justify-center">
               <AntIcon icon={PictureOutlined} size={20} class="text-faint" />
             </div>
@@ -191,7 +191,7 @@ function stateLines(onPick: () => void): Record<PictureState, { word: () => JSX.
 function DropZone(props: { onPick: () => void; dragging: () => boolean }) {
   return (
     <button
-      class="flex-1 min-w-0 rounded-xl border-black/15 dark:border-white/20
+      class="flex-1 min-w-0 rounded-lg border-black/15 dark:border-white/20
              flex flex-col items-center justify-center gap-2.5
              hover:border-black/30 dark:hover:border-white/35 transition-colors"
       classList={{
