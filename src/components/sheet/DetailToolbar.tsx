@@ -2,10 +2,11 @@ import { Show } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { isWishlisted, socials, toggleWishlist } from '../../store'
-import { HeartFilled, HeartOutlined, XOutlined, BilibiliOutlined, TikTokOutlined, LinkOutlined, ExportOutlined } from '@ant-design/icons-svg'
+import { XOutlined, BilibiliOutlined, TikTokOutlined, LinkOutlined, ExportOutlined } from '@ant-design/icons-svg'
 import { isLocked } from '../../model/domain'
 import { PLATFORM_ORDER, buildUrl, displayValue, type PlatformKey } from '../../data/socials'
 import { AntIcon } from '../ui/AntIcon'
+import { WishlistHeart } from '../ui/WishlistHeart'
 import { XiaohongshuIcon } from '../ui/XiaohongshuIcon'
 
 // platform brand meta for the chips: rounded-square icon + brand color + label (outlined
@@ -67,12 +68,17 @@ export function DetailToolbar(props: { item: AdoptListing }) {
       <div class="flex items-center gap-4">
         <button
           class="flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm"
-          classList={{ 'bg-red-500/15 text-red-600': wishlisted(), 'bg-surface text-ink': !wishlisted() }}
+          classList={{
+            'bg-red-500/15 text-red-600 dark:bg-red-500/25': wishlisted(),
+            'bg-surface text-ink': !wishlisted(),
+          }}
           onClick={() => toggleWishlist(props.item)}
         >
-          <span class={wishlisted() ? 'text-red-500' : 'text-muted'}>
-            <AntIcon icon={wishlisted() ? HeartFilled : HeartOutlined} size={18} />
-          </span>
+          <WishlistHeart
+            on={wishlisted()}
+            size={18}
+            class={wishlisted() ? 'text-red-500' : 'text-muted'}
+          />
           <span>{wishlisted() ? '已收藏' : '收藏'}</span>
         </button>
         <Show when={isLocked(props.item)}>

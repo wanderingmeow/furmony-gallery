@@ -1,12 +1,11 @@
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
-import { HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
 import type { AdoptListing } from '../../model/types'
 import { colorNames, formatPrice, isLocked, painterName, priceParts, raceName } from '../../model/domain'
 import { THUMB_ASPECT } from '../../draw/layout'
 import { isWishlisted, priceMode, toggleWishlist } from '../../store'
 import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
-import { AntIcon } from '../ui/AntIcon'
 import { LockedIcon } from '../ui/LockedIcon'
+import { WishlistHeart } from '../ui/WishlistHeart'
 import {
   CARD_ARTIST, CARD_BASE, CARD_BODY, CARD_COVER, CARD_FOOT, CARD_NAME,
 } from '../ui/boxes'
@@ -97,7 +96,7 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
               onClick={onHeart}
               aria-label="收藏"
             >
-              <AntIcon icon={wishlisted() ? HeartFilled : HeartOutlined} />
+              <WishlistHeart on={wishlisted()} class="tap-heart" />
             </button>
           </div>
         </div>
