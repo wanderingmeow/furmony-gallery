@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AdoptListing } from './types'
 import {
-  installmentTotal, monthlyPayment, priceParts, publishDay, publishDays, type PriceMode,
+  formatPrice, installmentTotal, monthlyPayment, priceParts, publishDay, publishDays, type PriceMode,
 } from './domain'
 
 // The fake listing: 30000 across 12 periods (allcost), a 6000 deposit (earnest), and
@@ -28,6 +28,19 @@ function planParts(l: AdoptListing) {
   if (p?.mode !== 'installment') throw new Error(`想要分期，拿到 ${JSON.stringify(p)}`)
   return p
 }
+
+describe('formatPrice', () => {
+  it('draws a rounded number with ¥', () => {
+    expect(formatPrice(6800)).toBe('¥6800')
+    expect(formatPrice(6800.4)).toBe('¥6800')
+  })
+
+  it('says the number is missing when there is no price', () => {
+    // Furmony leaves the price at 0 when a listing has none, and ¥0 reads as free.
+    expect(formatPrice(0)).toBe('?')
+    expect(formatPrice(-5)).toBe('?')
+  })
+})
 
 describe('installmentTotal', () => {
   it('is the 12-period total, i.e. allcost', () => {
@@ -80,6 +93,13 @@ describe('priceParts — once', () => {
     expect(p.card).toEqual({ label: null, value: 24000 })
   })
 
+  it('drops the second number when allcost was never filled in', () => {
+    // With no 12-period total there is no discount either, so nothing gets struck through.
+    const p = onceParts(fake({ allcost: undefined }))
+    expect(p.discount).toBe(0)
+    expect(p.secondary).toBeNull()
+  })
+
   it('drops the second number when there is nothing to discount', () => {
     // The pay-once price equals the 12-period total, so a second number would repeat
     // the first one.
@@ -125,14 +145,13 @@ describe('priceParts — installment', () => {
     expect(p.card).toEqual({ label: '月供', value: 2500 })
   })
 
-  it('draws nothing for a free listing', () => {
+  it('gives the card a missing price when the listing has none', () => {
     const p = planParts(fake({ nonrecurringExpense: 0, allcost: 0, earnest: 0 }))
     expect(p.main).toBeNull()
     expect(p.down).toBeNull()
     expect(p.total).toBeNull()
-    expect(p.card).toBeNull()
-    // Nothing to report, so no words either: "月供" and "×12期" behind a null would
-    // stand there on their own.
+    // The card draws `?` from an unlabelled 0.
+    expect(p.card).toEqual({ label: null, value: 0 })
     expect(p.mainLabel).toBeNull()
     expect(p.note).toBeNull()
   })

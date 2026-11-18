@@ -8,7 +8,7 @@ import {
   GAP, OVERSCAN_ROWS, PREVIEW_FADE_MS, PREVIEW_H, PREVIEW_IDLE_MS, PREVIEW_SCROLLBAR_GAP, VIEW_PAD,
   indexOfRow, rowOfIndex, waterfallCardWidth, waterfallCols, waterfallRowHeight,
 } from '../../draw/layout'
-import { displayPrice, publishDays } from '../../model/domain'
+import { displayPrice, formatPrice, publishDays } from '../../model/domain'
 import { SAVE_THROTTLE_MS, findIndex } from '../../draw/scrollRestore'
 import { previewTop } from '../../draw/progress'
 import { ListingCard } from './ListingCard'
@@ -74,7 +74,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
     const index = indexOfRow(row, cols(), items().length)
     const item = items()[index]
     const isPrice = sortMode() === 'priceAsc' || sortMode() === 'priceDesc'
-    const label = item ? (isPrice ? `¥${Math.round(displayPrice(item))}` : days()[index] || `#${item.adoptId}`) : ''
+    const label = item ? (isPrice ? formatPrice(displayPrice(item)) : days()[index] || `#${item.adoptId}`) : ''
     if (top !== null && label) preview.update(label, top, barGap())
   }
 

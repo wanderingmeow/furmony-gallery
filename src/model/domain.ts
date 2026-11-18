@@ -103,8 +103,12 @@ export function detailImages(listing: AdoptListing): string[] {
   return fromDetails
 }
 
+export const MISSING_PRICE = '?'
+
+/** Furmony leaves the price at 0 when a listing has none. Sorting also uses 0, which puts such
+ *  a listing at the cheap end. */
 export function formatPrice(n: number): string {
-  return `¥${Math.round(n)}`
+  return n > 0 ? `¥${Math.round(n)}` : MISSING_PRICE
 }
 
 export function formatDiscount(listing: AdoptListing): number {
@@ -175,7 +179,7 @@ export interface CardPrice {
 /** One payment, settled at the discounted price. */
 export interface OncePrice {
   mode: 'once'
-  /** the price; the page still draws a 0, as before the modes existed */
+  /** the price; 0 means the listing has none */
   main: number
   /** the 12-period total, struck through next to the price; only set when discount > 0 */
   secondary: number | null
@@ -197,21 +201,24 @@ export interface InstallmentPrice {
   note: string | null
   /** the total; null with main, because a total with no monthly amount is wrong */
   total: number | null
-  /** the deposit, or the monthly amount without a deposit; null when neither exists */
-  card: CardPrice | null
+  /** the deposit, or the monthly amount when there is no deposit; an unlabelled 0 when the
+   *  listing has no price */
+  card: CardPrice
 }
 
 export type PriceParts = OncePrice | InstallmentPrice
 
 /** null when the mode hides prices. */
 export function priceParts(listing: AdoptListing, mode: PriceMode): PriceParts | null {
-  const once = displayPrice(listing)
-  const discount = formatDiscount(listing)
-
   if (mode === 'hidden') return null
   if (mode === 'installment') {
-    const down = (listing.earnest ?? 0) > 0 ? listing.earnest! : null
+    const earnest = listing.earnest ?? 0
+    const down = earnest > 0 ? earnest : null
     const per = monthlyPayment(listing)
+    // A listing with no price has neither a deposit nor a monthly amount. The card shows a
+    // price slot either way, so this one holds an unlabelled 0.
+    const card: CardPrice = down !== null ? { label: '首付', value: down }
+      : per !== null ? { label: '月供', value: per } : { label: null, value: 0 }
     return {
       mode,
       down,
@@ -219,11 +226,13 @@ export function priceParts(listing: AdoptListing, mode: PriceMode): PriceParts |
       mainLabel: per === null ? null : '月供',
       note: per === null ? null : `×${INSTALLMENTS}期`,
       total: per === null ? null : installmentTotal(listing),
-      card: down !== null ? { label: '首付', value: down }
-        : per !== null ? { label: '月供', value: per } : null,
+      card,
     }
   }
-  // One payment draws the price as it always did, including a 0.
+  const once = displayPrice(listing)
+  const discount = formatDiscount(listing)
+  const all = listing.allcost ?? 0
+
   return {
     mode: 'once',
     main: once,
@@ -231,7 +240,7 @@ export function priceParts(listing: AdoptListing, mode: PriceMode): PriceParts |
     // listings cost more in one payment than in 12 periods (#578: 21000 / 19680, #2832:
     // 36300 / 33800). Under `allcost > 0` they drew a number below the price with no
     // strike-through and no badge.
-    secondary: discount > 0 ? listing.allcost! : null,
+    secondary: discount > 0 ? all : null,
     discount,
     card: { label: null, value: once },
   }

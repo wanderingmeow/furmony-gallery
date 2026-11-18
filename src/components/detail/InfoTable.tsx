@@ -1,8 +1,8 @@
 import { createMemo, For, Show, type JSXElement } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
 import {
-  colorNames, formatPrice, isAdopted, isLocked, painterAvatar, painterName, priceParts, raceName,
-  type InstallmentPrice, type OncePrice,
+  colorNames, formatPrice, isAdopted, isLocked, MISSING_PRICE, painterAvatar, painterName, priceParts,
+  raceName, type InstallmentPrice, type OncePrice,
 } from '../../model/domain'
 import { sizedUrl, stableImageUrl } from '../../data/image'
 import { SkelImg } from '../ui/SkelImg'
@@ -91,6 +91,10 @@ function InstallmentPlan(props: { parts: () => InstallmentPrice }) {
         <Show when={p().note}>{(note) => <span class="text-faint">{note()}</span>}</Show>
         <Show when={p().total}>{(total) => <span>共 {formatPrice(total())}</span>}</Show>
       </div>
+      {/* A listing with no price has neither, so the rows above would sit empty. */}
+      <Show when={!p().down && !p().main}>
+        <span class="text-lg font-bold text-orange-600 tabular-nums">{MISSING_PRICE}</span>
+      </Show>
     </div>
   )
 }
