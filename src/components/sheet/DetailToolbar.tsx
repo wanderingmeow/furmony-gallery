@@ -83,7 +83,7 @@ export function DetailToolbar(props: { item: AdoptListing }) {
           href={`https://www.furmony.com/product/detail?id=${props.item.adoptId}&type=LYWT`}
           target="_blank"
           rel="noopener noreferrer"
-          class="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold"
+          class="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-accent text-white text-sm font-semibold"
         >
           前往官网
           <AntIcon icon={ExportOutlined} size={14} />

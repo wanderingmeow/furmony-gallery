@@ -5,6 +5,7 @@ import {
 import { useNavigate } from '@solidjs/router'
 import { fetchFailed, loadData, priceMode, selectedColors, selectedRaces } from '../../store'
 import { AntIcon } from '../ui/AntIcon'
+import { FabCircle } from './FabCircle'
 import { FabMenu } from './FabMenu'
 import { STATS_TITLE } from '../../model/titles'
 import { FilterPanel } from './FilterPanel'
@@ -31,17 +32,17 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
   return (
     <div class="fixed bottom-4 right-4 z-10 flex flex-col items-center gap-2">
       <Show when={show()}>
-        <button
-          class="float-progress cursor-pointer w-12 h-12 rounded-full bg-surface shadow shadow-neutral-600/40 flex items-center justify-center text-xl border border-border"
+        <FabCircle
+          class="float-progress"
+          title={isRefresh() ? '刷新' : '回到顶部'}
           style={{ '--float-btn-progress': `${progress()}turn` }}
           onClick={() => {
             if (isRefresh()) loadData()
             else props.onTop()
           }}
-          title={isRefresh() ? '刷新' : '回到顶部'}
         >
           <AntIcon icon={() => (isRefresh() ? SyncOutlined : VerticalAlignTopOutlined)} size={"1.25em"} />
-        </button>
+        </FabCircle>
       </Show>
       {/* One button for the whole settings panel: price display, colours and species. It
           opens upward, which FabMenu handles */}
@@ -54,13 +55,9 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
       >
         <FilterPanel />
       </FabMenu>
-      <button
-        class="cursor-pointer w-12 h-12 rounded-full shadow shadow-orange-500/40 flex items-center justify-center bg-orange-500 text-white border border-orange-600/40"
-        onClick={() => navigate('/stats', { scroll: false })}
-        title={STATS_TITLE}
-      >
+      <FabCircle accent glow onClick={() => navigate('/stats', { scroll: false })} title={STATS_TITLE}>
         <AntIcon icon={BarChartOutlined} size={"1.5em"} />
-      </button>
+      </FabCircle>
     </div>
   )
 }

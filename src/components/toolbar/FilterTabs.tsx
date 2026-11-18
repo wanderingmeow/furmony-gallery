@@ -67,7 +67,7 @@ export function FilterTabs() {
             <button
               class="h-8 px-3 rounded-lg text-sm whitespace-nowrap"
               classList={{
-                'bg-orange-500 text-white': selected(),
+                'bg-accent text-white': selected(),
                 'bg-surface-2 text-ink': !selected(),
               }}
               onClick={() => setTab(t)}

@@ -129,7 +129,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
             href="https://github.com/wanderingmeow/furmony-gallery/blob/main/LICENSE"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-blue-700 dark:text-blue-300 hover:underline"
+            class="text-accent-soft hover:underline"
           >
             MIT 协议
           </a>{' '}
@@ -138,7 +138,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
             href="https://github.com/wanderingmeow/furmony-gallery"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-blue-700 dark:text-blue-300 hover:underline"
+            class="text-accent-soft hover:underline"
           >
             项目仓库
           </a>

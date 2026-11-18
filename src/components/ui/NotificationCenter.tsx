@@ -32,12 +32,12 @@ export function NotificationCenter() {
           when={expanded()}
           fallback={
             <button
-              class="bg-orange-500 text-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-2.5"
+              class="bg-accent text-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-2.5"
               onClick={() => setExpanded(true)}
               aria-label={`展开 ${n().length} 条通知`}
             >
               <span class="text-base font-medium">变更通知</span>
-              <span class="relative inline-flex items-center justify-center min-w-6.5 h-6.5 px-1.5 rounded-full bg-white text-orange-600 text-sm font-bold">
+              <span class="relative inline-flex items-center justify-center min-w-6.5 h-6.5 px-1.5 rounded-full bg-white text-accent-ink text-sm font-bold">
                 {n().length}
               </span>
             </button>

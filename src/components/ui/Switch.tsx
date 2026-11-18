@@ -36,7 +36,7 @@ export function Switch(props: { on: boolean; onChange: (on: boolean) => void; la
               motion-reduce:transition-none ${HIT_AREA}`}
       style={{ width: `${TRACK_W}px`, height: `${TRACK_H}px` }}
       classList={{
-        'bg-[#34C759] border-[#34C759]': props.on,
+        'bg-accent border-accent': props.on,
         'bg-surface-2 border-border': !props.on,
       }}
       onClick={() => props.onChange(!props.on)}

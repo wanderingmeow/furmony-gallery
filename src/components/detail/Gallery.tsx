@@ -187,7 +187,7 @@ function SelectorThumb(props: { url: string; active: boolean; onSelect: () => vo
     <SkelImg
       url={props.url}
       box={`${DETAIL_THUMB} cursor-pointer border-2`}
-      style={{ 'border-color': props.active ? '#3b82f6' : 'transparent' }}
+      style={{ 'border-color': props.active ? 'var(--color-accent)' : 'transparent' }}
       onClick={props.onSelect}
     />
   )

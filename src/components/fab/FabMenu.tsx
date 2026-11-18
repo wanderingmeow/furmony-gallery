@@ -7,6 +7,7 @@ import { createEffect, createSignal, onCleanup, Show, type JSX } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { AntIcon } from '../ui/AntIcon'
+import { FabCircle } from './FabCircle'
 
 export function FabMenu(props: {
   label: string
@@ -66,24 +67,19 @@ export function FabMenu(props: {
 
   return (
     <div class="relative" ref={wrap}>
-      <button
-        class="relative w-12 h-12 rounded-full shadow shadow-neutral-600/40 flex items-center justify-center text-xl border"
-        classList={{
-          'bg-orange-500 text-white border-orange-600/40': active() || open(),
-          'bg-surface text-ink border-border': !active() && !open(),
-        }}
-        aria-label={props.label}
-        aria-expanded={open()}
+      <FabCircle
         title={props.label}
+        expanded={open()}
+        accent={() => active() || open()}
         onClick={() => setOpen((o) => !o)}
       >
         <AntIcon icon={props.icon} size="1.25em" />
         <Show when={badge() > 0}>
-          <span class="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-surface text-orange-600 text-[9px] font-bold flex items-center justify-center border border-border">
+          <span class="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-surface text-accent-ink text-[9px] font-bold flex items-center justify-center border border-border">
             {badge()}
           </span>
         </Show>
-      </button>
+      </FabCircle>
 
       <Show when={open() && pos()}>
         <Portal>

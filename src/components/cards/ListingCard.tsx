@@ -115,7 +115,7 @@ export function ListingCard(props: { listing: AdoptListing; width: number }) {
                 total are for the detail page. */}
             <Show when={parts()?.card}>
               {(card) => (
-                <span class="text-sm font-bold text-orange-600 tabular-nums">
+                <span class="text-sm font-bold text-accent-ink tabular-nums">
                   <Show when={card().label}><span>{card().label}</span></Show>
                   {formatPrice(card().value)}
                 </span>

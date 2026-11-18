@@ -13,6 +13,11 @@
   --color-ink: #1f2937;        /* primary text */
   --color-muted: #6b7280;      /* secondary text */
   --color-faint: #9ca3af;      /* tertiary text */
+  /* The accent by role, aliased to the palette so every use lands on one orange. */
+  --color-accent: var(--color-orange-500);
+  --color-accent-ink: var(--color-orange-600);
+  --color-accent-soft: var(--color-orange-700);
+  --color-accent-deep: var(--color-orange-900);
 }
 
 :root {
@@ -20,11 +25,11 @@
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Reusable spinner (border-2, blue top, spin) - size via w-/h- */
+/* Reusable spinner: a ring with an accent top edge that turns. Size via w-/h-. */
 .spinner {
   border-radius: 9999px;
   border: 2px solid transparent;
-  border-top-color: #3b82f6;
+  border-top-color: var(--color-accent);
   animation: var(--animate-spin);
 }
 
@@ -130,6 +135,7 @@ body {
     --color-ink: #e5e5e5;
     --color-muted: #a3a3a3;
     --color-faint: #737373;
+    --color-accent-soft: var(--color-orange-300);
   }
   .glass {
     background: rgba(30, 30, 30, 0.85);
@@ -204,13 +210,8 @@ body {
   50% { color: var(--spark-on); }
 }
 .spark-pulse {
-  --spark-on: var(--color-orange-700);
+  --spark-on: var(--color-accent-soft);
   animation: spark-pulse 0.9s ease-in-out infinite;
-}
-@media (prefers-color-scheme: dark) {
-  .spark-pulse {
-    --spark-on: var(--color-orange-300);
-  }
 }
 /* With no animation the mark would sit in the resting grey and look idle while it is working,
    so the accent is stated here too. */
@@ -221,22 +222,39 @@ body {
   }
 }
 
-/* Scroll-progress clock ring on the back-to-top button.
-   A conic-gradient arc clipped to a thin ring via a radial mask, driven by a custom-property angle (turn unit).
-   The arc starts at 12 o'clock and sweeps clockwise (clock-style);
-   the faint track is the button's border color, the progress arc is the orange brand accent. */
+/* The circles that float over the grid. Two short layers keep the edge soft. A caller can hand
+   over --fab-shadow, which is how the accent circle keeps its own. */
+.fab-circle {
+  box-shadow: var(--fab-shadow, 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.12));
+}
+@media (prefers-color-scheme: dark) {
+  .fab-circle {
+    box-shadow: var(--fab-shadow, 0 2px 6px rgba(0, 0, 0, 0.55));
+  }
+}
+.fab-glow {
+  --fab-shadow: 0 1px 3px color-mix(in oklab, var(--color-accent) 40%, transparent),
+    0 1px 2px -1px color-mix(in oklab, var(--color-accent) 40%, transparent);
+}
+
+/* Scroll-progress ring on the back-to-top button.
+   A conic-gradient arc clipped to a thin ring via a radial mask, driven by a custom-property
+   angle (turn unit). The arc starts at 12 o'clock and sweeps clockwise. */
 .float-progress {
   position: relative;
   --float-btn-progress: 0turn;
 }
+/* The ring sits inside the button, against its inner edge. A band outside would make this circle
+   wider than the buttons under it. Only the read part is painted, so the rest of the edge shows
+   the button surface. */
 .float-progress::before {
   content: '';
   position: absolute;
-  inset: -3px;
+  inset: 0;
   border-radius: 9999px;
   background: conic-gradient(
-    #f97316 var(--float-btn-progress),
-    var(--color-border) var(--float-btn-progress)
+    var(--color-accent) var(--float-btn-progress),
+    transparent var(--float-btn-progress)
   );
   -webkit-mask: radial-gradient(circle farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
   mask: radial-gradient(circle farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
@@ -271,7 +289,7 @@ body {
   height: 40px;
   border-radius: 50%;
   border: 4px solid var(--color-surface-2);
-  border-top-color: var(--color-blue-600);
+  border-top-color: var(--color-accent);
   animation: boot-spin 0.9s linear infinite;
 }
 @keyframes boot-spin {

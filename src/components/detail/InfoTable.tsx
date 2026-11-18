@@ -51,7 +51,7 @@ function OncePriceLine(props: { parts: () => OncePrice }) {
   const p = props.parts
   return (
     <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 tabular-nums">
-      <span class="text-lg font-bold text-orange-600">{formatPrice(p().main)}</span>
+      <span class="text-lg font-bold text-accent-ink">{formatPrice(p().main)}</span>
       <Show when={p().secondary}>{(total) => (
         <span class="text-sm text-faint line-through">{formatPrice(total())}</span>
       )}</Show>
@@ -77,8 +77,8 @@ function InstallmentPlan(props: { parts: () => InstallmentPrice }) {
         <div class="flex items-baseline gap-x-1">
           {/* CJK glyphs sit 1~2px lower than digits on the same baseline. The lift is in
               em, so it follows the label's size. */}
-          <span class={`${LABEL} text-sm font-medium text-orange-600 relative -top-[0.1em]`}>首付</span>
-          <span class="text-xl font-bold text-orange-600 tabular-nums">{formatPrice(down())}</span>
+          <span class={`${LABEL} text-sm font-medium text-accent-ink relative -top-[0.1em]`}>首付</span>
+          <span class="text-xl font-bold text-accent-ink tabular-nums">{formatPrice(down())}</span>
         </div>
       )}</Show>
       <div class="flex flex-wrap items-baseline gap-x-2 text-xs text-muted tabular-nums">
@@ -93,7 +93,7 @@ function InstallmentPlan(props: { parts: () => InstallmentPrice }) {
       </div>
       {/* A listing with no price has neither, so the rows above would sit empty. */}
       <Show when={!p().down && !p().main}>
-        <span class="text-lg font-bold text-orange-600 tabular-nums">{MISSING_PRICE}</span>
+        <span class="text-lg font-bold text-accent-ink tabular-nums">{MISSING_PRICE}</span>
       </Show>
     </div>
   )

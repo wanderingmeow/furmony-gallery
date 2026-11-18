@@ -125,9 +125,7 @@ function Section(props: {
                 <button
                   class="flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs"
                   classList={{
-                    // blue-700 is the right depth on a light card and unreadable on a dark
-                    // one, so the dark side takes the lighter step (same pair as the Beta badge).
-                    'bg-blue-500/15 border-blue-400/50 text-blue-700 dark:text-blue-300 font-medium': on(),
+                    'bg-accent/15 border-accent/40 text-accent-soft font-medium': on(),
                     'bg-surface border-border': !on(),
                   }}
                   aria-pressed={on()}

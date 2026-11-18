@@ -66,9 +66,7 @@ function UnlockedOnlySwitch() {
       type="button"
       class="ml-auto shrink-0 h-8 px-2.5 rounded-lg border text-xs font-medium transition-colors"
       classList={{
-        // Same pair as the sort buttons and the filter chips: blue-700 is right on a light card
-        // and too deep on a dark one.
-        'bg-blue-500/15 border-blue-400/50 text-blue-700 dark:text-blue-300': on(),
+        'bg-accent/15 border-accent/40 text-accent-soft': on(),
         'bg-surface border-border text-muted hover:text-ink': !on(),
       }}
       aria-pressed={on()}
@@ -217,7 +215,7 @@ function RelatedStrip(props: {
           }}
         >
           <div
-            class="h-full rounded-full bg-orange-500"
+            class="h-full rounded-full bg-accent"
             style={{
               width: `${thumb()?.width ?? 0}px`,
               transform: `translateX(${thumb()?.offset ?? 0}px)`,

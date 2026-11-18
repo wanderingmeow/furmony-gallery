@@ -39,8 +39,8 @@ function NoSocialBadge() {
   const navigate = useNavigate()
   return (
     <button
-      class="shrink-0 flex items-center gap-1 h-8 px-2 rounded-lg bg-orange-500/15 text-orange-700
-             text-sm font-semibold hover:text-orange-900"
+      class="shrink-0 flex items-center gap-1 h-8 px-2 rounded-lg bg-accent/15 text-accent-soft
+             text-sm font-semibold hover:text-accent-deep"
       onClick={() => {
         setNoSocialOnly(false)
         navigate('/', { scroll: false, replace: true })
