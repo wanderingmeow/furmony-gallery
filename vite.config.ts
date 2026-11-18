@@ -30,24 +30,23 @@ function encodedAddress(): string {
 }
 
 /**
- * The gzipped document has to arrive inside the 10-MSS window. The budget leaves room for the
- * response headers and the other bytes that share the connection.
+ * kB here means a thousand bytes, the unit the build table and the `content-length` header use.
+ *
+ * GitHub Pages compresses at level 5: the served document and a served chunk match zlib at level 5
+ * byte for byte, so this figure is what the reader waits for.
  */
-const DOCUMENT_BUDGET_KB = 13.5
+const gzippedKB = (bytes: Uint8Array | string): number =>
+  gzipSync(Buffer.from(bytes), { level: 5 }).length / 1000
 
 /**
  * The document carries its own stylesheet inside it.
  *
- * The browser only discovers a linked file after the document arrives, so that file costs a
- * second round trip and holds back the first paint. The inlined document stays inside the 10-MSS
- * window, the amount that a server sends before it waits for an acknowledgement, so one trip
- * carries the whole first paint.
+ * The browser only requests a linked file after the document arrives, so that file costs a second
+ * round trip and holds back the first paint. Inlining it lets one trip carry the whole first paint.
  *
- * GitHub Pages caches the document for as long as it caches the assets and answers a re-visit
- * with 304, and the app is a single-page app: the document loads once per visit, so the inlined
- * bytes stay cacheable.
- *
- * The build fails when the document outgrows the window.
+ * GitHub Pages caches the document for as long as it caches the assets and answers a re-visit with
+ * 304, and the app is a single-page app: the document loads once per visit, so the inlined bytes
+ * stay cacheable.
  */
 function inlineStyles(): Plugin {
   let moved = ''
@@ -84,30 +83,47 @@ function inlineStyles(): Plugin {
         moved = file
         // The replacement is a function, because a stylesheet may contain "$&" and friends.
         const doc = html.replace(link[0], () => `<style>${sheet}</style>`)
-        const kb = (text: string): number => gzipSync(Buffer.from(text)).length / 1024
-        const sheetKB = kb(sheet)
-        const docKB = kb(doc)
-        // A new screen or font grows the sheet, and the sheet goes inside the document, so the
-        // check reads the document: one response has to carry all of it.
-        if (docKB > DOCUMENT_BUDGET_KB) {
-          throw new Error(
-            `inline-styles: the document is ${docKB.toFixed(1)} kB gzipped, over the ` +
-              `${DOCUMENT_BUDGET_KB} kB budget for the 10-MSS window (sheet ${sheetKB.toFixed(1)} kB)`,
-          )
-        }
-        this.info(
-          `inlined ${file}: sheet ${sheetKB.toFixed(1)} kB gzipped, document ${docKB.toFixed(1)} kB gzipped`,
-        )
+        this.info(`inlined ${file}: ${gzippedKB(sheet).toFixed(2)} kB gzipped`)
         return doc
       },
     },
-    // Vite writes the stylesheet to disk and hands the build a copy of the bundle, so this
-    // plugin deletes that file once the build is done.
+    // Nothing links the sheet now, so the build deletes the file.
     closeBundle() {
       if (!moved) return
       const target = resolve(root, outDir, moved)
       if (existsSync(target)) rmSync(target)
       moved = ''
+    },
+  }
+}
+
+/** The first paint has to arrive inside the 10-MSS window: the amount a server sends before it
+ *  waits for an acknowledgement. This number leaves room for the response headers and the other
+ *  bytes that share the connection. */
+const DOCUMENT_BUDGET_KB = 13.5
+
+/** A new screen or a font grows the sheet that goes inside the document, so the build stops when
+ *  the finished document outgrows the window. */
+function documentBudget(): Plugin {
+  let outDir = 'dist'
+  return {
+    name: 'document-budget',
+    apply: 'build',
+    enforce: 'post',
+    configResolved(cfg) {
+      outDir = cfg.build.outDir
+    },
+    writeBundle() {
+      const doc = resolve(root, outDir, 'index.html')
+      if (!existsSync(doc)) return
+      const kb = gzippedKB(readFileSync(doc))
+      if (kb > DOCUMENT_BUDGET_KB) {
+        throw new Error(
+          `document-budget: ${doc} is ${kb.toFixed(2)} kB gzipped, over the `
+          + `${DOCUMENT_BUDGET_KB} kB budget for the 10-MSS window`,
+        )
+      }
+      this.info(`document ${kb.toFixed(2)} kB gzipped, budget ${DOCUMENT_BUDGET_KB} kB`)
     },
   }
 }
@@ -143,7 +159,7 @@ function inlinePrefetch(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [solid(), tailwindcss(), inlinePrefetch(), inlineStyles()],
+  plugins: [solid(), tailwindcss(), inlinePrefetch(), inlineStyles(), documentBudget()],
   // GitHub Pages serves at https://<user>.github.io/furmony-gallery/ (sub-path)
   base: '/furmony-gallery',
   define: { 'import.meta.env.VITE_SEARCH_URL_B64': JSON.stringify(encodedAddress()) },
