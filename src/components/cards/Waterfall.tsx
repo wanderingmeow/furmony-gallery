@@ -13,6 +13,7 @@ import { SAVE_THROTTLE_MS, findIndex } from '../../draw/scrollRestore'
 import { previewTop } from '../../draw/progress'
 import { ListingCard } from './ListingCard'
 import { FloatingActions } from '../fab/FloatingActions'
+import { EmptyState } from '../ui/EmptyState'
 import { watchViewport } from '../ui/viewport'
 
 export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () => number }) {
@@ -121,6 +122,9 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
       </div>
       {/* The band under the last row is in normal flow, so its height follows the text it
           holds: the copyright line wraps to two lines on a phone and one line on a desktop. */}
+      <Show when={items().length === 0}>
+        <EmptyState />
+      </Show>
       <div class="w-full text-center text-sm text-muted px-6 py-5 border-t border-border">
         所有图片与文字素材均源自 Furmony（furmony.com），版权归原作者所有；本页面仅作浏览展示，不用于商业用途。
         <div class="mt-1.5">

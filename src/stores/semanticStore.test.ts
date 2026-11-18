@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PICTURE_TIMEOUT_MS } from '../data/searchApi'
+import { PICTURE_TIMEOUT_MS, SEARCH_TIMEOUT_MS } from '../data/searchApi'
 import { setSemanticSearch } from './displayStore'
 import { setSearchText } from './filterStore'
 
-// The fake never resolves, so the only way a request ends is the store aborting it. That
-// keeps the test about cancellation rather than about a reply's shape.
+// The fake answers only when the store aborts it, which is what a timeout does to a real fetch:
+// the request ends with nothing in hand. That keeps the test about cancellation rather than about
+// a reply's shape.
 const asked = vi.hoisted(() => [] as AbortSignal[])
 
 // Pictures answer when a test says they do, and end when the store aborts them - which is
@@ -13,6 +14,9 @@ const sent = vi.hoisted(() => ({
   signals: [] as AbortSignal[],
   answer: null as unknown,
   uploaded: null as (() => void) | null,
+  // A sentence the service answers when a test says it does. Null stands for the reply that
+  // never lands.
+  textAnswer: null as Promise<unknown> | null,
   // A file the browser itself cannot read: prepare() hands back null.
   unreadable: false,
   // Re-encoding a picture takes a moment on a phone. A test can hold that moment open to see
@@ -27,7 +31,10 @@ vi.mock('../data/searchApi', async (importOriginal) => {
     searchConfigured: true,
     askSettings: (_q: string, signal: AbortSignal) => {
       asked.push(signal)
-      return new Promise(() => {})
+      return new Promise((resolve) => {
+        signal.addEventListener('abort', () => resolve(null))
+        void sent.textAnswer?.then(resolve)
+      })
     },
     askPicture: (_blob: Blob, signal: AbortSignal, onUploaded?: () => void) => new Promise((resolve) => {
       sent.signals.push(signal)
@@ -47,7 +54,7 @@ vi.mock('../data/pictureInput', () => ({
   },
 }))
 
-const { picture, semanticActive, route, semanticPending } =
+const { picture, semanticActive, route, semanticPending, askFailure, retryAsk } =
   await import('./semanticStore')
 
 /** The ids the list ranks by, whoever ranks it. */
@@ -69,6 +76,7 @@ beforeEach(() => {
   asked.length = 0
   sent.signals.length = 0
   sent.answer = null
+  sent.textAnswer = null
   sent.unreadable = false
   sent.encodeGate = null
   picture.close()
@@ -119,6 +127,39 @@ describe('the semantic request lifecycle', () => {
     setSearchText('')
     expect(asked[0].aborted).toBe(true)
     expect(semanticPending()).toBe(false)
+  })
+
+  it('records that the sentence in the box got no answer', async () => {
+    vi.useFakeTimers()
+    setSearchText('机械狼')
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMEOUT_MS)
+    expect(askFailure()).toBe(true)
+    vi.useRealTimers()
+  })
+
+  it('lets a failure expire once the box holds another sentence', async () => {
+    vi.useFakeTimers()
+    setSearchText('机械狼')
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMEOUT_MS)
+    expect(askFailure()).toBe(true)
+    // A bare number belongs to the local search, so no request goes out and the old failure
+    // stays on record. It still says nothing about this search.
+    setSearchText('12')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(askFailure()).toBe(false)
+    vi.useRealTimers()
+  })
+
+  it('clears the failure once the sentence is answered', async () => {
+    vi.useFakeTimers()
+    setSearchText('机械狼')
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMEOUT_MS)
+    expect(askFailure()).toBe(true)
+    sent.textAnswer = Promise.resolve({ ids: [7] })
+    retryAsk()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(askFailure()).toBe(false)
+    vi.useRealTimers()
   })
 
   it('asks nothing while the switch is off', async () => {

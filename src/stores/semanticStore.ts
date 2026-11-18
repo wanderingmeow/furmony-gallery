@@ -71,6 +71,12 @@ const store = createRoot(() => {
     createSignal<(SemanticResult & { query: string }) | null>(null)
   const sentenceWait = makeWait()
 
+  /** The last request's sentence, and whether it came back with nothing. A service that
+   *  answered and found nothing is a normal empty answer, so that is not a failure. */
+  const [asked, setAsked] = createSignal('')
+  const [askFailed, setAskFailed] = createSignal(false)
+  const [retryNonce, setRetryNonce] = createSignal(0)
+
   /** Call off the sentence in flight. A reply that lands late can only be applied to the
    *  wrong sentence. */
   function cancelSentence(): void {
@@ -283,25 +289,63 @@ const store = createRoot(() => {
   // ---------- the question the box asks ----------
 
   // picture.on is a dependency so that leaving the mode re-asks the sentence still in the box.
-  createEffect(on([searchText, picture.on, semanticOn], ([typed]) => {
+  // retryNonce is there for the reader who taps 重试 on the sentence already in the box.
+  createEffect(on([searchText, picture.on, semanticOn, retryNonce], ([typed]) => {
     cancelSentence()
     const q = typed.trim()
     if (!shouldAskText({ pictureOn: picture.on(), semanticOn: semanticOn(), query: q })) return
     // A stalled request must not freeze the list: the timeout aborts it, local matches stay.
     const ctrl = sentenceWait.begin(SEARCH_TIMEOUT_MS)
+    setAsked(q)
+    setAskFailed(false)
     setPending(true)
     void askSettings(q, ctrl.signal).then((result) => {
       if (result && !ctrl.signal.aborted) setSentenceAnswer({ ...result, query: q })
       if (sentenceWait.owns(ctrl)) batch(() => {
         sentenceWait.finish(ctrl)
+        setAskFailed(!result || ctrl.signal.aborted)
         setPending(false)
       })
     })
   }))
 
-  return { pending, semanticOn, searchPlaceholder, picture, semanticActive, route }
+  /** An older sentence's failure says nothing about the search now in the box. */
+  const askFailure = createMemo(() => asked() === searchText().trim() && askFailed())
+
+  /** Bump to ask about the sentence already in the box. */
+  const retryAsk = () => setRetryNonce((n) => n + 1)
+
+  return {
+    pending, semanticOn, searchPlaceholder, picture, semanticActive, route, askFailure, retryAsk,
+  }
 })
 
-export const { semanticOn, searchPlaceholder, semanticActive, route, picture } = store
+export const {
+  semanticOn, searchPlaceholder, semanticActive, route, picture, askFailure, retryAsk,
+} = store
 const { pending } = store
 export { pending as semanticPending }
+
+/** What the picture's answer means for a list that came back empty.
+ *
+ * `busy` sits with `working` because the service reports that it is busy, so a verdict there
+ * would be a guess about a reply still on its way. `done` and `empty` mean the picture's answer
+ * is not why the list is empty. The switch covers every state, so a new one fails to compile
+ * here.
+ */
+export function pictureMeaning(): 'working' | 'failed' | 'noMatch' | 'nothing' {
+  switch (picture.state()) {
+    case 'preparing':
+    case 'staged':
+    case 'searching':
+    case 'busy':
+      return 'working'
+    case 'failed':
+      return 'failed'
+    case 'none':
+      return 'noMatch'
+    case 'empty':
+    case 'done':
+      return 'nothing'
+  }
+}

@@ -21,10 +21,11 @@ export let wishlistCount: () => number
 // badge (剩余/总数) while the no-social debug filter is active.
 export let remainingLocked: () => number
 
-// Global on purpose: nothing disposes these memos, and createRoot keeps Solid from warning
-// about that.
-createRoot(() => {
-  const base = () => ({
+/** Code that needs the answer to "what would this list look like" starts here, so a new filter
+ *  dimension is added in one place.
+ */
+export function listFilterBase() {
+  return {
     rows: listings(),
     tab: tab(),
     sort: sortMode(),
@@ -36,8 +37,12 @@ createRoot(() => {
     // A semantic result list is ordered by relevance, so the sort buttons are hidden while
     // one is on screen - and hiding them would be a lie if the sort still applied.
     keepOrder: semanticActive(),
-  })
+  }
+}
 
+// Global on purpose: nothing disposes these memos, and createRoot keeps Solid from warning
+// about that.
+createRoot(() => {
   /** The model's own order. `only` filters, it does not order: without this the hits come back
    *  in feed order and the ranking the reader asked for is gone. */
   const byRank = (rank: Map<number, number>) =>
@@ -55,16 +60,16 @@ createRoot(() => {
     // `only` still runs every other filter over the hits: a locked listing does not join a
     // picture's results because the picture happened to look like it.
     if (r.by === 'picture') {
-      return compute({ ...base(), query: '', only: new Set(ids), keepOrder: true })
+      return compute({ ...listFilterBase(), query: '', only: new Set(ids), keepOrder: true })
         .sort(byRank(rank))
     }
-    const exact = compute({ ...base(), query: searchText() })
+    const exact = compute({ ...listFilterBase(), query: searchText() })
     if (ids.length === 0) return exact
     // Exact matches first, the model's neighbors after them. The second group keeps every
     // other filter but the text match - its whole purpose is the listing whose description
     // never says what it looks like.
     const similar = compute({
-      ...base(),
+      ...listFilterBase(),
       query: '',
       only: new Set(ids),
       skip: new Set(exact.map((l) => l.adoptId)),
@@ -100,3 +105,9 @@ createRoot(() => {
     return [...wishlist().keys()].filter((id) => onShelf.has(id)).length
   })
 })
+
+/** True when the picks are what emptied the list. Only the empty state calls it, so a plain
+ *  call is enough. */
+export function matchesWithoutPicks(query: string): boolean {
+  return compute({ ...listFilterBase(), colors: new Set(), races: new Set(), query }).length > 0
+}
