@@ -12,16 +12,22 @@ export function Toolbar() {
   return (
     <div class={`${BAR_BANNER} group pointer-events-auto`}>
       <div class={BAR_ROW}>
-        <Show when={!picture.on()} fallback={<PictureMode />}>
-          <div class="flex-1 min-w-0"><SearchBar /></div>
-          <Show when={semanticOn()}><PictureToggle /></Show>
-          <Show when={noSocialOnly()}>
-            <NoSocialBadge />
-          </Show>
+        {/* A picture is the question while it is up, so it takes the field's place. The way out is
+            the same circle that opened it, and that circle stays lit while the mode is on. */}
+        <Show
+          when={picture.on()}
+          fallback={<div class="flex-1 min-w-0"><SearchBar /></div>}
+        >
+          <div class="flex-1 min-w-0"><PictureMode /></div>
+        </Show>
+        <Show when={semanticOn()}><PictureToggle /></Show>
+        <Show when={noSocialOnly() && !picture.on()}>
+          <NoSocialBadge />
         </Show>
       </div>
       {/* Color and species filters sit in the bottom-right FAB column: the thumb reaches
-          them there, and their panel has to float over the list anyway. */}
+          them there, and their panel has to float over the list anyway.
+          A picture answer covers every tab, so the counts would be the text search's own. */}
       <Show when={!picture.on()}>
         <div class={BAR_TABS}><FilterTabs /></div>
       </Show>

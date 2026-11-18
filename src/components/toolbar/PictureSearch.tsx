@@ -2,7 +2,7 @@
 // the toolbar row, and the picture that was searched beside it.
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
 import type { JSX } from 'solid-js'
-import { CloseOutlined, PictureOutlined } from '@ant-design/icons-svg'
+import { PictureOutlined } from '@ant-design/icons-svg'
 import { picture, type PictureState } from '../../store'
 import { warmSearch, type PictureError } from '../../data/searchApi'
 import { AntIcon } from '../ui/AntIcon'
@@ -12,17 +12,21 @@ import { SparkMark } from '../ui/spark'
  *  given up. */
 export function PictureToggle() {
   return (
+    // The row grows when the mode opens, and a control that moves is one that readers miss, so
+    // the circle keeps the top edge it had beside the field.
     <button
-      class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-faint
-             hover:text-ink transition-colors"
+      class="self-start shrink-0 w-8 h-8 rounded-lg flex items-center justify-center
+             transition-colors"
+      classList={{ 'text-accent': picture.on(), 'text-faint hover:text-ink': !picture.on() }}
+      aria-label="找类似的"
+      aria-pressed={picture.on()}
+      title="找类似的"
       onClick={() => {
         // The reader is about to go looking for a file, which is the longest pause in this
         // path: the trip to the service gets paid while that search is happening.
         warmSearch()
-        picture.open()
+        picture.on() ? picture.close() : picture.open()
       }}
-      aria-label="找类似的"
-      title="找类似的"
     >
       <AntIcon icon={PictureOutlined} size={16} />
     </button>
@@ -51,13 +55,6 @@ const WHY: Record<PictureError, string> = {
 }
 
 const why = () => WHY[picture.error() as PictureError] ?? NO_WORD
-
-/** The picker stops short of the 退出 button's whole box, minus the part of it that sits inside
- *  the banner's own padding. */
-const EXIT_MARK = 12
-const EXIT_PAD = 12
-const EXIT_BOX = EXIT_MARK + EXIT_PAD * 2
-const BANNER_PAD = 12
 
 const ACTION_LABEL = { pick: '换一张', retry: '重试' } as const
 
@@ -194,7 +191,6 @@ function stateLines(onPick: () => void): Record<PictureState, { word: () => JSX.
 function DropZone(props: { onPick: () => void; dragging: () => boolean }) {
   return (
     <button
-      style={{ 'margin-right': `${EXIT_BOX - BANNER_PAD}px` }}
       class="flex-1 min-w-0 rounded-xl border-black/15 dark:border-white/20
              flex flex-col items-center justify-center gap-2.5
              hover:border-black/30 dark:hover:border-white/35 transition-colors"
@@ -267,7 +263,7 @@ export function PictureMode() {
   return (
     <div
       ref={drop}
-      class="flex items-stretch gap-2 w-full min-w-0 rounded-lg transition-[height]"
+      class="flex items-stretch gap-2 w-full min-w-0 transition-[height]"
       style={{
         '--pic-row': `${ROW}px`,
         '--pic-row-tall': `${ROW_TALL}px`,
@@ -307,23 +303,6 @@ export function PictureMode() {
       >
         <DropZone onPick={pick} dragging={dragging} />
       </Show>
-
-      {/* The corner stays put while the row grows, and a control that moves is one that readers
-          miss. The box covers the banner's own padding, so a press on the corner counts, and it
-          stays square: a round box would leave that corner outside its own clickable area. */}
-      <button
-        class="absolute top-0 right-0 flex items-center justify-center text-faint
-               hover:text-ink transition-colors"
-        style={{
-          padding: `${EXIT_PAD}px`,
-          width: `${EXIT_BOX}px`,
-          height: `${EXIT_BOX}px`,
-        }}
-        onClick={picture.close}
-        aria-label="退出"
-      >
-        <AntIcon icon={CloseOutlined} size={EXIT_MARK} />
-      </button>
     </div>
   )
 }

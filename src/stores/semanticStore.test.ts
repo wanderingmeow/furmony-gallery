@@ -207,6 +207,19 @@ describe('search by picture', () => {
     expect(picture.box()).toEqual([0.12, 0.08, 0.64, 0.72])
   })
 
+  // The switch covers both ways to ask. Leaving the mode open would leave the overlay with no way
+  // out, because the circle that opened it hides with the switch.
+  it('closes the picture when the switch goes off', async () => {
+    sent.answer = Promise.resolve({ ids: [201, 7], box: null })
+    await choose()
+    await settled()
+    expect(route()).toEqual({ by: 'picture', ids: [201, 7] })
+    setSemanticSearch(false)
+    await settled()
+    expect(picture.on()).toBe(false)
+    expect(route()).toEqual({ by: 'none' })
+  })
+
   it('answers a busy service with a wait rather than a failure', async () => {
     sent.answer = Promise.resolve({ ids: [], box: null, busy: true })
     await choose()
@@ -311,24 +324,23 @@ describe('search by picture', () => {
     expect(route()).toEqual({ by: 'picture', ids: [] })
   })
 
-  // A sentence in the hidden box must neither cancel the picture's request nor set its
-  // label.
-  it('lets a hidden sentence neither abort the picture nor speak for it', async () => {
+  // Once a picture is the question, a sentence in the box must neither cancel the picture's
+  // request nor set its label.
+  it('lets a sentence in the box neither abort the picture nor speak for it', async () => {
     picture.open()
-    await settled()
-    // The box is hidden, but the sentence is still in the signal, waiting to be asked.
     setSearchText('黑绿色的龙')
     await settled()
-    expect(asked).toHaveLength(0) // no sentence is asked while a picture is the question
+    // A drop zone with nothing in it is still the sentence's own question.
+    expect(asked).toHaveLength(1)
     sent.answer = new Promise(() => {})
     await choose()
     await settled()
+    // The picture is up now, so it takes the one upload slot.
+    expect(asked[0].aborted).toBe(true)
     expect(sent.signals).toHaveLength(1)
-    setSemanticSearch(false)
+    setSearchText('黑绿色的龙 改')
     await settled()
-    setSemanticSearch(true)
-    await settled()
-    expect(asked).toHaveLength(0)
+    expect(asked).toHaveLength(1)
     expect(sent.signals[0].aborted).toBe(false)
     expect(picture.state()).toBe('searching')
   })
@@ -377,13 +389,17 @@ describe('search by picture', () => {
     expect(semanticPending()).toBe(false)
   })
 
-  it('cuts the sentence that is still on its way', async () => {
-    // The box is hidden the moment the mode opens, so whatever was typed is no longer what
-    // the reader is asking - and the one waiting slot belongs to the picture now.
+  it('leaves the sentence running when the drop zone opens', async () => {
+    // Opening the overlay cuts nothing. The sentence gives up the one waiting slot only when a
+    // picture actually goes up.
     setSearchText('黑绿色的龙')
     await settled()
     expect(asked).toHaveLength(1)
     picture.open()
+    expect(asked[0].aborted).toBe(false)
+    expect(semanticPending()).toBe(true)
+    await picture.stage(new Blob(['jpeg-ish']))
+    await settled()
     expect(asked[0].aborted).toBe(true)
     expect(semanticPending()).toBe(false)
   })

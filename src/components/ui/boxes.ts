@@ -17,7 +17,7 @@ export const CARD_BODY = 'px-2 pt-1.5 pb-1.5 space-y-1'
 export const CARD_NAME = 'flex items-center gap-1.5'
 export const CARD_FOOT = 'flex min-h-5 items-center gap-1.5'
 
-export const BAR_BANNER = `glass relative z-40 px-3 py-3 rounded-2xl border border-black/10
+export const BAR_BANNER = `glass relative z-40 px-3 py-3 rounded-xl border border-black/10
   shadow-sm dark:shadow-md mx-4 mt-3`
 export const BAR_ROW = 'flex items-center gap-2'
 export const BAR_TABS = 'mt-2'

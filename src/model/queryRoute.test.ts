@@ -79,10 +79,15 @@ describe('routeFor', () => {
 
 describe('shouldAskText', () => {
   it('asks only for a sentence the local search cannot answer exactly', () => {
-    expect(shouldAskText({ pictureOn: false, semanticOn: true, query: '蓝眼睛' })).toBe(true)
-    expect(shouldAskText({ pictureOn: false, semanticOn: true, query: '2871' })).toBe(false)
-    expect(shouldAskText({ pictureOn: false, semanticOn: false, query: '蓝眼睛' })).toBe(false)
-    // The service takes one upload at a time: the picture holds the slot.
-    expect(shouldAskText({ pictureOn: true, semanticOn: true, query: '蓝眼睛' })).toBe(false)
+    expect(shouldAskText({ pictureHolds: false, semanticOn: true, query: '蓝眼睛' })).toBe(true)
+    expect(shouldAskText({ pictureHolds: false, semanticOn: true, query: '2871' })).toBe(false)
+    expect(shouldAskText({ pictureHolds: false, semanticOn: false, query: '蓝眼睛' })).toBe(false)
+    // The service takes one upload at a time, so a picture in flight holds the slot.
+    expect(shouldAskText({ pictureHolds: true, semanticOn: true, query: '蓝眼睛' })).toBe(false)
+  })
+
+  it('still asks while the drop zone is open with no picture in it', () => {
+    // Opening the overlay cuts nothing, so the sentence keeps its request.
+    expect(shouldAskText({ pictureHolds: false, semanticOn: true, query: '爱吃肉的棒小龙' })).toBe(true)
   })
 })

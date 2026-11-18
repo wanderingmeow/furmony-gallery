@@ -6,8 +6,9 @@ import { setSemanticSearch } from '../../stores/displayStore'
 import { semanticPending, setOnFilterChange } from '../../store'
 
 // imeGate.test.ts covers the gate's own rules. These cover the wiring between the browser and
-// that gate: a dropped `onCompositionEnd` would lock the gate, so the search would never receive
-// the finished text - a failure that no desktop keyboard can produce and no store test can see.
+// that gate, and the wait that the field keeps before it asks: a dropped `onCompositionEnd` would
+// lock the gate, so the search would never receive the finished text. No desktop keyboard can
+// produce that failure, and no store test can see it.
 const COMMIT_WAIT = 500
 
 let disposeApp: () => void
@@ -87,6 +88,26 @@ describe('the search box', () => {
     fireInput('蓝色', 'insertText')
     await settle()
     expect(searchText()).toBe('蓝色')
+  })
+
+  // A tap on 图片 comes a moment after typing, and the field leaves the screen with a commit still
+  // in the air. That sentence is the one the reader asked for.
+  it('hands the sentence to the store when the field leaves the screen', () => {
+    fireInput('蓝色', 'insertText')
+    disposeApp()
+    disposeApp = () => {}
+    expect(searchText()).toBe('蓝色')
+  })
+
+  // The same exit mid-composition: syllables are no question, so the store keeps the query that
+  // the reader asked before.
+  it('hands nothing but syllables back when the field leaves the screen', () => {
+    setSearchText('苍雪')
+    fireComposition('compositionstart')
+    fireInput('lan\u2006se', 'insertCompositionText')
+    disposeApp()
+    disposeApp = () => {}
+    expect(searchText()).toBe('苍雪')
   })
 
   it('drops a pending commit when the reader clears the box', async () => {

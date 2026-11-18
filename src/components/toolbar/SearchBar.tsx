@@ -12,28 +12,58 @@ export function SearchBar() {
   const [draft, setDraft] = createSignal<string | null>(null)
   const shown = () => draft() ?? searchText()
   let el!: HTMLInputElement
-  // The gate reads the box at the end of its wait, so the order of `compositionend` and the
-  // last `input` stops mattering.
-  const gate = makeImeGate(setSearchText, () => el.value)
-  onCleanup(() => gate.dispose())
+  // How long a pause counts as finished typing. The gate only says whether the box holds a
+  // finished sentence, and the wait belongs to the field. A field that leaves the screen hands its
+  // text to the store on the way out, so tapping 图片 a moment after typing keeps the sentence.
+  const COMMIT_WAIT = 500
+  const gate = makeImeGate(() => el.value)
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const cancel = () => {
+    if (timer === null) return
+    clearTimeout(timer)
+    timer = null
+  }
+  // The box is read when the wait ends, so the order of `compositionend` and the last `input`
+  // stops mattering. A box that still holds syllables is not a question, and a box that repeats
+  // the query already in the store asks for nothing.
+  const flush = () => {
+    const wasWaiting = timer !== null
+    cancel()
+    if (wasWaiting && gate.ready() && el.value !== searchText()) setSearchText(el.value)
+  }
+  const schedule = () => {
+    cancel()
+    timer = setTimeout(flush, COMMIT_WAIT)
+  }
+  onCleanup(flush)
 
-  // A query that the box did not write ends the draft, and ends any commit that the gate still
-  // holds back, so that commit cannot land on top of the query a moment later.
+  // A query that the box did not write ends the draft, and ends the commit still waiting, so that
+  // commit cannot land on top of the query a moment later.
   createEffect(on(searchText, () => {
     setDraft(null)
     gate.reset()
+    cancel()
   }))
 
   const onInput = (e: InputEvent) => {
     setDraft((e.currentTarget as HTMLInputElement).value)
     gate.input(e.inputType, e.isComposing)
+    schedule()
+  }
+
+  // A `compositionend` that never arrives leaves the gate holding the box. Blur is the way out, so
+  // the text that the reader finished with still reaches the store.
+  const onBlur = () => {
+    gate.blur()
+    schedule()
   }
 
   // Code changes the value here, so no input event arrives, and this handler clears the three
-  // paths itself: the draft, the commit that the gate holds back, and the store's query.
+  // paths itself: the draft, the commit still waiting, and the store's query.
   const onClear = () => {
     setDraft(null)
     gate.reset()
+    cancel()
     setSearchText('')
   }
 
@@ -52,8 +82,8 @@ export function SearchBar() {
         value={shown()}
         onInput={onInput}
         onCompositionStart={() => gate.compositionStart()}
-        onCompositionEnd={() => gate.compositionEnd()}
-        onBlur={() => gate.blur()}
+        onCompositionEnd={() => { gate.compositionEnd(); schedule() }}
+        onBlur={onBlur}
         onFocus={warmSearch}
         placeholder={searchPlaceholder()}
         class="bg-transparent outline-none text-sm w-full"

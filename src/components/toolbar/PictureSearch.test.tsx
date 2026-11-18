@@ -79,9 +79,10 @@ afterEach(() => {
 })
 
 describe('the picture row', () => {
-  it('shows the drop zone and one way out before any picture', () => {
+  it('shows the drop zone before any picture', () => {
     expect(text()).toContain('是哪一只毛毛？上传就知道')
-    expect(names()).toContain('退出')
+    // The row's one control is the picker: the way out is the bar's own circle.
+    expect(names()).toHaveLength(1)
     expect(spinning()).toBe(false)
   })
 
@@ -115,31 +116,31 @@ describe('the picture row', () => {
     expect(text()).toContain('视觉匹配结果')
     expect(spinning()).toBe(false)
     // The picture itself is the way to choose another.
-    expect(names()).toEqual(['换一张', '退出'])
+    expect(names()).toEqual(['换一张'])
   })
 
   it('offers 换一张 and not 重试 when nothing matched', async () => {
     await answerWith({ ids: [], box: null })
     expect(text()).toContain('没有很像的')
-    expect(names()).toEqual(['换一张', '换一张', '退出'])
+    expect(names()).toEqual(['换一张', '换一张'])
   })
 
   it('offers 重试 for a reason that could pass next time', async () => {
     await answerWith({ ids: [], box: null, error: 'network', action: 'retry' })
     expect(text()).toContain('没连上服务')
-    expect(names()).toEqual(['换一张', '重试', '退出'])
+    expect(names()).toEqual(['换一张', '重试'])
   })
 
   it('keeps a word it was not taught, and offers no button with it', async () => {
     // A reason from a newer service gets no 重试: this build cannot know whether one would help.
     await answerWith({ ids: [], box: null, error: 'from-a-newer-service' })
     expect(text()).toContain('没搜成')
-    expect(names()).toEqual(['换一张', '退出'])
+    expect(names()).toEqual(['换一张'])
   })
 
   it('says 稍后再试 while the service holds its one upload slot', async () => {
     await answerWith({ ids: [], box: null, busy: true })
     expect(text()).toContain('稍后再试')
-    expect(names()).toEqual(['换一张', '退出'])
+    expect(names()).toEqual(['换一张'])
   })
 })

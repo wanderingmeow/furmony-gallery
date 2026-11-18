@@ -157,6 +157,25 @@ const store = createRoot(() => {
       })
     }
 
+    const state = createMemo<PictureState>(() => {
+      if (waiting()) return 'searching'
+      const found = answer()
+      if (found?.busy) return 'busy'
+      if (found?.error) return 'failed'
+      if (found?.ids.length) return 'done'
+      // An empty list with no reason is a complete answer, not a failure.
+      if (found) return 'none'
+      if (preparing()) return 'preparing'
+      // However the wait ended, the reader's picture stays up rather than reverting to the
+      // drop zone.
+      return staged() ? 'staged' : 'empty'
+    })
+
+    /** A picture that is up, or one that has answered, is the question for the service: it holds
+     *  the one upload slot. An open drop zone with no picture in it holds nothing, so the sentence
+     *  in the box stays the question. */
+    const holds = createMemo(() => state() !== 'empty')
+
     return {
       on: modeOn,
       answer,
@@ -168,9 +187,6 @@ const store = createRoot(() => {
       open() {
         batch(() => {
           setModeOn(true)
-          // The box is hidden, so the sentence is no longer the question; this also frees the
-          // service's one upload slot, which the picture needs.
-          cancelSentence()
           stop()
         })
       },
@@ -180,7 +196,6 @@ const store = createRoot(() => {
       close() {
         batch(() => {
           setModeOn(false)
-          cancelSentence()
           stop()
           setAnswer(null)
           setLastShownIds(null)
@@ -227,19 +242,8 @@ const store = createRoot(() => {
 
       search,
 
-      state: createMemo<PictureState>(() => {
-        if (waiting()) return 'searching'
-        const found = answer()
-        if (found?.busy) return 'busy'
-        if (found?.error) return 'failed'
-        if (found?.ids.length) return 'done'
-        // An empty list with no reason is a complete answer, not a failure.
-        if (found) return 'none'
-        if (preparing()) return 'preparing'
-        // However the wait ended, the reader's picture stays up rather than reverting to the
-        // drop zone.
-        return staged() ? 'staged' : 'empty'
-      }),
+      state,
+      holds,
 
       /** Where the subject sat, as fractions of the staged picture: left, top, width, height.
        *  Null when there is nothing to draw. */
@@ -265,6 +269,11 @@ const store = createRoot(() => {
 
   const picture = makePictureSearch()
 
+  // The switch covers both ways to ask, so turning it off closes the picture. The circle that
+  // opened it hides with the switch, so an open drop zone would have no way out. The list would
+  // also keep a picture's order after the reader turned the search off.
+  createEffect(on(semanticOn, (on) => { if (!on) picture.close() }, { defer: true }))
+
   // ---------- what the list reads ----------
 
   /** An answer to an older sentence must not rank a newer one, hence the query check. */
@@ -288,12 +297,12 @@ const store = createRoot(() => {
 
   // ---------- the question the box asks ----------
 
-  // picture.on is a dependency so that leaving the mode re-asks the sentence still in the box.
-  // retryNonce is there for the reader who taps 重试 on the sentence already in the box.
-  createEffect(on([searchText, picture.on, semanticOn, retryNonce], ([typed]) => {
+  // picture.holds is a dependency so that dropping a picture re-asks the sentence still in the
+  // box. retryNonce is there for the reader who taps 重试 on the sentence already in the box.
+  createEffect(on([searchText, picture.holds, semanticOn, retryNonce], ([typed]) => {
     cancelSentence()
     const q = typed.trim()
-    if (!shouldAskText({ pictureOn: picture.on(), semanticOn: semanticOn(), query: q })) return
+    if (!shouldAskText({ pictureHolds: picture.holds(), semanticOn: semanticOn(), query: q })) return
     // A stalled request must not freeze the list: the timeout aborts it, local matches stay.
     const ctrl = sentenceWait.begin(SEARCH_TIMEOUT_MS)
     setAsked(q)

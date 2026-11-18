@@ -37,13 +37,14 @@ function boxHoldsQuestion(i: { semanticOn: boolean; query: string }): boolean {
   return i.semanticOn && worthAsking(i.query)
 }
 
-/** A picture holds the service's one upload slot, so picture mode takes the question. */
+/** A picture that is up holds the service's one upload slot, so it holds the question. The
+ *  overlay alone holds nothing: an open drop zone with no picture asks the sentence in the box. */
 export function shouldAskText(i: {
-  pictureOn: boolean
+  pictureHolds: boolean
   semanticOn: boolean
   query: string
 }): boolean {
-  return !i.pictureOn && boxHoldsQuestion(i)
+  return !i.pictureHolds && boxHoldsQuestion(i)
 }
 
 export function routeFor(i: RouteInput): Route {
