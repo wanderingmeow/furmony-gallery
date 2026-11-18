@@ -1,9 +1,7 @@
 import { Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
-import { noSocialOnly, picture, semanticActive, semanticOn, setNoSocialOnly } from '../../store'
-import { CollapseX } from '../ui/CollapseX'
+import { noSocialOnly, picture, semanticOn, setNoSocialOnly } from '../../store'
 import { SearchBar } from './SearchBar'
-import { SortButtons } from './SortButtons'
 import { FilterTabs } from './FilterTabs'
 import { PictureMode, PictureToggle } from './PictureSearch'
 import { BAR_BANNER, BAR_ROW, BAR_TABS } from '../ui/boxes'
@@ -17,8 +15,6 @@ export function Toolbar() {
         <Show when={!picture.on()} fallback={<PictureMode />}>
           <div class="flex-1 min-w-0"><SearchBar /></div>
           <Show when={semanticOn()}><PictureToggle /></Show>
-          {/* Hidden rather than disabled: sorting a picture's ranking would undo it. */}
-          <CollapseX when={!semanticActive()}><SortButtons /></CollapseX>
           <Show when={noSocialOnly()}>
             <NoSocialBadge />
           </Show>

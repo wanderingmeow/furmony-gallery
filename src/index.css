@@ -210,7 +210,7 @@ body {
   50% { color: var(--spark-on); }
 }
 .spark-pulse {
-  --spark-on: var(--color-accent-soft);
+  --spark-on: var(--color-accent);
   animation: spark-pulse 0.9s ease-in-out infinite;
 }
 /* With no animation the mark would sit in the resting grey and look idle while it is working,

@@ -1,14 +1,25 @@
 import { createMemo, Show } from 'solid-js'
 import {
-  BarChartOutlined, FilterFilled, FilterOutlined, SyncOutlined, VerticalAlignTopOutlined,
+  BarChartOutlined, ClockCircleOutlined, DollarOutlined, FilterFilled, FilterOutlined,
+  SyncOutlined, VerticalAlignTopOutlined,
 } from '@ant-design/icons-svg'
+import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { useNavigate } from '@solidjs/router'
-import { fetchFailed, loadData, priceMode, selectedColors, selectedRaces } from '../../store'
+import {
+  fetchFailed, loadData, priceMode, selectedColors, selectedRaces, semanticActive, sortMode,
+} from '../../store'
 import { AntIcon } from '../ui/AntIcon'
+import { SortMark } from '../ui/SortMark'
 import { FabCircle } from './FabCircle'
 import { FabMenu } from './FabMenu'
+import { RELEVANCE_SAY, SORT_FACE, type SortMode } from '../../model/filter'
 import { STATS_TITLE } from '../../model/titles'
 import { FilterPanel } from './FilterPanel'
+
+const SORT_GLYPH: Record<SortMode, IconDefinition> = {
+  priceAsc: DollarOutlined, priceDesc: DollarOutlined,
+  timeAsc: ClockCircleOutlined, timeDesc: ClockCircleOutlined,
+}
 
 /**
  * The bottom-right column: back-to-top (a refresh button while the load failed), the
@@ -23,7 +34,13 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
   // Orange means "you changed something here", so a price-display change lights the button
   // even when nothing is selected.
   const anySetting = () => filterCount() > 0 || priceMode() !== 'once'
-  // How far through the page the reader is, drawn as the ring around the back-to-top button
+  // The button shows the order the grid is in. A search answer is ranked by the service, so while
+  // one is on screen the button goes back to the funnel.
+  const orderFace = () => semanticActive()
+    ? null
+    : <SortMark what={SORT_GLYPH[sortMode()]} up={SORT_FACE[sortMode()].up} />
+  const orderLabel = () => `排序：${semanticActive() ? RELEVANCE_SAY : SORT_FACE[sortMode()].say}`
+  // progress = how far through the page the reader is, drawn as the ring around the button
   const progress = createMemo(() => {
     const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
     return Math.min(1, Math.max(0, props.scrollTop() / max))
@@ -44,11 +61,12 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
           <AntIcon icon={() => (isRefresh() ? SyncOutlined : VerticalAlignTopOutlined)} size={"1.25em"} />
         </FabCircle>
       </Show>
-      {/* One button for the whole settings panel: price display, colours and species. It
-          opens upward, which FabMenu handles */}
+      {/* One button for the whole panel: the order, colours, species, price display and the
+          search switch. It opens upward, which FabMenu handles */}
       <FabMenu
-        label="筛选"
+        label={orderLabel()}
         icon={() => (filterCount() > 0 ? FilterFilled : FilterOutlined)}
+        face={orderFace}
         active={anySetting}
         badge={filterCount}
         panelClass="w-72"

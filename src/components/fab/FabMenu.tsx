@@ -12,6 +12,8 @@ import { FabCircle } from './FabCircle'
 export function FabMenu(props: {
   label: string
   icon: IconDefinition | (() => IconDefinition)
+  /** Replaces the glyph when it returns an element. Returning null falls back to `icon`. */
+  face?: () => JSX.Element | null
   /** 高亮 + 右上角数字：让「筛选开着 N 项」在收起面板时也看得见 */
   badge?: () => number
   active?: () => boolean
@@ -73,7 +75,7 @@ export function FabMenu(props: {
         accent={() => active() || open()}
         onClick={() => setOpen((o) => !o)}
       >
-        <AntIcon icon={props.icon} size="1.25em" />
+        {props.face?.() ?? <AntIcon icon={props.icon} size="1.25em" />}
         <Show when={badge() > 0}>
           <span class="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-surface text-accent-ink text-[9px] font-bold flex items-center justify-center border border-border">
             {badge()}

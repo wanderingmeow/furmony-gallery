@@ -12,6 +12,17 @@ export type FilterTab = 'all' | 'unlocked' | 'locked' | 'wishlist'
 export const FILTER_TABS: FilterTab[] = ['all', 'unlocked', 'locked', 'wishlist']
 export const SORT_MODES: SortMode[] = ['timeDesc', 'timeAsc', 'priceAsc', 'priceDesc']
 
+/** For each mode: which way the arrow points, and the words for the button's title. */
+export const SORT_FACE: Record<SortMode, { up: boolean; say: string }> = {
+  priceAsc: { up: true, say: '价格从低到高' },
+  priceDesc: { up: false, say: '价格从高到低' },
+  timeAsc: { up: true, say: '时间从旧到新' },
+  timeDesc: { up: false, say: '时间从新到旧' },
+}
+
+/** A search answer is ranked by the service, and none of our own sorts applies to it. */
+export const RELEVANCE_SAY = '按相似度从高到低'
+
 export const TAB_LABELS: Record<FilterTab, string> = {
   all: '全部',
   unlocked: '未锁定',
