@@ -1,0 +1,101 @@
+/* The segmented control: a track, a chip that slides to the chosen segment, and a hairline
+   between neighbors. 价格显示 in the filter panel and the stats lock filter use it. */
+.seg-row {
+  display: inline-grid;
+  grid-auto-flow: column;
+  /* One width for every segment, so the chip is the same length wherever it lands. */
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: stretch;
+  position: relative;
+  border-radius: 9999px;
+  /* The ring of track left around the chip. 4px is what keeps the chip reading as inside it. */
+  padding: 4px;
+  background: rgba(120, 120, 128, 0.16);
+}
+.seg-fill {
+  width: 100%;
+}
+.seg-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+}
+.seg-chip {
+  position: absolute;
+  left: 0;
+  /* The row's own padding, so the chip sits inside the ring of track. */
+  top: 4px;
+  bottom: 4px;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06);
+  /* The iOS curve for anything that follows a finger. */
+  transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1),
+    width 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.seg-label {
+  white-space: nowrap;
+  color: var(--color-muted);
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+.seg-item input:checked ~ .seg-label {
+  color: var(--color-ink);
+}
+.seg-item:active .seg-label {
+  opacity: 0.6;
+}
+/* The line belongs to the item on its right, so it sits on that item's left edge. */
+.seg-item:not(.seg-first)::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  width: 1px;
+  transform: translateX(-0.5px);
+  background: rgba(120, 120, 128, 0.4);
+}
+/* A line coming back waits for the chip to clear it. */
+.seg-item::before {
+  transition: opacity 0.16s ease 0.12s;
+}
+/* The chip cuts through the two lines it touches, so they fade ahead of it. */
+.seg-item.seg-adj::before {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+/* Full strength, because it has to clear 3:1 on both the track and the chip. Blue is what the app
+   already uses for a mark outside the accent. */
+.seg-row:has(input:focus-visible) .seg-chip {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+@media (prefers-color-scheme: dark) {
+  .seg-row {
+    background: rgba(120, 120, 128, 0.24);
+  }
+  /* A lifted gray, the way iOS lifts it: white would carry the page's own ink. */
+  .seg-chip {
+    background: #636366;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+  .seg-item:not(.seg-first)::before {
+    background: rgba(180, 180, 190, 0.28);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Stopping the slide is what answers the preference. The line's fade stays, starting at once
+     because the chip arrives in one step. */
+  .seg-chip {
+    transition: none;
+  }
+  .seg-item::before {
+    transition: opacity 0.16s ease;
+  }
+}

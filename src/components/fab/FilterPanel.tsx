@@ -12,7 +12,7 @@ import {
 } from '../../store'
 import { PRICE_MODES, PRICE_MODE_LABELS, type PriceMode } from '../../model/domain'
 import type { SortMode } from '../../model/filter'
-import { SEG_ITEM, SEG_ITEM_STATE, SEG_ROW } from '../ui/segment'
+import { SegmentedControl, type Segment } from '../ui/SegmentedControl'
 import { AntIcon } from '../ui/AntIcon'
 import { Switch } from '../ui/Switch'
 import { SORT_BTN } from '../ui/boxes'
@@ -201,6 +201,11 @@ function SortBlock() {
   )
 }
 
+const PRICE_ITEMS: Segment<PriceMode>[] = PRICE_MODES.map((m) => ({
+  value: m,
+  label: PRICE_MODE_LABELS[m],
+}))
+
 function PriceModeBlock() {
   return (
     <div class={PANEL_BLOCK}>
@@ -208,23 +213,8 @@ function PriceModeBlock() {
       {/* The indent lives outside the bordered box: that box has an edge, and the edge is
           what lines up with the header's first letter. */}
       <div class={`mt-1 mb-2 ${UNDER_TEXT}`}>
-        <div class={`flex ${SEG_ROW}`}>
-          <For each={PRICE_MODES}>
-            {(m: PriceMode) => {
-              const on = () => priceMode() === m
-              return (
-                <button
-                  class={`flex-1 py-2 ${SEG_ITEM}`}
-                  classList={SEG_ITEM_STATE(on())}
-                  aria-pressed={on()}
-                  onClick={() => setPriceMode(m)}
-                >
-                  {PRICE_MODE_LABELS[m]}
-                </button>
-              )
-            }}
-          </For>
-        </div>
+        <SegmentedControl label="价格显示" fill
+          value={priceMode} onChange={setPriceMode} items={PRICE_ITEMS} />
       </div>
     </div>
   )

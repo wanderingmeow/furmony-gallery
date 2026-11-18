@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, onCleanup, onMount, Show, type JSX } from 'solid-js'
+import { createMemo, createSignal, onCleanup, onMount, Show, type JSX } from 'solid-js'
 import { CloseOutlined } from '@ant-design/icons-svg'
 import { listings } from '../store'
 import { StatBarChart, StatHistChart, StatLineChart } from '../components/stats/StatChart'
@@ -10,7 +10,7 @@ import { STATS_TITLE } from '../model/titles'
 import { displayPrice } from '../model/domain'
 import { AntIcon } from '../components/ui/AntIcon'
 import { SheetFab } from '../components/ui/SheetFab'
-import { SEG_ITEM, SEG_ITEM_STATE, SEG_ROW } from '../components/ui/segment'
+import { SegmentedControl, type Segment } from '../components/ui/SegmentedControl'
 import { SHEET_HEADER_ROW, SHEET_TITLE } from '../components/ui/boxes'
 
 // Swift palette per chart: 价格蓝 / 颜色 mint / 物种绿 / 每月橙
@@ -18,6 +18,11 @@ const PRICE_BLUE = '#3b82f6'
 const COLOR_MINT = '#14b8a6'
 const RACE_GREEN = '#22c55e'
 const MONTH_ORANGE = '#f97316'
+
+const LOCK_ITEMS: Segment<LockFilter>[] = LOCK_FILTERS.map((f) => ({
+  value: f,
+  label: LOCK_LABELS[f],
+}))
 
 /**
  * The header of the statistics sheet: the ✕, the title, and the switch between all the
@@ -35,19 +40,8 @@ export function StatsHeader(props: {
         <AntIcon icon={CloseOutlined} size={22} />
       </SheetFab>
       <h1 class={SHEET_TITLE}>{STATS_TITLE}</h1>
-      <div class={`ml-auto inline-flex items-center justify-center ${SEG_ROW}`}>
-        <For each={LOCK_FILTERS}>
-          {(f) => (
-            <button
-              class={SEG_ITEM}
-              classList={SEG_ITEM_STATE(props.mode() === f)}
-              onClick={() => props.setMode(f)}
-            >
-              {LOCK_LABELS[f]}
-            </button>
-          )}
-        </For>
-      </div>
+      <SegmentedControl class="ml-auto" label="锁定状态"
+        value={props.mode} onChange={props.setMode} items={LOCK_ITEMS} />
     </div>
   )
 }
