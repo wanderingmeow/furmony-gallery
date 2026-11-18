@@ -1,5 +1,5 @@
 import { createEffect, createSignal, For, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
-import { onImageError, preloadImage } from '../../data/image'
+import { onImageError, preloadImage, imageReady } from '../../data/image'
 import { EASE } from '../../draw/anim'
 import { ART_PLACEHOLDER, DETAIL_THUMB, DETAIL_THUMB_ROW, SK_FILL } from '../ui/boxes'
 import { SkelImg } from '../ui/SkelImg'
@@ -10,13 +10,17 @@ export function Gallery(props: {
   const count = props.images.length
   const current = () => props.images[Math.min(props.index(), count - 1)]
 
+  // A picture already in memory has a known height at the first layout, so the skeleton, the
+  // grow, and the fade have no wait to cover.
+  const readyNow = !!current() && imageReady(current())
+
   // Two layers, so a switch never shows a blank frame: the old picture stays where it is, the
   // next one loads behind it, then fades in and takes its place.
   const [displayed, setDisplayed] = createSignal(current())
   const [incoming, setIncoming] = createSignal<string | null>(null)
   const [ready, setReady] = createSignal(false)
   // the displayed picture fades in when it loads
-  const [mainLoaded, setMainLoaded] = createSignal(false)
+  const [mainLoaded, setMainLoaded] = createSignal(readyNow)
 
   // The picture animates its own height. A wrapper around it can only reveal or clip, and it
   // clips: the wrapper reaches the target height before the picture does. Growing with the height
@@ -25,6 +29,7 @@ export function Gallery(props: {
   const MAX_H = 400 // Tailwind max-h-100
   const [hPx, setHPx] = createSignal(0)
   let wrapperEl!: HTMLDivElement
+  let picEl!: HTMLImageElement
   let skeletonH = 0
   const fit = (pic: { naturalWidth: number; naturalHeight: number }): number => {
     const w = wrapperEl ? wrapperEl.clientWidth : 0
@@ -33,13 +38,24 @@ export function Gallery(props: {
 
   let cancelPending: (() => void) | null = null
   let targetH = 0
-  let settled = false
+
+  // A transition has no start value while the height is auto, so one frame later that height
+  // becomes a number of pixels.
+  if (readyNow) {
+    onMount(() => {
+      requestAnimationFrame(() => {
+        const h = picEl ? picEl.getBoundingClientRect().height : 0
+        if (h > 0) setHPx(h)
+      })
+    })
+  }
 
   // The skeleton stays until the first picture arrives. Later switches do not use it: the
   // crossfade covers them, and a skeleton over a picture that is already cached hides that
   // picture for no reason.
-  const [loading, setLoading] = createSignal(count > 0)
-  let firstDone = false
+  const [loading, setLoading] = createSignal(count > 0 && !readyNow)
+  let firstDone = readyNow
+  let settled = readyNow
   createEffect(() => {
     if (firstDone) return
     const src = current()
@@ -105,6 +121,7 @@ export function Gallery(props: {
               <img
                 src={displayed()}
                 alt=""
+                ref={picEl}
                 class="w-full max-h-100 object-contain rounded-xl bg-surface"
                 style={{
                   height: picHeight(),

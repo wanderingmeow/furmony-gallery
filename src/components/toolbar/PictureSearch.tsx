@@ -6,7 +6,7 @@ import { CloseOutlined, PictureOutlined } from '@ant-design/icons-svg'
 import { picture, type PictureState } from '../../store'
 import { warmSearch, type PictureError } from '../../data/searchApi'
 import { AntIcon } from '../ui/AntIcon'
-import { SPARK, SPARK_WORKING } from '../ui/spark'
+import { SparkMark } from '../ui/spark'
 
 /** Left of the sort buttons because using it removes them: the reader sees what is being
  *  given up. */
@@ -141,15 +141,6 @@ function PreviewWithBox(props: { onClick: () => void }) {
         </Show>
       </button>
     </div>
-  )
-}
-
-// Its own item in the row, so the one gap on the row sits on both sides of the spark.
-function Spark() {
-  return (
-    <span class="self-center flex items-center">
-      <AntIcon icon={SPARK} size={16} class={SPARK_WORKING} />
-    </span>
   )
 }
 
@@ -306,7 +297,8 @@ export function PictureMode() {
         fallback={(
           <>
             <PreviewWithBox onClick={pick} />
-            <Show when={line().spark}><Spark /></Show>
+            {/* Its own item in the row, so the one gap on the row sits on both sides of the spark. */}
+            <Show when={line().spark}><SparkMark class="self-center" size={16} working /></Show>
             {/* The row stretches its children; without this the word hangs at the top of a
                 tall row next to a centerd picture. */}
             <div class="self-center min-w-0 text-sm text-muted">{line().word()}</div>

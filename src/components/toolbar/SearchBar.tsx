@@ -1,9 +1,9 @@
-import { createEffect, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
+import { createEffect, createSignal, on, onCleanup, Show } from 'solid-js'
 import { CloseOutlined, SearchOutlined } from '@ant-design/icons-svg'
 import { searchPlaceholder, searchText, semanticOn, semanticPending, setSearchText } from '../../store'
 import { warmSearch } from '../../data/searchApi'
 import { AntIcon } from '../ui/AntIcon'
-import { SPARK, SPARK_WORKING } from '../ui/spark'
+import { SPARK, SparkMark } from '../ui/spark'
 import { makeImeGate } from '../ui/imeGate'
 
 export function SearchBar() {
@@ -16,20 +16,6 @@ export function SearchBar() {
   // last `input` stops mattering.
   const gate = makeImeGate(setSearchText, () => el.value)
   onCleanup(() => gate.dispose())
-
-  let spark!: HTMLSpanElement
-  const [pulsing, setPulsing] = createSignal(false)
-  createEffect(() => {
-    if (semanticPending()) setPulsing(true)
-  })
-  // Stopping partway leaves the accent at whatever brightness it had reached, and no transition
-  // softens that jump. Every cycle ends on the resting gray, so the code drops the class at that
-  // moment and the mark rests where it sits when idle.
-  const endPulse = (): void => {
-    if (!semanticPending()) setPulsing(false)
-  }
-  onMount(() => spark.addEventListener('animationiteration', endPulse))
-  onCleanup(() => spark.removeEventListener('animationiteration', endPulse))
 
   // A query that the box did not write ends the draft, and ends any commit that the gate still
   // holds back, so that commit cannot land on top of the query a moment later.
@@ -56,12 +42,11 @@ export function SearchBar() {
       {/* The sparkle replaces the magnifier when the enhanced search is on. During a query it
           pulses in the accent color, so the working state lights up the same mark, with no
           second mark beside it. */}
-      <span
-        ref={spark}
-        class={`flex shrink-0 text-faint ${pulsing() ? SPARK_WORKING : ''}`}
-      >
-        <AntIcon icon={semanticOn() ? SPARK : SearchOutlined} />
-      </span>
+      <SparkMark
+        class="shrink-0 text-faint"
+        working={semanticPending}
+        icon={() => (semanticOn() ? SPARK : SearchOutlined)}
+      />
       <input
         ref={el}
         value={shown()}

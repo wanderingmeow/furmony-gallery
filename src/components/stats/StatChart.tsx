@@ -118,9 +118,13 @@ function histAxis(edges: () => string[], opts: { maxLabels?: number; showAllLabe
   }
 }
 
+// The two monthly charts share one hover line. It lands on one pixel in both because both plot
+// areas start at the same x, which the y axis width sets.
+const Y_SIZE = 36
+
 // Shared y-axis (counts) — keeps the horizontal gridlines.
 function yAxis(): uPlot.Axis {
-  return { stroke: AXIS_STROKE, grid: { stroke: GRID_STROKE }, ticks: { ...TICKS }, font: AXIS_FONT, size: 34 }
+  return { stroke: AXIS_STROKE, grid: { stroke: GRID_STROKE }, ticks: { ...TICKS }, font: AXIS_FONT, size: Y_SIZE }
 }
 
 // Y-axis for the monthly price line — labels in 千元 (integer thousand, e.g. 12k)
@@ -135,7 +139,7 @@ function yAxisK(): uPlot.Axis {
     font: AXIS_FONT,
     space: 12,
     incrs: [2000, 4000, 8000],
-    size: 36,
+    size: Y_SIZE,
     values: (_self: uPlot, splits: number[]) =>
       splits.map((v: number) => (v % 4000 === 0 ? `${Math.round(v / 1000)}k` : '')),
   }
@@ -217,9 +221,10 @@ function chart(
   axes: () => uPlot.Axis[],
   scales: () => uPlot.Scales,
   hooks?: () => uPlot.Hooks.Arrays,
-  onCursorMove?: (params: { cursor: { idx: number } }) => void,
+  onCursorMove?: (params: { cursor: { idx: number }; u: uPlot }) => void,
   onMouseLeave?: () => void,
   plugins?: unknown[],
+  onReady?: (u: uPlot) => void,
 ) {
   return (
     <div class="w-full" style={{ height: `${STAT_CHART_H}px` }} onMouseLeave={onMouseLeave}>
@@ -232,6 +237,7 @@ function chart(
         hooks={hooks?.()}
         plugins={plugins as any}
         onCursorMove={onCursorMove}
+        onCreate={(u) => onReady?.(u)}
         padding={[4, 8, 0, 0]} // minimal top margin + a bit more room on the right
       />
     </div>
@@ -242,7 +248,7 @@ function chart(
 // each bar; every label or adaptive stride; optional ticks; optional 45° rotated
 // labels (物种).
 export function StatBarChart(props: {
-  labels: string[]; values: number[]; color: string; maxLabels?: number; showTicks?: boolean; showAllLabels?: boolean; rotate?: number; axisSize?: number; onHover?: (idx: number | null) => void
+  labels: string[]; values: number[]; color: string; maxLabels?: number; showTicks?: boolean; showAllLabels?: boolean; rotate?: number; axisSize?: number; onHover?: (idx: number | null) => void; onReady?: (u: uPlot) => void
 }) {
   const data = (): AlignedData => [props.labels.map((_, i) => i), props.values]
   const series = (): uPlot.Series[] => [
@@ -253,7 +259,7 @@ export function StatBarChart(props: {
     catAxis(() => props.labels, { maxLabels: props.maxLabels, showTicks: props.showTicks, showAllLabels: props.showAllLabels, showGrid: false, rotate: props.rotate ?? 0, size: props.axisSize ?? 26 }),
     yAxis(),
   ]
-  return chart(data, series, axes, xScales, barChartHooks, (p) => props.onHover?.(p.cursor.idx >= 0 ? p.cursor.idx : null), () => props.onHover?.(null), [cursor()])
+  return chart(data, series, axes, xScales, barChartHooks, (p) => props.onHover?.(p.cursor.idx >= 0 ? p.cursor.idx : null), () => props.onHover?.(null), [cursor()], props.onReady)
 }
 
 // Price histogram (一次性支付价格) — edge labels with bars BETWEEN them; count above
@@ -276,7 +282,13 @@ export function StatHistChart(props: {
 // reports the hovered/clicked point index (or null) so the parent can refresh the
 // section's summary span. `onMouseLeave` resets to null when the cursor exits.
 export function StatLineChart(props: {
-  labels: string[]; values: number[]; color: string; maxLabels?: number; onHover?: (idx: number | null) => void
+  labels: string[]
+  /** A null marks a month with nothing to plot, and the line has a gap there. */
+  values: (number | null)[]
+  color: string
+  maxLabels?: number
+  onHover?: (idx: number | null) => void
+  onReady?: (u: uPlot) => void
 }) {
   const data = (): AlignedData => [props.labels.map((_, i) => i), props.values]
   const series = (): uPlot.Series[] => [
@@ -293,5 +305,6 @@ export function StatLineChart(props: {
     (p) => props.onHover?.(p.cursor.idx >= 0 ? p.cursor.idx : null),
     () => props.onHover?.(null),
     [cursor()],
+    props.onReady,
   )
 }

@@ -144,6 +144,16 @@ export function preloadImage(
   }
 }
 
+// Whether the browser can hand this picture over without a download. `complete` right after
+// `src` is that question: it is true when the picture is in memory, and false when it still has
+// to arrive. A picture that is not cached starts a download here, which is the one the caller is
+// about to make, so the browser fetches once.
+export function imageReady(src: string): boolean {
+  const pic = new Image()
+  pic.src = src
+  return pic.complete && pic.naturalWidth > 0
+}
+
 // On a failed load, retry with the newest signed URL seen for this path, up to twice. A URL
 // remembered from an earlier visit can expire.
 export function onImageError(e: Event): void {

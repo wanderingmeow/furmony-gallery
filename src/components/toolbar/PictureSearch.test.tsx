@@ -50,7 +50,7 @@ const names = () =>
   Array.from(host.querySelectorAll('button')).map(
     (b) => b.getAttribute('aria-label') ?? (b.textContent ?? '').trim(),
   )
-const spinning = () => !!host.querySelector('svg.spark-pulse')
+const spinning = () => !!host.querySelector('.spark-pulse svg')
 
 /** Show a picture and let the row reach the state that this answer describes. */
 async function answerWith(body: unknown): Promise<void> {

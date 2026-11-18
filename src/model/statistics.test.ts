@@ -92,4 +92,14 @@ describe('monthlyCounts', () => {
     ]
     expect(monthlyCounts(rows)).toEqual([{ label: '25/06', count: 2 }, { label: '25/07', count: 1 }])
   })
+  // The stats screen builds one month axis out of these two results, so a month can be a bar
+  // and a hole in the line at the same time.
+  it('holds every price month, including a month with nothing priced', () => {
+    const rows = [
+      listing({ adoptId: 1, nonrecurringExpense: 100, createTime: '2025-06-01 10:00:00' }),
+      listing({ adoptId: 2, nonrecurringExpense: 0, createTime: '2025-07-01 10:00:00' }),
+    ]
+    expect(monthlyCounts(rows).map((s) => s.label)).toEqual(['25/06', '25/07'])
+    expect(monthlyPriceStats(rows).map((s) => s.label)).toEqual(['25/06'])
+  })
 })
