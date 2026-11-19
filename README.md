@@ -36,6 +36,7 @@ npm run build      # 构建 dist/，并复制一份 dist/404.html 供 GitHub Pag
 - **变更通知**：设定被锁定或一次性付清的价格发生变化时，会在右上角显示带徽章的通知。点击通知会打开该设定的详情页。
 - **统计页** `/stats`：价格分布、颜色、物种、每月新增设定等图表。模块会在需要时才加载。
 - **暗色主题**：跟随系统设置；所有动画都支持 `prefers-reduced-motion`。
+- **四种界面语言**：简体中文 / 繁體中文 / 日本語 / English。第一次打开按浏览器语言决定，右下角面板里可随时切换。
 
 ## 加载性能
 
@@ -59,7 +60,7 @@ npm run build      # 构建 dist/，并复制一份 dist/404.html 供 GitHub Pag
 
 ## 技术栈
 
-[SolidJS](https://solidjs.com) + TypeScript · [Vite](https://vite.dev) · [Tailwind CSS](https://tailwindcss.com) v4 · [@solidjs/router](https://github.com/solidjs/router) · [Ant Design icons](https://ant.design) · [@panzoom/panzoom](https://github.com/anvaka/panzoom) · [uPlot](https://github.com/leeoniya/uPlot) + [@dschz/solid-uplot](https://github.com/dschz/solid-uplot) · 测试：[Vitest](https://vitest.dev) + happy-dom + fake-indexeddb
+[SolidJS](https://solidjs.com) + TypeScript · [@solid-primitives/i18n](https://github.com/solid-primitives/solid-primitives) · [Vite](https://vite.dev) · [Tailwind CSS](https://tailwindcss.com) v4 · [@solidjs/router](https://github.com/solidjs/router) · [Ant Design icons](https://ant.design) · [@panzoom/panzoom](https://github.com/anvaka/panzoom) · [uPlot](https://github.com/leeoniya/uPlot) + [@dschz/solid-uplot](https://github.com/dschz/solid-uplot) · 测试：[Vitest](https://vitest.dev) + happy-dom + fake-indexeddb
 
 ## 许可与版权
 

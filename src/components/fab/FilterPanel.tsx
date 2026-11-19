@@ -2,7 +2,8 @@ import { createSignal, For, Show, untrack } from 'solid-js'
 import type { JSXElement } from 'solid-js'
 import {
   ArrowDownOutlined, ArrowUpOutlined, BgColorsOutlined, BulbOutlined,
-  ClockCircleOutlined, DollarOutlined, ExperimentOutlined, SettingOutlined, SortAscendingOutlined,
+  ClockCircleOutlined, DollarOutlined, ExperimentOutlined, GlobalOutlined, SettingOutlined,
+  SortAscendingOutlined,
   UserOutlined,
 } from '@ant-design/icons-svg'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
@@ -16,12 +17,16 @@ import {
 } from '../../stores/filterStore'
 import { priceMode, setPriceMode, setSemanticSearch } from '../../stores/displayStore'
 import { searchConfigured, semanticActive, semanticOn } from '../../stores/semanticStore'
-import { PRICE_MODES, PRICE_MODE_LABELS, type PriceMode } from '../../model/domain'
+import { PRICE_MODES, priceModeLabel, type PriceMode } from '../../model/domain'
 import type { SortMode } from '../../model/filter'
 import { SegmentedControl, type Segment } from '../ui/SegmentedControl'
+import { ChoiceGrid } from '../ui/ChoiceGrid'
 import { AntIcon } from '../ui/AntIcon'
 import { Switch } from '../ui/Switch'
 import { SORT_BTN } from '../ui/boxes'
+import { tr } from '../../i18n'
+import { LOCALES, LOCALE_NAME, requestedLocale, setLocale } from '../../i18n/locale'
+import { colorLabel, raceLabelByName } from '../../i18n/glossary'
 import { PANEL_BLOCK, PanelHeader, UNDER_NOTE, UNDER_TEXT } from './panelParts'
 import { PriceRangeBlock } from './PriceRange'
 
@@ -69,8 +74,9 @@ function toggleIn(cur: Set<string>, value: string): Set<string> {
 }
 
 /**
- * A foldable list of choices. It starts shut when nothing is picked, and open when something is:
- * 颜色 and 物种 hold enough chips to push 价格显示 and the search switch past the panel's edge.
+ * A foldable list of choices. It starts shut when nothing is picked, and open when something is: the
+ * color and species blocks hold enough chips to push the price display and the search switch past
+ * the panel's edge.
  */
 function Section(props: {
   title: string
@@ -79,6 +85,8 @@ function Section(props: {
   selected: Set<string>
   onToggle: (value: string) => void
   mark: (value: string) => JSXElement
+  /** The word for a value in the language on screen. */
+  label?: (value: string) => string
 }) {
   // The fold is set once, from the picks at the moment the panel opens, and only the reader moves
   // it after that. Following the picks live would close the section the instant its last pick is
@@ -123,7 +131,7 @@ function Section(props: {
                   onClick={() => props.onToggle(v)}
                 >
                   {props.mark(v)}
-                  <span>{v}</span>
+                  <span>{props.label ? props.label(v) : v}</span>
                 </button>
               )
             }}
@@ -178,11 +186,11 @@ function SortBtn(props: {
 function SortBlock() {
   return (
     <>
-      <PanelHeader icon={<AntIcon icon={SortAscendingOutlined} />}>排序</PanelHeader>
+      <PanelHeader icon={<AntIcon icon={SortAscendingOutlined} />}>{tr('filter.sort')}</PanelHeader>
       <div class={`mt-1 mb-2 ${UNDER_TEXT} flex gap-2`}>
-        <SortBtn label="价格" on={() => inGroup('price')} icon={priceIcon} disabled={semanticActive}
+        <SortBtn label={tr('sort.price')} on={() => inGroup('price')} icon={priceIcon} disabled={semanticActive}
           onClick={() => setSortMode(togglePrice(sortMode()))} />
-        <SortBtn label="时间" on={() => inGroup('time')} icon={timeIcon} disabled={semanticActive}
+        <SortBtn label={tr('sort.time')} on={() => inGroup('time')} icon={timeIcon} disabled={semanticActive}
           onClick={() => setSortMode(toggleTime(sortMode()))} />
       </div>
     </>
@@ -190,24 +198,24 @@ function SortBlock() {
 }
 
 /**
- * 只显示有主人账号的. Only a small share of the listings have an owner account, so the line names
- *  the count before the reader cuts the list down to it.
+ * The owner-account switch. Only a small share of the listings have an owner account, so the line
+ * names the count before the reader cuts the list down to it.
  *
- *  The switch reads `socialFilterOn` and writes `socialOnly`. The two differ when socials.json is
- *  missing: the row is gray, the list is unfiltered, and a switch the reader left on is kept for
- *  the case where the table does arrive.
+ * The switch reads `socialFilterOn` and writes `socialOnly`. The two differ when socials.json is
+ * missing: the row is gray, the list is unfiltered, and a switch the reader left on is kept for the
+ * case where the table does arrive.
  */
 function OwnerBlock() {
   const note = () => socialsReady()
-    ? `查得到主人账号的只有 ${socialCount()} 只，列表会短很多。`
-    : '主人账号的资料没有加载成功，这个筛选暂时用不了。'
+    ? tr('filter.socialNote', socialCount())
+    : tr('filter.socialMissing')
   return (
     <div class={PANEL_BLOCK}>
       <PanelHeader icon={<AntIcon icon={UserOutlined} />}>
-        只显示有主人账号的
+        {tr('filter.socialOnly')}
         <div class="ml-auto">
           <Switch on={socialFilterOn()} onChange={setSocialOnly}
-            label="只显示有主人账号的" disabled={!socialsReady()} />
+            label={tr('filter.socialOnly')} disabled={!socialsReady()} />
         </div>
       </PanelHeader>
       <div class={UNDER_NOTE}>
@@ -217,20 +225,18 @@ function OwnerBlock() {
   )
 }
 
-const PRICE_ITEMS: Segment<PriceMode>[] = PRICE_MODES.map((m) => ({
-  value: m,
-  label: PRICE_MODE_LABELS[m],
-}))
+const priceItems = (): Segment<PriceMode>[] =>
+  PRICE_MODES.map((m) => ({ value: m, label: priceModeLabel(m) }))
 
 function PriceModeBlock() {
   return (
     <div class={PANEL_BLOCK}>
-      <PanelHeader icon={<AntIcon icon={SettingOutlined} />}>价格显示</PanelHeader>
+      <PanelHeader icon={<AntIcon icon={SettingOutlined} />}>{tr('filter.priceMode')}</PanelHeader>
       {/* The indent lives outside the bordered box: that box has an edge, and the edge is
           what lines up with the header's first letter. */}
       <div class={`mt-1 mb-2 ${UNDER_TEXT}`}>
-        <SegmentedControl label="价格显示" fill
-          value={priceMode} onChange={setPriceMode} items={PRICE_ITEMS} />
+        <SegmentedControl label={tr('filter.priceMode')} fill
+          value={priceMode} onChange={setPriceMode} items={priceItems()} />
       </div>
     </div>
   )
@@ -240,9 +246,9 @@ function SemanticBlock() {
   return (
     <div class={PANEL_BLOCK}>
       <PanelHeader icon={<AntIcon icon={BulbOutlined} />}>
-        设定搜索增强 <span class="text-[10px] px-1 rounded bg-blue-500/15 text-blue-600 dark:text-blue-300">Beta</span>
+        {tr('filter.enhance')} <span class="text-[10px] px-1 rounded bg-blue-500/15 text-blue-600 dark:text-blue-300">Beta</span>
         <div class="ml-auto">
-          <Switch on={semanticOn()} onChange={setSemanticSearch} label="设定搜索增强" />
+          <Switch on={semanticOn()} onChange={setSemanticSearch} label={tr('filter.enhance')} />
         </div>
       </PanelHeader>
       {/* Where what the reader sends goes, said once at the switch: a tooltip does not
@@ -251,7 +257,26 @@ function SemanticBlock() {
       <div class={UNDER_NOTE}>
         {/* One line, kept on one source line: JSX turns a break between Chinese characters into
             a visible space, and there is no space to spare before （ZDR）. */}
-        <span class="block">语义和图像搜索由 Embedding 模型驱动，把检索的文字和图片传到服务器，服务器零数据保留。</span>
+        <span class="block">{tr('filter.enhanceNote')}</span>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The language of the interface and of the words the shelf answers in. Four names in four scripts
+ * have no room side by side, so they take two rows of two.
+ */
+function LanguageBlock() {
+  const items = LOCALES.map((code) => ({ value: code, label: LOCALE_NAME[code] }))
+  return (
+    <div class={PANEL_BLOCK}>
+      <PanelHeader icon={<AntIcon icon={GlobalOutlined} />}>{tr('filter.language')}</PanelHeader>
+      <div class={`mt-1 mb-2 ${UNDER_TEXT}`}>
+        {/* The tick follows the pick, not the page: the reader just chose this, and the words
+            arrive a moment later with the shelf's answer. */}
+        <ChoiceGrid label={tr('filter.language')} columns={2}
+          value={requestedLocale} onChange={setLocale} items={items} />
       </div>
     </div>
   )
@@ -271,7 +296,7 @@ function ResetRow() {
                text-red-500 dark:text-red-400 disabled:text-faint"
         disabled={!panelHasChanges()}
         onClick={resetPanel}
-      >重置</button>
+      >{tr('filter.reset')}</button>
     </div>
   )
 }
@@ -283,17 +308,19 @@ export function FilterPanel() {
     <div class="min-h-0 overflow-y-auto p-2">
       <SortBlock />
       <Section
-        title="颜色"
+        title={tr('filter.colors')}
         icon={<AntIcon icon={BgColorsOutlined} />}
         items={availableColors()}
+        label={colorLabel}
         selected={selectedColors()}
         onToggle={(v) => setSelectedColors(toggleIn(selectedColors(), v))}
         mark={(v) => <span class={`w-2.5 h-2.5 rounded-full shrink-0 border border-border/50 ${COLOR_DOT[v] ?? 'bg-gray-400'}`} />}
       />
       <Section
-        title="物种"
+        title={tr('filter.races')}
         icon={<AntIcon icon={ExperimentOutlined} />}
         items={availableRaces()}
+        label={raceLabelByName}
         selected={selectedRaces()}
         onToggle={(v) => setSelectedRaces(toggleIn(selectedRaces(), v))}
         mark={(v) => <span class="w-4 text-center">{RACE_ICON[v] ?? '❔'}</span>}
@@ -306,6 +333,7 @@ export function FilterPanel() {
       <Show when={searchConfigured}>
         <SemanticBlock />
       </Show>
+      <LanguageBlock />
       <ResetRow />
     </div>
   )

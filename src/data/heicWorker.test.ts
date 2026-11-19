@@ -43,8 +43,8 @@ describe('the HEIF worker', () => {
     expect(convertHeic).toHaveBeenCalledWith(expect.any(Blob), { type: 'image/png', maxDimension: MAX_EDGE })
   })
 
-  // An error carrying attempts is a file that did parse as HEIF: what is missing is a platform
-  // HEVC decoder, which is a different sentence than 这张图片读不出来.
+  // An error that carries the list of attempts came from a file that parsed as HEIF, and what is
+  // missing is a platform HEVC decoder. That case gets its own sentence, with HEIC named in it.
   it('says HEIC when the file parsed and only the codec was missing', async () => {
     convertHeic.mockRejectedValue(Object.assign(new Error('no decoder'), { attempts: ['native', 'webcodecs'] }))
 

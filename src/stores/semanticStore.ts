@@ -1,4 +1,5 @@
 // src/stores/semanticStore.ts - state for the enhanced search, sentence and picture.
+import { tr } from '../i18n'
 import { batch, createEffect, createMemo, createRoot, createSignal, on, untrack } from 'solid-js'
 import {
   askPicture, askSettings, PICTURE_TIMEOUT_MS, searchConfigured, SEARCH_TIMEOUT_MS,
@@ -90,7 +91,7 @@ const store = createRoot(() => {
   /** The hint in the search box. When the enhanced search is on, the hint is a sample query
    *  that the reader can type as it is. */
   const searchPlaceholder = createMemo(() =>
-    semanticOn() ? '爱吃肉的棒小龙…' : '搜索名称/描述/ID')
+    semanticOn() ? tr('search.placeholderEnhanced') : tr('search.placeholder'))
 
   // ---------- the picture ----------
 

@@ -17,6 +17,7 @@ export default defineConfig({
     'import.meta.env.VITE_SEARCH_URL_B64': JSON.stringify(
       Buffer.from('https://search.invalid/search').toString('base64'),
     ),
+    'import.meta.env.VITE_TRANSLATE_KEY': JSON.stringify('test-translate-key'),
   },
   test: {
     environment: 'happy-dom',

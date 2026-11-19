@@ -1,3 +1,5 @@
+import { tr } from '../i18n'
+import { listingName } from '../model/translatedText'
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import { useParams, useLocation } from '@solidjs/router'
@@ -41,7 +43,8 @@ export function Detail(props: { onClose: () => void }) {
   const backLabel = () => {
     const from = cameFrom()
     const l = listings().find((x) => x.adoptId === from)
-    return l?.adoptName ? `返回 #${from} ${l.adoptName}` : `返回 #${from}`
+    const name = l ? listingName(l) : undefined
+    return name ? `${tr('common.back')} #${from} ${name}` : `${tr('common.back')} #${from}`
   }
 
   createEffect(on(() => params.id, (id) => {
@@ -60,7 +63,7 @@ export function Detail(props: { onClose: () => void }) {
 
   // The title follows the sheet: a detail reads "#ID NAME - Furmony Gallery".
   createEffect(on(listing, (l) => {
-    if (l) document.title = `#${l.adoptId} ${l.adoptName ?? ''} - Furmony Gallery`
+    if (l) document.title = `#${l.adoptId} ${listingName(l) ?? ''} - Furmony Gallery`
   }))
   onCleanup(() => { document.title = 'Furmony Gallery' })
 
@@ -93,7 +96,7 @@ export function Detail(props: { onClose: () => void }) {
           under them. ✕ closes the sheet from any level. The ← appears only after a related
           tap, and it follows the same history entries the browser's back follows. */}
       <div class={SHEET_FAB_ROW}>
-        <SheetFab label="关闭" onClick={props.onClose}>
+        <SheetFab label={tr('common.close')} onClick={props.onClose}>
           <AntIcon icon={CloseOutlined} size={22} />
         </SheetFab>
         <Show when={cameFrom() !== undefined}>
@@ -111,7 +114,7 @@ export function Detail(props: { onClose: () => void }) {
             <div class="py-20 text-center text-muted">
               {/* A deep link is not a missing id until the data has had its chance:
                   loading while the cache read or fetch is still running. */}
-              {(!dataReady() || isLoading()) ? '加载中…' : '未找到该设定'}
+              {(!dataReady() || isLoading()) ? tr('common.loading') : tr('detail.notFound')}
             </div>
           }
         >

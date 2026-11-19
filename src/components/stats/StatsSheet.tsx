@@ -2,7 +2,7 @@ import { lazy, Suspense, type JSX } from 'solid-js'
 import { Sheet } from '../sheet/Sheet'
 import { SheetTitleSkeleton } from '../sheet/SheetSkeleton'
 import { type LockFilter } from '../../model/statistics'
-import { STATS_TITLE } from '../../model/titles'
+import { statsTitle } from '../../model/titles'
 
 // The statistics sheet: the shared Sheet chrome around charts that arrive in a lazy chunk.
 // The header comes from that same chunk, so the sheet opens on the same placeholder the
@@ -22,7 +22,7 @@ export function StatsSheet(props: {
       onDismiss={props.onDismiss}
       // The header stays above the scroller, so the charts cannot scroll under it.
       header={(dismiss) => (
-        <Suspense fallback={<SheetTitleSkeleton title={STATS_TITLE} />}>
+        <Suspense fallback={<SheetTitleSkeleton title={statsTitle()} />}>
           <StatsHeaderLazy mode={props.mode} setMode={props.setMode} onClose={dismiss} />
         </Suspense>
       )}

@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import { createMemo, createSignal, onCleanup, onMount, Show, type JSX } from 'solid-js'
 import { CloseOutlined } from '@ant-design/icons-svg'
 import type uPlot from 'uplot'
@@ -5,25 +6,24 @@ import { listings } from '../stores/listingsStore'
 import { StatBarChart, StatHistChart, StatLineChart } from '../components/stats/StatChart'
 import {
   filterByLock, priceBins, priceEdges, colorCounts, raceCounts, monthlyPriceStats, monthlyCounts,
-  fmtMonth, medianPrice, STATS_PRICE_BUCKET, LOCK_FILTERS, LOCK_LABELS, type LockFilter,
+  fmtMonth, medianPrice, STATS_PRICE_BUCKET, LOCK_FILTERS, lockLabel, type LockFilter,
 } from '../model/statistics'
-import { STATS_TITLE } from '../model/titles'
+import { formatPrice } from '../model/domain'
+import { statsTitle } from '../model/titles'
 import { displayPrice } from '../model/domain'
 import { AntIcon } from '../components/ui/AntIcon'
 import { SheetFab } from '../components/ui/SheetFab'
 import { SegmentedControl, type Segment } from '../components/ui/SegmentedControl'
 import { SHEET_HEADER_ROW, SHEET_TITLE } from '../components/ui/boxes'
 
-// Swift palette per chart: 价格蓝 / 颜色 mint / 物种绿 / 每月橙
+// One color per chart: price in blue, color in mint, species in green, monthly additions in orange.
 const PRICE_BLUE = '#3b82f6'
 const COLOR_MINT = '#14b8a6'
 const RACE_GREEN = '#22c55e'
 const MONTH_ORANGE = '#f97316'
 
-const LOCK_ITEMS: Segment<LockFilter>[] = LOCK_FILTERS.map((f) => ({
-  value: f,
-  label: LOCK_LABELS[f],
-}))
+const lockItems = (): Segment<LockFilter>[] =>
+  LOCK_FILTERS.map((f) => ({ value: f, label: lockLabel(f) }))
 
 /**
  * The header of the statistics sheet: the ✕, the title, and the switch between all the
@@ -37,12 +37,12 @@ export function StatsHeader(props: {
 }): JSX.Element {
   return (
     <div class={SHEET_HEADER_ROW}>
-      <SheetFab label="关闭" onClick={props.onClose}>
+      <SheetFab label={tr('common.close')} onClick={props.onClose}>
         <AntIcon icon={CloseOutlined} size={22} />
       </SheetFab>
-      <h1 class={SHEET_TITLE}>{STATS_TITLE}</h1>
-      <SegmentedControl class="ml-auto" label="锁定状态"
-        value={props.mode} onChange={props.setMode} items={LOCK_ITEMS} />
+      <h1 class={SHEET_TITLE}>{statsTitle()}</h1>
+      <SegmentedControl class="ml-auto" label={tr('stats.lockState')}
+        value={props.mode} onChange={props.setMode} items={lockItems()} />
     </div>
   )
 }
@@ -72,13 +72,13 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
   const [priceHover, setPriceHover] = createSignal<number | null>(null)
   const priceSummary = createHoverSummary(
     bins, priceHover,
-    (b) => `${Math.round(b.low / 1000)}k-${Math.round(b.high / 1000)}k: ${b.count} 个`,
+    (b) => tr('stats.band', `${Math.round(b.low / 1000)}k`, `${Math.round(b.high / 1000)}k`, b.count),
     () => {
       const ps = prices()
       if (ps.length === 0) return ''
       const avg = Math.round(ps.reduce((a, p) => a + p, 0) / ps.length)
       const median = Math.round(medianPrice(ps))
-      return `均值 ¥${avg} | 中位 ¥${median}`
+      return tr('stats.avgMedian', formatPrice(avg), formatPrice(median))
     },
   )
 
@@ -87,8 +87,8 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
   const [colorHover, setColorHover] = createSignal<number | null>(null)
   const colorSummary = createHoverSummary(
     colors, colorHover,
-    (c) => `${c.name}: ${c.count} 次`,
-    (es) => `共 ${es.reduce((a, e) => a + e.count, 0)} 次出现`,
+    (c) => `${c.name}: ${tr('stats.times', c.count)}`,
+    (es) => tr('stats.totalTimes', es.reduce((a, e) => a + e.count, 0)),
   )
 
   // ---- race ----
@@ -96,8 +96,8 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
   const [raceHover, setRaceHover] = createSignal<number | null>(null)
   const raceSummary = createHoverSummary(
     races, raceHover,
-    (r) => `${r.name}: ${r.count} 个`,
-    (es) => `共 ${es.reduce((a, e) => a + e.count, 0)} 个设定`,
+    (r) => `${r.name}: ${tr('stats.count', r.count)}`,
+    (es) => tr('stats.totalListings', es.reduce((a, e) => a + e.count, 0)),
   )
 
   // ---- the two monthly charts ----
@@ -142,19 +142,19 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
 
   const monthlyPriceSummary = createHoverSummary(
     priceMonths, hoverIndex,
-    (s) => `${fmtMonth(s.label)}: ${s.avg === null ? '无价' : `¥${Math.round(s.avg)}`}`,
-    (es) => `共 ${es.filter((s) => s.avg !== null).length} 个月`,
+    (s) => `${fmtMonth(s.label)}: ${s.avg === null ? tr('price.noPrice') : formatPrice(s.avg)}`,
+    (es) => tr('stats.months', es.filter((s) => s.avg !== null).length),
   )
 
   const monthlySummary = createHoverSummary(
     monthly, hoverIndex,
-    (m) => `${fmtMonth(m.label)}: ${m.count} 个`,
-    (es) => `共 ${es.reduce((a, e) => a + e.count, 0)} 个设定`,
+    (m) => `${fmtMonth(m.label)}: ${tr('stats.count', m.count)}`,
+    (es) => tr('stats.totalListings', es.reduce((a, e) => a + e.count, 0)),
   )
 
   return (
     <div class="flex flex-col gap-3">
-      <StatSection title="一次性支付价格分布" summary={priceSummary()}>
+      <StatSection title={tr('stats.onceDistribution')} summary={priceSummary()}>
           <Show when={bins().length > 0} fallback={<NoData />}>
             <StatHistChart
               edges={priceEdges(bins()).map((e) => `${Math.round(e / 1000)}k`)}
@@ -166,7 +166,7 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
           </Show>
         </StatSection>
 
-        <StatSection title="颜色分布" summary={colorSummary()}>
+        <StatSection title={tr('stats.colorDistribution')} summary={colorSummary()}>
           <Show when={colors().length > 0} fallback={<NoData />}>
             <StatBarChart
               labels={colors().map((c) => c.name)}
@@ -179,7 +179,7 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
           </Show>
         </StatSection>
 
-        <StatSection title="物种分布" summary={raceSummary()}>
+        <StatSection title={tr('stats.raceDistribution')} summary={raceSummary()}>
           <Show when={races().length > 0} fallback={<NoData />}>
             <StatBarChart
               labels={races().map((r) => r.name)}
@@ -194,7 +194,7 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
           </Show>
         </StatSection>
 
-        <StatSection title="每月新增设定均价" summary={monthlyPriceSummary()}>
+        <StatSection title={tr('stats.monthAvg')} summary={monthlyPriceSummary()}>
           <Show when={monthlyPrice().length > 0} fallback={<NoData />}>
             <StatLineChart
               labels={months()}
@@ -206,7 +206,7 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
           </Show>
         </StatSection>
 
-        <StatSection title="每月新增设定个数" summary={monthlySummary()}>
+        <StatSection title={tr('stats.monthCount')} summary={monthlySummary()}>
           <Show when={monthly().length > 0} fallback={<NoData />}>
             <StatBarChart
               labels={months()}
@@ -251,5 +251,5 @@ function StatSection(props: { title: string; summary: string; children: JSX.Elem
 }
 
 function NoData() {
-  return <div class="text-sm text-muted py-8 text-center">无数据</div>
+  return <div class="text-sm text-muted py-8 text-center">{tr('stats.noData')}</div>
 }

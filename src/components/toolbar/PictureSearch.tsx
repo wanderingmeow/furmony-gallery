@@ -1,5 +1,6 @@
 // src/components/toolbar/PictureSearch.tsx - the toolbar's picture mode: one word at a time in
 // the toolbar row, and the picture that was searched beside it.
+import { tr } from '../../i18n'
 import { createEffect, createSignal, on, onCleanup, Show } from 'solid-js'
 import type { JSX } from 'solid-js'
 import { PictureOutlined } from '@ant-design/icons-svg'
@@ -18,9 +19,9 @@ export function PictureToggle() {
       class="self-start shrink-0 w-8 h-8 rounded-lg flex items-center justify-center
              transition-colors"
       classList={{ 'text-accent': picture.on(), 'text-faint hover:text-ink': !picture.on() }}
-      aria-label="找类似的"
+      aria-label={tr('picture.find')}
       aria-pressed={picture.on()}
-      title="找类似的"
+      title={tr('picture.find')}
       onClick={() => {
         // The reader is about to go looking for a file, which is the longest pause in this
         // path: the trip to the service gets paid while that search is happening.
@@ -33,30 +34,31 @@ export function PictureToggle() {
   )
 }
 
-const NO_WORD = '没搜成'
+
 
 /** The reason, in the reader's words. The *action* is not here: the service sends it with the
  *  reason, and a page that guessed would offer 重试 for a picture that can never be read.
  *  Typed against `PictureError` so a new reason from the encode path cannot ship without its
  *  sentence; a word from a newer service still falls through to the line below. */
-const WHY: Record<PictureError, string> = {
-  unreadable: '这张图片读不出来',
-  not_an_image: '这张图片读不出来',
+const WHY_KEY: Record<PictureError, 'picture.unreadable' | 'picture.heic' | 'picture.tooBig' |
+  'picture.noAnswer' | 'picture.offline' | 'picture.timeout' | 'picture.failed'> = {
+  unreadable: 'picture.unreadable',
+  not_an_image: 'picture.unreadable',
   // The file is fine; this browser has no HEVC decoder (Windows Chrome needs the HEVC
   // extension). 读不出来 would send the reader to another app for nothing.
-  noHevc: '这个浏览器解不了 HEIC 照片',
-  too_large: '这张图片太大了',
-  embed_down: '服务没有应答',
-  network: '没连上服务',
-  timeout: '等得太久了',
+  noHevc: 'picture.heic',
+  too_large: 'picture.tooBig',
+  embed_down: 'picture.noAnswer',
+  network: 'picture.offline',
+  timeout: 'picture.timeout',
   // The body arrived and was not a result at all. Our own word, so it gets its own line
   // rather than the `??` below, which is for words a newer service invents.
-  unknown: NO_WORD,
+  unknown: 'picture.failed',
 }
 
-const why = () => WHY[picture.error() as PictureError] ?? NO_WORD
+const why = () => tr(WHY_KEY[picture.error() as PictureError] ?? 'picture.failed')
 
-const ACTION_LABEL = { pick: '换一张', retry: '重试' } as const
+const ACTION_KEY = { pick: 'picture.change', retry: 'common.retry' } as const
 
 /** A chip rather than loose text: it has to be big enough for a thumb. */
 function Chip(props: { onClick: () => void; children: JSX.Element }) {
@@ -99,7 +101,7 @@ function PreviewWithBox(props: { onClick: () => void }) {
       <button
         class="relative block overflow-hidden rounded-lg bg-black/5"
         onClick={props.onClick}
-        aria-label={ACTION_LABEL.pick}
+        aria-label={tr('picture.change')}
       >
         <Show
           when={picture.preview()}
@@ -148,19 +150,19 @@ function stateLines(onPick: () => void): Record<PictureState, { word: () => JSX.
   // No action, no chip: for a reason this build has never heard of, a 重试 that may not help is
   // worse than no button.
   const actionLabel = () => {
-    const next = picture.action()
-    return next === '' ? '' : ACTION_LABEL[next]
+    const key = ACTION_KEY[picture.action() as keyof typeof ACTION_KEY]
+    return key === undefined ? '' : tr(key)
   }
   const ask = () => (picture.action() === 'pick' ? onPick() : picture.search())
 
   return {
     empty: { word: () => <></> },
     staged: { word: () => <></> },
-    // The reader's own device opens and shrinks the picture. No request exists yet, so
-    // 上传中 and 查找中 would both be wrong: the word is 加载中.
-    preparing: { spark: true, word: () => <>加载中</> },
-    searching: { spark: true, word: () => <>{picture.uploading() ? '上传中' : '查找中'}</> },
-    busy: { word: () => <>稍后再试</> },
+    // The reader's own device opens and shrinks the picture, and no request exists yet. Neither the
+    // uploading word nor the searching word fits, so this line shows the plain loading word.
+    preparing: { spark: true, word: () => <>{tr('common.loading')}</> },
+    searching: { spark: true, word: () => <>{tr(picture.uploading() ? 'picture.uploading' : 'picture.searching')}</> },
+    busy: { word: () => <>{tr('picture.later')}</> },
     // The button sits below the sentence. A button beside it would shift between lines as the
     // sentence changed length, and a control that moves is harder to hit than one extra row.
     failed: {
@@ -173,13 +175,13 @@ function stateLines(onPick: () => void): Record<PictureState, { word: () => JSX.
     },
     // The list under the toolbar now follows the picture, and the word says what changed its
     // order.
-    done: { word: () => <span class="font-semibold text-ink">视觉匹配结果</span> },
+    done: { word: () => <span class="font-semibold text-ink">{tr('picture.matchTitle')}</span> },
     // The service found nothing alike, and 重试 would only send the same picture back.
     none: {
       word: () => (
         <span class="flex flex-col items-start gap-2">
-          <span>没有很像的</span>
-          <Chip onClick={onPick}>{ACTION_LABEL.pick}</Chip>
+          <span>{tr('empty.pictureNoneTitle')}</span>
+          <Chip onClick={onPick}>{tr('picture.change')}</Chip>
         </span>
       ),
     },
@@ -199,12 +201,12 @@ function DropZone(props: { onPick: () => void; dragging: () => boolean }) {
         'border-2 border-solid bg-black/5 dark:bg-white/10': props.dragging(),
       }}
       onClick={props.onPick}
-      title="可以拖入图片，粘贴图片，或者点击选择"
+      title={tr('picture.dropHint')}
     >
       <AntIcon icon={PictureOutlined} size={30} class="text-faint" />
       <span class="flex flex-col items-center gap-0.5">
-        <span class="text-base font-semibold">是哪一只毛毛？上传就知道</span>
-        <span class="text-xs text-faint">展会随拍、设计稿都行</span>
+        <span class="text-base font-semibold">{tr('picture.question')}</span>
+        <span class="text-xs text-faint">{tr('picture.hint')}</span>
       </span>
     </button>
   )

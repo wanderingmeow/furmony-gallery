@@ -55,8 +55,8 @@ export function countInRange(rows: AdoptListing[], range: PriceRange): number {
   return rows.filter((l) => keepsByPrice(l, range)).length
 }
 
-/** The two ends with the ¥ sign, in the spelling the cards use, so a price reads the same in both
- *  places. */
+/** The two ends in the money shape of the language on screen, which is the shape the cards use, so
+ *  a price reads the same in both places. */
 export function priceRangeLabel(range: PriceRange): string {
   return `${formatPrice(range[0])} - ${formatPrice(range[1])}`
 }

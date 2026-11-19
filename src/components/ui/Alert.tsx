@@ -1,5 +1,6 @@
 import { Show, type JSXElement } from 'solid-js'
 import { AntIcon } from './AntIcon'
+import { tr } from '../../i18n'
 import { CloseOutlined, WarningOutlined } from '@ant-design/icons-svg'
 
 /**
@@ -35,7 +36,7 @@ export function Alert(props: {
       </Show>
       <button
         class="absolute top-1 right-1 rounded-md p-2 text-red-700/70 active:bg-red-100 active:text-red-700 dark:text-red-300/70 dark:active:bg-red-900"
-        aria-label="关闭"
+        aria-label={tr('common.close')}
         onClick={props.onClose}
       >
         <AntIcon icon={CloseOutlined} size={12} />

@@ -2,7 +2,7 @@ import { Show } from 'solid-js'
 import { FilterOutlined, HeartOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons-svg'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { applyEmptyAction, emptyState } from '../../stores/derivedStore'
-import { EMPTY_ACTION_LABELS, type EmptyIcon } from '../../model/emptyState'
+import { emptyActionLabel, type EmptyIcon } from '../../model/emptyState'
 import { AntIcon } from './AntIcon'
 import { SPARK } from './spark'
 
@@ -47,7 +47,7 @@ export function EmptyState() {
                   class="mt-2 rounded-full border border-border bg-surface px-4 py-1.5 text-sm text-ink hover:bg-surface-2"
                   onClick={run}
                 >
-                  {EMPTY_ACTION_LABELS[action()]}
+                  {emptyActionLabel(action())}
                 </button>
               )}
             </Show>

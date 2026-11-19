@@ -1,3 +1,5 @@
+import { tr } from '../../i18n'
+import { listingName, wordsPending } from '../../model/translatedText'
 import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import { detailPath } from '../../router'
@@ -14,6 +16,7 @@ import {
 import { scrollThumb, type Thumb } from '../../draw/scrollbar'
 import { isAdopted, isLocked } from '../../model/domain'
 import { LockedIcon } from '../ui/LockedIcon'
+import { SkelText } from '../ui/SkelText'
 import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
 import { SK_FILL } from '../ui/boxes'
 import { relatedSkeleton } from '../ui/skeletonView'
@@ -49,11 +52,11 @@ export function RelatedRow(props: { item: AdoptListing }) {
 
   return (
     <Show when={hasEnoughNeighbors() || loading()}>
-      <section class="mt-4" aria-label="类似设定">
+      <section class="mt-4" aria-label={tr('related.title')}>
         {/* min-h matches the switch's h-8: without it the heading is 8px shorter while the
             table loads, and the row below moves by that much when the switch appears. */}
         <div class="flex min-h-8 items-center gap-2">
-          <h2 class="text-base font-semibold">类似设定</h2>
+          <h2 class="text-base font-semibold">{tr('related.title')}</h2>
           <Show when={!loading()}><UnlockedOnlySwitch /></Show>
         </div>
         <RelatedStrip items={items()} loading={loading()} onOpen={open} />
@@ -73,9 +76,9 @@ function UnlockedOnlySwitch() {
         'bg-surface border-border text-muted hover:text-ink': !on(),
       }}
       aria-pressed={on()}
-      title="只显示还没被锁定的设定"
+      title={tr('filter.onlyUnlocked')}
       onClick={() => setRelatedOnlyUnlocked(!on())}
-    >只看未锁定</button>
+    >{tr('related.onlyUnlockedShort')}</button>
   )
 }
 
@@ -177,13 +180,13 @@ function RelatedStrip(props: {
                 class="flex items-center justify-center text-xs text-faint"
                 style={{ height: `${relatedStripHeight(cardW())}px` }}
               >
-                没有未锁定的类似设定
+                {tr('related.noneUnlocked')}
               </div>
             }
           >
             <div
               role="status"
-              aria-label="类似设定载入中"
+              aria-label={tr('related.loading')}
               style={{ height: `${relatedStripHeight(cardW())}px` }}
             >
               <RelatedSkeleton width={cardW()} />
@@ -282,7 +285,7 @@ function Card(props: { listing: AdoptListing; width: number; onOpen: (id: number
       class="shrink-0 snap-start text-left"
       style={{ width: `${props.width}px` }}
       onClick={() => props.onOpen(l.adoptId)}
-      aria-label={`看 #${l.adoptId} ${l.adoptName ?? ''}`}
+      aria-label={tr('related.open', l.adoptId, wordsPending() ? tr('common.listing') : listingName(l) ?? tr('common.listing'))}
     >
       <div class="relative card-img w-full rounded-lg bg-surface-2 overflow-hidden">
         {/* Legacy WebKit draws the layer that an opacity animation creates with square
@@ -294,7 +297,7 @@ function Card(props: { listing: AdoptListing; width: number; onOpen: (id: number
         >
           <img
             ref={imgRef}
-            alt={l.adoptName ?? '设定'}
+            alt={wordsPending() ? tr('common.listing') : listingName(l) ?? tr('common.listing')}
             decoding="async"
             class="w-full h-full object-cover rounded-lg"
             onLoad={() => setLoaded(true)}
@@ -307,7 +310,9 @@ function Card(props: { listing: AdoptListing; width: number; onOpen: (id: number
           The 2px of side padding matches the gap that the main card leaves between cover and
           text. */}
       <div class="px-0.5 pt-1 flex items-baseline gap-1">
-        <span class="text-sm truncate">{l.adoptName ?? '未知'}</span>
+        <span class="text-sm truncate">
+          {wordsPending() ? <SkelText class="h-3.5 w-14" /> : listingName(l) ?? tr('common.unknown')}
+        </span>
         <span class="text-xs text-faint shrink-0">#{l.adoptId}</span>
         <Show when={locked}>
           {/* The row aligns to the baseline so the 14px name and the 12px ID line up, but

@@ -6,6 +6,7 @@
 import { createMemo, createSignal, For, Show } from 'solid-js'
 import { DollarOutlined } from '@ant-design/icons-svg'
 import { price } from '../../stores/derivedStore'
+import { tr } from '../../i18n'
 import { priceRange, setPriceRange } from '../../stores/filterStore'
 import { formatPrice } from '../../model/domain'
 import { barInside, isFullRange, priceRangeLabel, snapRange, type PriceRange } from '../../model/priceRange'
@@ -58,7 +59,7 @@ export function PriceRangeBlock() {
       {(ends) => (
         <div class={PANEL_BLOCK}>
           <PanelHeader icon={<AntIcon icon={DollarOutlined} />}>
-            价格区间
+            {tr('filter.priceRange')}
             {/* The corner is where every block shows what it is set to. */}
             <span class="ml-auto text-[11px] font-normal text-faint">{priceRangeLabel(ends())}</span>
           </PanelHeader>
@@ -83,7 +84,7 @@ export function PriceRangeBlock() {
                   still press the low end when the two ends are together there. */}
               <input
                 class="pr-thumb" classList={{ 'pr-grab': grabbed() === 'low' }}
-                type="range" aria-label="最低价"
+                type="range" aria-label={tr('filter.priceMin')}
                 min={0} max={steps().length - 1} step={1} value={at(ends()[0])}
                 style={{
                   'z-index': grabbed() === 'low' ? 4 : at(ends()[0]) > (steps().length - 1) / 2 ? 3 : 2,
@@ -97,7 +98,7 @@ export function PriceRangeBlock() {
               />
               <input
                 class="pr-thumb" classList={{ 'pr-grab': grabbed() === 'high' }}
-                type="range" aria-label="最高价"
+                type="range" aria-label={tr('filter.priceMax')}
                 min={0} max={steps().length - 1} step={1} value={at(ends()[1])}
                 style={{ 'z-index': grabbed() === 'high' ? 4 : 2 }}
                 aria-valuetext={formatPrice(ends()[1])}
@@ -109,7 +110,7 @@ export function PriceRangeBlock() {
               />
             </div>
             <div class="pr-count mt-1 mb-2 text-center text-[11px] text-muted">
-              {price.on() ? price.count() : priced()} 只
+              {tr('filter.bandCount', price.on() ? price.count() : priced())}
             </div>
           </div>
         </div>

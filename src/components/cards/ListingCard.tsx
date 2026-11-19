@@ -1,11 +1,16 @@
+import { tr } from '../../i18n'
+import { listingName, listingPainterName, wordsPending } from '../../model/translatedText'
 import { createEffect, createMemo, createSignal, For, on, onCleanup, Show } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
-import { colorNames, formatPrice, isLocked, painterName, priceParts, raceName } from '../../model/domain'
+import {
+  colorDisplay, colorNames, formatPrice, isLocked, priceParts, raceDisplay,
+} from '../../model/domain'
 import { THUMB_ASPECT } from '../../draw/layout'
 import { isWishlisted, toggleWishlist } from '../../stores/wishlistStore'
 import { priceMode } from '../../stores/displayStore'
 import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
 import { LockedIcon } from '../ui/LockedIcon'
+import { SkelText } from '../ui/SkelText'
 import { WishlistHeart } from '../ui/WishlistHeart'
 import {
   CARD_ARTIST, CARD_BASE, CARD_BODY, CARD_COVER, CARD_FOOT, CARD_NAME,
@@ -32,11 +37,13 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
   const id = l.adoptId
   const locked = isLocked(l)
   const wishlisted = createMemo(() => isWishlisted(id))
-  const artist = painterName(l) ?? `画师${l.paintersId}`
-  const tags = [
-    ...(raceName(l) ? [raceName(l)!] : []),
-    ...colorNames(l),
-  ]
+  // The words on a chip come from the species and color tables, so the row is a memo: a card
+  // that stayed the same object across a change of language still has to change its chips.
+  const artist = createMemo(() => listingPainterName(l) ?? tr('detail.painterNumbered', l.paintersId))
+  const tags = createMemo(() => [
+    ...(raceDisplay(l) ? [raceDisplay(l)!] : []),
+    ...colorNames(l).map(colorDisplay),
+  ])
 
   // The heart is inside the card's own click target, so the card would open a detail page
   // on the same click.
@@ -66,7 +73,10 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
       style={{ width: `${props.width}px` }}
     >
       <div class={CARD_ARTIST}>
-        <span class="text-[11px] text-muted truncate">{artist}</span>
+        {/* The shelf writes this name, so it waits for the answer in the language on screen. */}
+        <span class="text-[11px] text-muted truncate">
+          {wordsPending() ? <SkelText class="h-3 w-10" /> : artist()}
+        </span>
         <span class="ml-auto shrink-0 text-[11px] text-faint">#{id}</span>
       </div>
 
@@ -74,7 +84,7 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
         <div class="relative card-img w-full rounded-lg bg-surface overflow-hidden" style={{ 'aspect-ratio': String(THUMB_ASPECT) }}>
           <img
             ref={imgRef}
-            alt={l.adoptName ?? '设定'}
+            alt={wordsPending() ? tr('common.listing') : listingName(l) ?? tr('common.listing')}
             loading="eager"
             decoding="async"
             class="w-full h-full object-cover rounded-lg transition-opacity duration-300"
@@ -87,7 +97,9 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
 
       <div class={CARD_BODY}>
         <div class={CARD_NAME}>
-          <span class="text-sm font-medium truncate">{l.adoptName ?? '未知'}</span>
+          <span class="text-sm font-medium truncate">
+            {wordsPending() ? <SkelText class="h-3.5 w-16" /> : listingName(l) ?? tr('common.unknown')}
+          </span>
           {/* The group carries ml-auto rather than the lock, because a card with no lock
               still needs something to push the heart to the right edge. */}
           <div class="ml-auto shrink-0 flex items-center gap-1.5">
@@ -99,7 +111,7 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
             <button
               class={`flex text-lg leading-none ${wishlisted() ? 'text-red-500' : 'text-ink'}`}
               onClick={onHeart}
-              aria-label="收藏"
+              aria-label={tr('card.wish')}
             >
               <WishlistHeart on={wishlisted()} class="tap-heart" />
             </button>
@@ -111,7 +123,7 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
               min-h-5 holds the row at 20px with the price hidden, so a card with no price is
               as tall as a card with one, and the row pitch in draw/layout.ts still holds. */}
           <div class="min-w-0 flex-1">
-            <Tags tags={tags} />
+            <Tags tags={tags()} />
           </div>
           <div class="shrink-0 flex items-center gap-1">
             {/* One number only, and in installment mode that number is 首付: while browsing

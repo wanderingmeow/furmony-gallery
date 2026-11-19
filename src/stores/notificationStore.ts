@@ -1,4 +1,6 @@
 // src/stores/notificationStore.ts — change notifications (top-right toast stack).
+import { tr } from '../i18n'
+import { listingName } from '../model/translatedText'
 import { createSignal } from 'solid-js'
 import type { AdoptListing } from '../model/types'
 import { displayPrice, isLocked } from '../model/domain'
@@ -28,7 +30,7 @@ export function notifyListingChanges(oldRows: AdoptListing[], newRows: AdoptList
   const oldDict = new Map(oldRows.map((l) => [l.adoptId, l]))
   const changes: ListingChange[] = []
   for (const item of newRows) {
-    const name = item.adoptName ?? '未知'
+    const name = listingName(item) ?? tr('common.unknown')
     const old = oldDict.get(item.adoptId)
     if (old && isLocked(old) !== isLocked(item)) {
       changes.push({ uid: nextUid(), id: item.adoptId, name, headPicture: item.adoptHeadPicture, kind: 'lock', isLocked: isLocked(item) })

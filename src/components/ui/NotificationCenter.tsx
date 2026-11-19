@@ -1,3 +1,4 @@
+import { tr } from '../../i18n'
 import { createSignal, For, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import { detailPath } from '../../router'
@@ -23,8 +24,8 @@ export function NotificationCenter() {
 
   const text = (c: ListingChange) =>
     c.kind === 'lock'
-      ? (c.isLocked ? '已锁定' : '已取消锁定')
-      : `${c.to > c.from ? '↑ 涨价' : '↓ 降价'} ${formatPrice(c.from)} → ${formatPrice(c.to)}`
+      ? tr(c.isLocked ? 'notify.locked' : 'notify.unlocked')
+      : `${tr(c.to > c.from ? 'notify.priceUp' : 'notify.priceDown')} ${formatPrice(c.from)} → ${formatPrice(c.to)}`
 
   return (
     <Show when={n().length > 0}>
@@ -35,9 +36,9 @@ export function NotificationCenter() {
             <button
               class="bg-accent text-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-2.5"
               onClick={() => setExpanded(true)}
-              aria-label={`展开 ${n().length} 条通知`}
+              aria-label={tr('notify.expand', n().length)}
             >
-              <span class="text-base font-medium">变更通知</span>
+              <span class="text-base font-medium">{tr('notify.title')}</span>
               <span class="relative inline-flex items-center justify-center min-w-6.5 h-6.5 px-1.5 rounded-full bg-white text-accent-ink text-sm font-bold">
                 {n().length}
               </span>
@@ -49,8 +50,8 @@ export function NotificationCenter() {
               reads as bleed-through. */}
           <div class="glass rounded-xl shadow-lg border border-border w-72 max-h-[70vh] flex flex-col overflow-hidden">
             <div class="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0">
-              <span class="text-sm font-semibold text-ink">变更通知 ({n().length})</span>
-              <button class="text-sm text-muted hover:text-ink" onClick={() => setExpanded(false)}>收起</button>
+              <span class="text-sm font-semibold text-ink">{tr('notify.title')} ({n().length})</span>
+              <button class="text-sm text-muted hover:text-ink" onClick={() => setExpanded(false)}>{tr('notify.collapse')}</button>
             </div>
             <div class="flex-1 min-h-0 overflow-y-auto">
               <For each={n()}>
@@ -65,7 +66,7 @@ export function NotificationCenter() {
                     <button
                       class="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-faint hover:text-ink hover:bg-black/10 dark:hover:bg-white/10"
                       onClick={() => removeNotification(c.uid)}
-                      aria-label="忽略"
+                      aria-label={tr('notify.dismiss')}
                     >
                       ✕
                     </button>

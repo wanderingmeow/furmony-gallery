@@ -34,10 +34,18 @@ export const LIST_PAGE_SIZE = 2000
  */
 export const listKey = (endpoint: Endpoint): string => `furmony:list:${endpoint}`
 
+/** The part of every list request that is the same for every language. */
+export const LIST_REQUEST_BASE = { referrerPolicy: 'no-referrer' } as const
+
 /**
- * The request every list read makes.
+ * The request that every list fetch makes. The document runs it before the app exists, and api.ts,
+ * the generated script and the tests all take it from here, so the three change together.
  *
- * The document runs it before the app exists. api.ts, the generated script and the test all read
- * this object, so a header added on one side is not missing on the others.
+ * `Target-Language` decides the language of the names and descriptions in the answer. The site
+ * accepts four codes and no ordinary language tag: `src/i18n/apiLanguage.ts` holds them and says
+ * what the ordinary tags get back.
  */
-export const LIST_REQUEST_INIT = { referrerPolicy: 'no-referrer' } as const
+export const listRequestInit = (targetLanguage: string) => ({
+  ...LIST_REQUEST_BASE,
+  headers: { 'Target-Language': targetLanguage },
+})

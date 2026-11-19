@@ -91,9 +91,12 @@ export function watchTaps(opts: {
   // The removal sits on a bare timer. Cleanup owned by the closing surface would remove the
   // listener before the click arrives.
   const blockNextClick = () => {
+    // The document is held, not looked up again: the timer can outlive the page that scheduled it,
+    // and a test environment drops its document between files.
+    const doc = document
     const block = (e: MouseEvent) => e.stopPropagation()
-    document.addEventListener('click', block, true)
-    setTimeout(() => document.removeEventListener('click', block, true), CLICK_AFTER_TAP_MS)
+    doc.addEventListener('click', block, true)
+    setTimeout(() => doc.removeEventListener('click', block, true), CLICK_AFTER_TAP_MS)
   }
   const gate = makeTapGate({
     owns: opts.owns,

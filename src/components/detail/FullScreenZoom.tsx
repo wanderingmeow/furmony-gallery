@@ -1,3 +1,4 @@
+import { tr } from '../../i18n'
 import { createEffect, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import { CloseOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons-svg'
 import Panzoom from '@panzoom/panzoom'
@@ -117,8 +118,8 @@ export function FullScreenZoom(props: {
       <button
         class={`${CONTROL} ${ENABLED} absolute top-4 left-4 w-11 h-11 rounded-full`}
         onClick={props.onClose}
-        aria-label="关闭大图"
-        title="关闭大图"
+        aria-label={tr('zoom.close')}
+        title={tr('zoom.close')}
       >
         <AntIcon icon={CloseOutlined} size={22} />
       </button>
@@ -128,8 +129,8 @@ export function FullScreenZoom(props: {
         <button
           class={`${CONTROL} w-9 h-9 rounded ${atMax() ? DISABLED : ENABLED}`}
           disabled={atMax()}
-          aria-label="放大"
-          title="放大"
+          aria-label={tr('zoom.in')}
+          title={tr('zoom.in')}
           onClick={() => { pz?.zoomIn(); setScale(pz?.getScale() ?? 1) }}
         >
           <AntIcon icon={ZoomInOutlined} size={20} />
@@ -137,8 +138,8 @@ export function FullScreenZoom(props: {
         <button
           class={`${CONTROL} w-9 h-9 rounded ${atMin() ? DISABLED : ENABLED}`}
           disabled={atMin()}
-          aria-label="缩小"
-          title="缩小"
+          aria-label={tr('zoom.out')}
+          title={tr('zoom.out')}
           onClick={() => { pz?.zoomOut(); setScale(pz?.getScale() ?? 1) }}
         >
           <AntIcon icon={ZoomOutOutlined} size={20} />

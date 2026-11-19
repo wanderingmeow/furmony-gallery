@@ -1,6 +1,7 @@
 // src/data/api.ts - fetching only. The local cache lives in listingCache.ts.
 import type { AdoptListing, AdoptListResponse } from '../model/types'
-import { LIST_PAGE_SIZE, LIST_REQUEST_INIT, listKey, pageUrl, type Endpoint } from './endpoints'
+import { LIST_PAGE_SIZE, listRequestInit, listKey, pageUrl, type Endpoint } from './endpoints'
+import { apiLanguage } from '../i18n/locale'
 import { takePrefetched } from './prefetch'
 import { urlPath } from './image'
 
@@ -21,16 +22,23 @@ async function fetchPage(endpoint: Endpoint, pageSize?: number, pageNum = 1): Pr
   const url = pageUrl(endpoint, pageSize, pageNum)
 
   if (import.meta.env.DEV) {
-    const mockPath = endpoint === 'primary' ? '../../agent/listings_sample.json' : '../../agent/series_sample.json'
+    // The archive is kept once per language the API can answer in, so a language switch has
+    // something to land on with no network in the way. The file picked is the language this
+    // request would have asked for. Chinese is the plain name, and the tests read that name too.
+    const base = endpoint === 'primary' ? 'listings_sample' : 'series_sample'
+    const lang = apiLanguage()
+    const mockPath = `../../agent/${base}${lang === 'zh' ? '' : `.${lang}`}.json`
     const mockFiles = import.meta.glob<{ default: any }>([
       '../../agent/listings_sample.json',
+      '../../agent/listings_sample.*.json',
       '../../agent/series_sample.json',
+      '../../agent/series_sample.*.json',
     ])
     const loadMock = (mockFiles as Record<string, (() => Promise<{ default: unknown }>) | undefined>)[mockPath]
     if (loadMock) return (await loadMock()).default as AdoptListResponse
   }
 
-  const res = await fetch(url, LIST_REQUEST_INIT)
+  const res = await fetch(url, listRequestInit(apiLanguage()))
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data: AdoptListResponse = await res.json()
   if (data.code !== 200) throw new Error(`API code ${data.code}`)
@@ -103,7 +111,7 @@ function addDebutRows(mainRows: AdoptListing[], debutRows: AdoptListing[]): Adop
 // saveListings() (clear + rewrite) never sees a half-complete list.
 export async function fetchAllListings(attempts = ATTEMPTS_PER_LIST): Promise<AdoptListing[]> {
   const seriesPromise = withRetry(attempts, () => fetchList('series')).catch((e) => {
-    console.warn('[api] 新作登场列表拉取失败，本次不并入', e)
+    console.warn('[api] new-works list failed; skipped for this merge', e)
     return [] as AdoptListing[]
   })
   const mainRows = await withRetry(attempts, () => fetchList('primary'))

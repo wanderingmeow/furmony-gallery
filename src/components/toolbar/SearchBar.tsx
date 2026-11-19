@@ -1,3 +1,4 @@
+import { tr } from '../../i18n'
 import { createEffect, createSignal, on, onCleanup, Show } from 'solid-js'
 import { CloseOutlined, SearchOutlined } from '@ant-design/icons-svg'
 import { searchPlaceholder, semanticOn, semanticPending } from '../../stores/semanticStore'
@@ -103,7 +104,7 @@ export function SearchBar() {
         <button
           class="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-faint hover:text-ink transition-colors"
           onClick={onClear}
-          aria-label="清除搜索"
+          aria-label={tr('search.clear')}
         >
           <AntIcon icon={CloseOutlined} size={10} />
         </button>

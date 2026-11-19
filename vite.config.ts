@@ -2,7 +2,7 @@ import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin, type UserConfig } from 'vite'
 import solid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
 import { prefetchScript } from './src/data/prefetch.ts'
@@ -16,16 +16,22 @@ function textAt(path: URL): string {
 }
 
 /**
- * The optional address the settings search sends a sentence to.
- *
- * It lives outside the repository, so neither a command line nor a committed file has to
- * carry it: environment first (for a machine without the local file), then the untracked
- * file next to this config. No value is a normal build - the feature stays hidden.
+ * What a repository copy does not carry: the address and the key that one machine keeps in
+ * `.env`. A real environment variable wins over `.env`, which is how CI and a one-off build pass
+ * them. A build with neither is normal: the feature that needs the value stays out of the bundle.
  */
-function encodedAddress(): string {
-  const encoded = process.env.VITE_SEARCH_URL_B64 ?? process.env.SEARCH_URL_B64
+function localValue(mode: string, name: string, file?: string): string {
+  const fromFile = file ? textAt(new URL(file, import.meta.url)) : ''
+  return process.env[name] || loadEnv(mode, process.cwd(), '')[name] || fromFile
+}
+
+/**
+ * Where a 设定搜索 sentence goes. Base64 keeps the name of that machine out of the built files.
+ */
+function encodedAddress(read: (name: string, file?: string) => string): string {
+  const encoded = read('SEARCH_URL_B64')
   if (encoded) return encoded
-  const plain = process.env.SEARCH_URL ?? textAt(new URL('agent/.search-url', import.meta.url))
+  const plain = read('SEARCH_URL', 'agent/.search-url')
   return plain ? Buffer.from(plain).toString('base64') : ''
 }
 
@@ -158,23 +164,35 @@ function inlinePrefetch(): Plugin {
   }
 }
 
-export default defineConfig({
-  plugins: [solid(), tailwindcss(), inlinePrefetch(), inlineStyles(), documentBudget()],
-  // GitHub Pages serves at https://<user>.github.io/furmony-gallery/ (sub-path)
-  base: '/furmony-gallery',
-  define: { 'import.meta.env.VITE_SEARCH_URL_B64': JSON.stringify(encodedAddress()) },
-  build: {
-    rollupOptions: {
-      output: {
-        // uplot belongs to the statistics screen and panzoom to the full-screen viewer. Left out
-        // of every shared chunk, each one stays inside the file of the screen that uses it.
-        manualChunks(id) {
-          if (id.includes('worker')) return undefined
-          if (!id.includes('node_modules')) return undefined
-          if (/node_modules\/(uplot|@dschz|@panzoom)/.test(id)) return undefined
-          return undefined
+/**
+ * Two entry points read this file: the command line build, and the demo-only dev config under
+ * `agent/`. Hence a function that takes the mode and looks up the two values in `.env`.
+ */
+export function buildConfig(mode: string): UserConfig {
+  const read = (name: string, file?: string) => localValue(mode, name, file)
+  return {
+    plugins: [solid(), tailwindcss(), inlinePrefetch(), inlineStyles(), documentBudget()],
+    // GitHub Pages serves at https://<user>.github.io/furmony-gallery/ (sub-path)
+    base: '/furmony-gallery',
+    define: {
+      'import.meta.env.VITE_SEARCH_URL_B64': JSON.stringify(encodedAddress(read)),
+      'import.meta.env.VITE_TRANSLATE_KEY': JSON.stringify(read('TRANSLATE_KEY')),
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          // uplot belongs to the statistics screen and panzoom to the full-screen viewer. Left out
+          // of every shared chunk, each one stays inside the file of the screen that uses it.
+          manualChunks(id) {
+            if (id.includes('worker')) return undefined
+            if (!id.includes('node_modules')) return undefined
+            if (/node_modules\/(uplot|@dschz|@panzoom)/.test(id)) return undefined
+            return undefined
+          },
         },
       },
     },
-  },
-})
+  }
+}
+
+export default defineConfig(({ mode }) => buildConfig(mode))

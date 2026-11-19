@@ -1,8 +1,9 @@
-// 右下角 FAB 列里的一个圆钮，加它自己的弹出面板。面板只往上开：这些钮贴在屏幕角上，
-// 往下开就掉出屏幕。
+// One round button in the bottom-right column, with its own panel above it. The panel opens upward
+// only: these buttons sit in the corner of the screen, and one that opened downward would fall off
+// the edge.
 //
-// 面板 Portal 到 <body>：在瀑布流的固定层里再套一层 .glass，backdrop-filter 会被外层图
-// 层裁掉，模糊出不来。
+// The panel is portalled to <body>. The waterfall sits in a fixed layer, and a second .glass inside
+// that layer is clipped by it, so the blur would never paint.
 import { createEffect, createSignal, on, onCleanup, Show, type JSX } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
@@ -35,7 +36,7 @@ export function FabMenu(props: {
   icon: IconDefinition | (() => IconDefinition)
   /** Replaces the glyph when it returns an element. Returning null falls back to `icon`. */
   face?: () => JSX.Element | null
-  /** 右上角数字：面板关上后，「筛选开着 N 项」还得看得见 */
+  /** The number on the corner button. It has to be readable with the panel shut. */
   badge?: () => number
   panelClass?: string
   children?: JSX.Element
@@ -49,7 +50,8 @@ export function FabMenu(props: {
 
   createEffect(on(open, (shown) => {
     if (!shown) { setPos(null); return }
-    // 每次量都重新算：FAB 列会因为「回到顶部」出现/消失而整体上下移动
+    // Every measurement reads the box again: the column shifts as a whole when 回到顶部 arrives and
+    // when it leaves.
     const measure = () => {
       const r = wrap.getBoundingClientRect()
       setPos({
@@ -67,7 +69,8 @@ export function FabMenu(props: {
     })
   }))
 
-  // 用捕获阶段：卡片自己的 click 会 stopPropagation，冒泡阶段就收不到「点别处」了
+  // The capture phase, because a card's own click calls stopPropagation and a tap on anything else
+  // would never reach the bubble phase.
   createEffect(on(open, (shown) => {
     if (!shown) return
     const onClick = (e: MouseEvent) => {

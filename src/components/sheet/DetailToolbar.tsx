@@ -1,3 +1,4 @@
+import { tr } from '../../i18n'
 import { Show } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
@@ -13,13 +14,21 @@ import { XiaohongshuIcon } from '../ui/XiaohongshuIcon'
 // platform brand meta for the chips: rounded-square icon + brand color + label (outlined
 // glyphs). Xiaohongshu uses the custom XiaohongshuIcon component.
 // `custom` overrides the ant glyph when set.
-type ChipMeta = { icon: IconDefinition; custom?: (props: { size?: number }) => any; color: string; label: string }
+type ChipMeta = {
+  icon: IconDefinition
+  custom?: (props: { size?: number }) => any
+  color: string
+  /** Read when the chip draws, so the name arrives in the language on screen. */
+  label: () => string
+}
 const PLATFORM_META: Record<PlatformKey, ChipMeta> = {
-  x: { icon: XOutlined, color: '#000000', label: 'X' },
-  bilibili: { icon: BilibiliOutlined, color: '#fb7299', label: 'Bilibili' },
-  tiktok: { icon: TikTokOutlined, color: '#010101', label: 'TikTok' },
-  douyin: { icon: TikTokOutlined, color: '#000000', label: '抖音' },
-  xiaohongshu: { icon: LinkOutlined, custom: XiaohongshuIcon, color: '#ff2442', label: '小红书' },
+  x: { icon: XOutlined, color: '#000000', label: () => 'X' },
+  bilibili: { icon: BilibiliOutlined, color: '#fb7299', label: () => 'Bilibili' },
+  tiktok: { icon: TikTokOutlined, color: '#010101', label: () => 'TikTok' },
+  douyin: { icon: TikTokOutlined, color: '#000000', label: () => tr('brand.douyin') },
+  xiaohongshu: {
+    icon: LinkOutlined, custom: XiaohongshuIcon, color: '#ff2442', label: () => tr('brand.xiaohongshu'),
+  },
 }
 
 // Social chips (rounded-square icon buttons) for a locked listing's owner. Reactive on
@@ -47,7 +56,7 @@ function SocialChips(props: { item: AdoptListing }) {
               target="_blank"
               rel="noopener noreferrer"
               title={c.value}
-              aria-label={c.meta.label}
+              aria-label={c.meta.label()}
               class="inline-flex items-center justify-center w-9 h-9 rounded-md text-white"
               style={{ background: c.meta.color }}
             >
@@ -80,7 +89,7 @@ export function DetailToolbar(props: { item: AdoptListing }) {
             size={18}
             class={wishlisted() ? 'text-red-500' : 'text-muted'}
           />
-          <span>{wishlisted() ? '已收藏' : '收藏'}</span>
+          <span>{wishlisted() ? tr('card.wished') : tr('card.wish')}</span>
         </button>
         <Show when={isLocked(props.item)}>
           <SocialChips item={props.item} />
@@ -92,7 +101,7 @@ export function DetailToolbar(props: { item: AdoptListing }) {
           rel="noopener noreferrer"
           class="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-accent text-white text-sm font-semibold"
         >
-          前往官网
+          {tr('detail.goOfficial')}
           <AntIcon icon={ExportOutlined} size={14} />
         </a>
       </div>

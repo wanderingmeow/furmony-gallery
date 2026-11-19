@@ -2,6 +2,7 @@
 // answer across the tabs, the 主人账号 switch, the price range, and what 重置 gives back.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { settled } from '../testSetup'
+import { requestedLocale, setLocale } from '../i18n'
 import {
   priceMode, semanticSearch, setPriceMode, setSemanticSearch,
 } from './displayStore'
@@ -139,6 +140,7 @@ describe('the 主人账号 filter', () => {
     setSortMode('priceAsc')
     setPriceMode('hidden')
     setSemanticSearch(true)
+    setLocale('ja')
     expect(panelHasChanges()).toBe(true)
 
     resetPanel()
@@ -146,6 +148,8 @@ describe('the 主人账号 filter', () => {
     expect(sortMode()).toBe('timeDesc')
     expect(priceMode()).toBe('once')
     expect(semanticSearch()).toBe(false)
+    // The language goes back to the one the browser asked for, which is what the suite stands on.
+    expect(requestedLocale()).toBe('zh')
     // With nothing changed, the row goes gray again.
     expect(panelHasChanges()).toBe(false)
   })

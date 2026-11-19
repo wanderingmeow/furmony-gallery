@@ -7,6 +7,7 @@ import { batch, createSignal } from 'solid-js'
 import { FILTER_TABS, SORT_MODES, type FilterTab, type SortMode } from '../model/filter'
 import type { PriceRange } from '../model/priceRange'
 import { hasUncommittedText } from '../model/composing'
+import { isKnownColor, isKnownRaceName } from '../i18n/glossary'
 
 const FILTER_KEY = 'furmony_filter'
 
@@ -60,7 +61,7 @@ export function setSelectedRaces(v: Set<string>): void {
 export function setSearchText(v: string): void {
   batch(() => { setSearchTextSignal(v); persistFilters(); notify('search') })
 }
-// 只显示有主人账号的. `socialFilterOn` in the derived store decides whether it may run.
+// The owner-account switch. `socialFilterOn` in the derived store decides whether it may run.
 export function setSocialOnly(v: boolean): void {
   batch(() => { setSocialOnlySignal(v); persistFilters(); notify('socialOnly') })
 }
@@ -81,8 +82,11 @@ export function loadFilters(): void {
     // validate tab/sort against the known vocab before applying (stale/corrupt data ignored)
     if (f.tab && FILTER_TABS.includes(f.tab as FilterTab)) setTabSignal(f.tab as FilterTab)
     if (f.sort && SORT_MODES.includes(f.sort as SortMode)) setSortModeSignal(f.sort as SortMode)
-    if (Array.isArray(f.colors)) setSelectedColorsSignal(new Set(f.colors.filter(Boolean)))
-    if (Array.isArray(f.races)) setSelectedRacesSignal(new Set(f.races.filter(Boolean)))
+    // A pick is stored as the name the shelf wrote, so a filter holds across a change of
+    // language. A name the shelf no longer sends is dropped with the rest of the stale data: it
+    // would filter the list down with no chip showing to clear.
+    if (Array.isArray(f.colors)) setSelectedColorsSignal(new Set(f.colors.filter(isKnownColor)))
+    if (Array.isArray(f.races)) setSelectedRacesSignal(new Set(f.races.filter(isKnownRaceName)))
     // A query stored before the input gate existed can still hold syllables nobody
     // committed. That is not a question, so `loadFilters` ignores it.
     if (typeof f.search === 'string' && !hasUncommittedText(f.search)) setSearchTextSignal(f.search)

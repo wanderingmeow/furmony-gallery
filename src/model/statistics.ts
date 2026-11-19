@@ -2,16 +2,17 @@
 // Mirrors the Swift StatisticsView data helpers (price bins, color/race counts,
 // monthly price stats, monthly counts). No DOM, no network - testable.
 
+import { tr } from '../i18n'
 import type { AdoptListing } from './types'
-import { colorNames, raceName, displayPrice, publishDate, isLocked } from './domain'
+import {
+  colorDisplay, colorNames, displayPrice, isLocked, publishDate, raceDisplay,
+} from './domain'
 
 export type LockFilter = 'all' | 'locked' | 'unlocked'
 export const LOCK_FILTERS: LockFilter[] = ['all', 'locked', 'unlocked']
-export const LOCK_LABELS: Record<LockFilter, string> = {
-  all: '全部',
-  locked: '已锁定',
-  unlocked: '未锁定',
-}
+const LOCK_KEY = { all: 'tab.all', locked: 'detail.locked', unlocked: 'detail.unlocked' } as const
+
+export const lockLabel = (mode: LockFilter): string => tr(LOCK_KEY[mode])
 
 // locked = isLocked() (isLock === 2) - matches Swift isLocked and the app semantics.
 export function filterByLock(listings: AdoptListing[], mode: LockFilter): AdoptListing[] {
@@ -42,7 +43,7 @@ export function medianPrice(prices: number[]): number {
  *  this one grid, so a thumb over a bar points at that bar. */
 export const PRICE_BUCKET = 1000
 
-/** The width of one bar in the 一次性支付价格分布 chart. That chart keeps its own, wider grid. */
+/** The width of one bar in the stats page's price chart. That chart keeps its own, wider grid. */
 export const STATS_PRICE_BUCKET = 2000
 
 /**
@@ -122,7 +123,12 @@ function toSortedEntries(counts: Map<string, number>): StatEntry[] {
 export function colorCounts(listings: AdoptListing[]): StatEntry[] {
   const counts = new Map<string, number>()
   for (const l of listings) {
-    for (const name of colorNames(l)) counts.set(name, (counts.get(name) ?? 0) + 1)
+    // The count is keyed by the word on screen. A chart reads these names straight out, and
+    // the language is one of the things the memo watches, so a new language redraws it.
+    for (const name of colorNames(l)) {
+      const shown = colorDisplay(name)
+      counts.set(shown, (counts.get(shown) ?? 0) + 1)
+    }
   }
   return toSortedEntries(counts)
 }
@@ -130,18 +136,18 @@ export function colorCounts(listings: AdoptListing[]): StatEntry[] {
 export function raceCounts(listings: AdoptListing[]): StatEntry[] {
   const counts = new Map<string, number>()
   for (const l of listings) {
-    const name = raceName(l) ?? '神秘生物'
+    const name = raceDisplay(l) ?? tr('stats.mysteryRace')
     counts.set(name, (counts.get(name) ?? 0) + 1)
   }
   return toSortedEntries(counts)
 }
 
 // ---- monthly ----
-// "YY/MM" -> "XX年X月" (e.g. "24/03" -> "24年3月"); year stays 2-digit, month
-// drops the leading zero (10/11/12 keep two digits).
+// The month key "24/03" becomes the words a chart axis shows: 24年3月 in Chinese, Mar 2024
+// in English.
 export function fmtMonth(label: string): string {
   const [yy, mm] = label.split('/')
-  return `${yy}年${parseInt(mm, 10)}月`
+  return tr('stats.monthLabel', 2000 + Number(yy), parseInt(mm, 10))
 }
 
 // Month key "YY/MM" (year % 100, zero-padded) - lexicographic sort == chronological.

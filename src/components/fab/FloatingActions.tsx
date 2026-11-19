@@ -13,8 +13,9 @@ import { AntIcon } from '../ui/AntIcon'
 import { SortMark } from '../ui/SortMark'
 import { FabCircle } from './FabCircle'
 import { FabMenu } from './FabMenu'
-import { RELEVANCE_SAY, SORT_FACE, type SortMode } from '../../model/filter'
-import { STATS_TITLE } from '../../model/titles'
+import { relevanceLabel, SORT_UP, sortModeLabel, type SortMode } from '../../model/filter'
+import { tr } from '../../i18n'
+import { statsTitle } from '../../model/titles'
 import { FilterPanel } from './FilterPanel'
 
 const SORT_GLYPH: Record<SortMode, IconDefinition> = {
@@ -33,8 +34,8 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
   // one is on screen the button goes back to the funnel.
   const orderFace = () => semanticActive()
     ? null
-    : <SortMark what={SORT_GLYPH[sortMode()]} up={SORT_FACE[sortMode()].up} />
-  const orderLabel = () => `排序：${semanticActive() ? RELEVANCE_SAY : SORT_FACE[sortMode()].say}`
+    : <SortMark what={SORT_GLYPH[sortMode()]} up={SORT_UP[sortMode()]} />
+  const orderLabel = () => tr('sort.title', semanticActive() ? relevanceLabel() : sortModeLabel(sortMode()))
   // progress = how far through the page the reader is, drawn as the ring around the button
   const progress = createMemo(() => {
     const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
@@ -46,7 +47,7 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
       <Show when={show()}>
         <FabCircle
           class="float-progress"
-          title="回到顶部"
+          title={tr('toolbar.toTop')}
           style={{ '--float-btn-progress': `${progress()}turn` }}
           onClick={props.onTop}
         >
@@ -66,7 +67,7 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
       >
         <FilterPanel />
       </FabMenu>
-      <FabCircle accent glow onClick={() => navigate(statsPath(), { scroll: false })} title={STATS_TITLE}>
+      <FabCircle accent glow onClick={() => navigate(statsPath(), { scroll: false })} title={statsTitle()}>
         <AntIcon icon={BarChartOutlined} size="1.25em" />
       </FabCircle>
     </div>

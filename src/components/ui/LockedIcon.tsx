@@ -1,3 +1,4 @@
+import { tr } from '../../i18n'
 import { LockFilled } from '@ant-design/icons-svg'
 import { AntIcon } from './AntIcon'
 
@@ -10,8 +11,8 @@ export function LockedIcon(props: { class?: string; size: string }) {
     <span
       class={`flex text-red-600 ${props.class ?? ''}`}
       role="img"
-      title="已锁定"
-      aria-label="已锁定"
+      title={tr('card.locked')}
+      aria-label={tr('card.locked')}
     >
       <AntIcon icon={LockFilled} size={props.size} />
     </span>

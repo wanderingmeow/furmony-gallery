@@ -3,6 +3,7 @@
 // An empty list used to show nothing at all, and the copyright band under the cards slid up
 // under the toolbar. A reader then has to work out which of several things went wrong. These
 // states say which one happened, and the button under them does the fix.
+import { tr } from '../i18n'
 
 export type EmptyIcon = 'heart' | 'search' | 'filter' | 'spark' | 'warning'
 
@@ -57,43 +58,43 @@ function shortQuery(q: string): string {
 export function pickEmptyState(f: EmptyFacts): EmptyState | null {
   if (f.asking) return null
   if (f.loadFailed) {
-    return { icon: 'warning', title: '没能载入设定', line: '试过几次，还是没拿到', action: 'retry' }
-  }
+    return { icon: 'warning', title: tr('empty.fetchFailedTitle'), line: tr('empty.fetchFailedAction'), action: 'retry' }  }
   if (f.socialOnly) {
-    return { icon: 'filter', title: '没有查到主人账号的设定', action: 'socialOnly' }
+    return { icon: 'filter', title: tr('empty.noSocialTitle'), action: 'socialOnly' }
   }
   if (f.onWishlistTab && f.savedCount === 0) {
     // The tab pills stay on screen, so this case has nothing to hand back.
-    return { icon: 'heart', title: '还没有收藏' }
+    return { icon: 'heart', title: tr('empty.noWishTitle') }
   }
   if (f.pictureSay) {
     return f.pictureSay === 'failed'
-      ? { icon: 'spark', title: '没找到结果', line: '换一张图，或者稍后重试' }
-      : { icon: 'spark', title: '没有很像的', line: '换一张图试试' }
+      ? { icon: 'spark', title: tr('empty.pictureFailedTitle'), line: tr('empty.pictureFailedAction') }
+      : { icon: 'spark', title: tr('empty.pictureNoneTitle'), line: tr('empty.pictureNoneAction') }
   }
   if (f.sentenceFailed) {
-    return { icon: 'spark', title: '增强搜索失败', line: '文字匹配也没有结果', action: 'retryAsk' }
+    return { icon: 'spark', title: tr('empty.enhanceFailedTitle'), line: tr('empty.enhanceFailedLine'), action: 'retryAsk' }
   }
   if (f.query && f.filtersAreTheCause) {
-    return { icon: 'filter', title: '当前筛选下没有设定', action: 'filters' }
+    return { icon: 'filter', title: tr('empty.filtersTitle'), action: 'filters' }
   }
   if (f.query) {
-    return { icon: 'search', title: `没有「${shortQuery(f.query)}」相关设定`, line: '换个词试试', action: 'search' }
+    return { icon: 'search', title: tr('empty.queryTitle', shortQuery(f.query)), line: tr('empty.queryLine'), action: 'search' }
   }
   if (f.picked) {
-    return { icon: 'filter', title: '当前筛选下没有设定', action: 'filters' }
+    return { icon: 'filter', title: tr('empty.filtersTitle'), action: 'filters' }
   }
-  // The request succeeded and the shelf holds nothing, so a retry is the only move the reader can
-  // make.
-  return { icon: 'search', title: '没有可显示的设定', line: '稍后再试，或者去官网看看', action: 'retry' }
-}
+  // The shelf answered with nothing on it. The reader can wait for it to fill up or ask again,
+  // and the second one deserves a button: the sentence above it is not something to act on.
+  return { icon: 'search', title: tr('empty.nothingTitle'), line: tr('empty.nothingAction'), action: 'retry' }}
 
-export const EMPTY_ACTION_LABELS: Record<EmptyAction, string> = {
-  search: '清除搜索',
-  filters: '清除筛选',
+const EMPTY_ACTION_KEY = {
+  search: 'empty.clearSearch',
+  filters: 'empty.clearFilters',
   // Two actions retry two different things, the data load and the enhanced search. The reader
   // sees one word either way, because the line above the button says what failed.
-  retry: '重试',
-  retryAsk: '重试',
-  socialOnly: '关闭该筛选',
-}
+  retry: 'common.retry',
+  retryAsk: 'common.retry',
+  socialOnly: 'empty.closeFilter',
+} as const
+
+export const emptyActionLabel = (action: EmptyAction): string => tr(EMPTY_ACTION_KEY[action])

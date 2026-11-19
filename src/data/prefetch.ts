@@ -3,17 +3,29 @@
 import {
   ENDPOINT_URL,
   LIST_PAGE_SIZE,
-  LIST_REQUEST_INIT,
+  LIST_REQUEST_BASE,
   listKey,
   pageUrl,
   type Endpoint,
 } from './endpoints.ts'
+import { API_LANGUAGE, DETECT_LOCALE_SCRIPT, LOCALE_KEY } from '../i18n/apiLanguage.ts'
 
 declare global {
   interface Window {
     /** Answers the document started downloading before the app existed, one per list key. */
     __furmonyPrefetch?: Record<string, Promise<unknown> | undefined>
   }
+}
+
+/**
+ * The language of the first list, worked out before the app exists. A stored choice wins, and a
+ * browser tag decides on a first visit. This is the rule the app itself runs, and the two have to
+ * agree: a first list in one language and a retry in another would show two different sets of names.
+ */
+const languageScript = (): string => {
+  const codes = JSON.stringify(API_LANGUAGE)
+  const stored = `(()=>{try{return localStorage.getItem(${JSON.stringify(LOCALE_KEY)})}catch(e){return null}})()`
+  return `const LANG=${codes}[${stored}]||${codes}[(${DETECT_LOCALE_SCRIPT})(navigator.language)];`
 }
 
 /**
@@ -35,7 +47,9 @@ export function prefetchScript(): string {
   // The API can report a failure in the body of a response that is ok. The script treats that as a
   // failure too, so the app makes the request itself and retries on its own schedule.
   const ask =
-    `const ask=(u)=>fetch(u,${JSON.stringify(LIST_REQUEST_INIT)})` +
+    `${languageScript()}` +
+    `const INIT={...${JSON.stringify(LIST_REQUEST_BASE)},headers:{"Target-Language":LANG}};` +
+    `const ask=(u)=>fetch(u,INIT)` +
     '.then((r)=>(r.ok?r.json():null)).catch(()=>null)' +
     '.then((d)=>(d&&d.code===200?d:null));'
   return `${ask}window.__furmonyPrefetch={${lists.join(',')}};`

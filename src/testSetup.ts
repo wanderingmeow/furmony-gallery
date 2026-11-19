@@ -1,6 +1,16 @@
 // Vitest setup: provide IndexedDB (fake-indexeddb) + a guaranteed global localStorage.
 import 'fake-indexeddb/auto'
 
+// The suite quotes the app in 简体中文, the language the dictionaries are written in. 重置 hands the
+// language back to whatever the browser asked for, so this file has to give the browser one, and
+// it has to do that before the app's modules are read: the language of a visit is settled as they
+// load.
+Object.defineProperty(globalThis.navigator, 'language', { value: 'zh-CN', configurable: true })
+const { setLocale } = await import('./i18n')
+
+// A test that picks another language leaves this one standing when it finishes.
+setLocale('zh')
+
 /** Let a test finish a Solid update. Solid runs queued effects after the setter returns, and the
  *  queue drains over more than one microtask, so a test waits one macrotask. */
 export function settled(): Promise<void> {

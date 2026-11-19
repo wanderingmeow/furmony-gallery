@@ -1,3 +1,4 @@
+import { tr } from '../../i18n'
 import { CloseOutlined } from '@ant-design/icons-svg'
 import { AntIcon } from '../ui/AntIcon'
 import { SheetFab } from '../ui/SheetFab'
@@ -21,7 +22,7 @@ export function SheetBodySkeleton(props: { onClose: () => void; pad?: string; pa
   return (
     <div class={`min-h-full w-full${props.pad ? ` ${props.pad}` : ''}`} style={inset()}>
       <div class={SHEET_FAB_ROW}>
-        <SheetFab label="关闭" onClick={props.onClose}>
+        <SheetFab label={tr('common.close')} onClick={props.onClose}>
           <AntIcon icon={CloseOutlined} size={22} />
         </SheetFab>
       </div>

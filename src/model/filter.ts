@@ -1,6 +1,8 @@
 // src/model/filter.ts - what the grid shows: pure filtering and sorting over a list of rows,
 // plus the vocabulary that goes with it (tabs, sort modes, labels). No reactivity, no I/O.
 import type { AdoptListing } from './types'
+import { tr } from '../i18n'
+import { listingBlurb, listingName } from './translatedText'
 import type { SocialSearchEntry } from '../data/socials'
 import {
   colorNames, displayPrice, formatPrice, isLocked, raceName,
@@ -13,16 +15,23 @@ export type FilterTab = 'all' | 'unlocked' | 'locked' | 'wishlist'
 export const FILTER_TABS: FilterTab[] = ['all', 'unlocked', 'locked', 'wishlist']
 export const SORT_MODES: SortMode[] = ['timeDesc', 'timeAsc', 'priceAsc', 'priceDesc']
 
-/** For each mode: which way the arrow points, and the words for the button's title. */
-export const SORT_FACE: Record<SortMode, { up: boolean; say: string }> = {
-  priceAsc: { up: true, say: '价格从低到高' },
-  priceDesc: { up: false, say: '价格从高到低' },
-  timeAsc: { up: true, say: '时间从旧到新' },
-  timeDesc: { up: false, say: '时间从新到旧' },
+/** Which way the arrow on a sort button points. */
+export const SORT_UP: Record<SortMode, boolean> = {
+  priceAsc: true, priceDesc: false, timeAsc: true, timeDesc: false,
 }
 
+const SORT_MODE_KEY = {
+  priceAsc: 'sort.priceAsc',
+  priceDesc: 'sort.priceDesc',
+  timeAsc: 'sort.timeAsc',
+  timeDesc: 'sort.timeDesc',
+} as const
+
+/** What an order is called, in the language on screen. */
+export const sortModeLabel = (mode: SortMode): string => tr(SORT_MODE_KEY[mode])
+
 /** A search answer is ranked by the service, and none of our own sorts applies to it. */
-export const RELEVANCE_SAY = '按相似度从高到低'
+export const relevanceLabel = (): string => tr('sort.similarity')
 
 /** What the preview at the right edge reads out about a row: the price in a price order, the
  *  posting day otherwise, and the listing's own number when no day is readable.
@@ -39,12 +48,14 @@ export function orderLabel(a: {
   return a.day || `#${a.item.adoptId}`
 }
 
-export const TAB_LABELS: Record<FilterTab, string> = {
-  all: '全部',
-  unlocked: '未锁定',
-  locked: '已锁定',
-  wishlist: '收藏',
-}
+const TAB_KEY = {
+  all: 'tab.all',
+  unlocked: 'tab.unlocked',
+  locked: 'tab.locked',
+  wishlist: 'tab.wish',
+} as const
+
+export const tabLabel = (tab: FilterTab): string => tr(TAB_KEY[tab])
 
 export interface ComputeOptions {
   rows: AdoptListing[]
@@ -56,13 +67,14 @@ export interface ComputeOptions {
   wishlist: Map<number, number>
   // owner/account search text, keyed by adoptId
   socials?: Map<number, SocialSearchEntry>
-  // 价格区间 - the two ends in yuan, both inside. A listing with no price is outside every range.
+  // The price band: the two ends in yuan, both inside. A listing with no price sits outside every
+  // band.
   priceRange?: PriceRange | null
-  // 只显示有主人账号的: leave the listings whose owner has an account we can link to. Only a
-  // few dozen listings have one, so this list is short by design - the panel says so.
+  // Keep the listings whose owner has an account we can link to. Only a few dozen listings have one,
+  // so this list is short by design, and the panel says so.
   socialOnly?: boolean
-  // keep only these adoptIds - the semantic group reuses every filter but its own text
-  // match, because 68% of the descriptions never mention what the piece looks like
+  // Keep only these adoptIds. The semantic group reuses every other filter and brings its own text
+  // match, because the shelf's descriptions often leave out what the piece looks like.
   only?: Set<number>
   // drop these adoptIds, so the semantic group does not repeat the exact matches
   skip?: Set<number>
@@ -99,8 +111,8 @@ function matchesQuery(query: string, socials?: Map<number, SocialSearchEntry>) {
     return !!s && s.uidPrefixes.some((u) => u.toLowerCase().startsWith(q))
   }
   return (l: AdoptListing) =>
-    (l.adoptName?.toLowerCase().includes(q) ?? false) ||
-    (l.detailDescription?.toLowerCase().includes(q) ?? false) ||
+    (listingName(l)?.toLowerCase().includes(q) ?? false) ||
+    (listingBlurb(l)?.toLowerCase().includes(q) ?? false) ||
     socialText(l).includes(q) ||
     (digits && (String(l.adoptId).startsWith(q) || uidPrefix(l)))
 }

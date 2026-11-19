@@ -1,3 +1,4 @@
+import { tr } from '../../i18n'
 import { SolidUplot } from '@dschz/solid-uplot'
 import { cursor } from '@dschz/solid-uplot/plugins'
 import uPlot from 'uplot'
@@ -37,19 +38,27 @@ function xScales(): uPlot.Scales {
   }
 }
 
-// Categorical x-axis. `labels` is a GETTER so the axis picks up new labels on
-// every redraw. Options:
-//  - maxLabels: cap how many labels fit (adaptive stride, offset keeps the FIRST).
-//  - showAllLabels: show every bar's label (stride 1) — color/species.
-//  - showTicks: draw tick marks (false for color/species — just labels).
-//  - showGrid: draw uPlot's native vertical gridlines (false for bar charts —
-//    we draw them at the bar SIDES instead, via the draw hook).
-//  - rotate: label rotation in degrees (45 = bottom-left → top-right diagonal).
-//  - size: axis height in px (needs extra room for rotated labels).
-//
-// `incrs:[1]` + tiny `space` force ONE tick per bar (uPlot's default `space:50`
-// picked an increment ≥2 and skipped bars); `values` maps over uPlot's `splits`
-// (the bar indices it placed ticks at) returning ONE label per split.
+/** The width of a word in the axis font: a CJK glyph is a full square, a Latin letter about
+ *  half of one. 10px is `AXIS_FONT`. */
+const labelWidth = (text: string): number =>
+  [...text].reduce((w, ch) => w + (ch.charCodeAt(0) > 0x2e80 ? 10 : 5.5), 0)
+
+/**
+ * A categorical x-axis. `labels` is a getter so the axis picks up new labels on every redraw.
+ * The options:
+ *
+ * - maxLabels: how many labels fit, with a stride that keeps the first one.
+ * - showAllLabels: one label per bar, which is what the color and species charts use.
+ * - showTicks: draw tick marks. The color and species charts leave them out and show labels only.
+ * - showGrid: draw uPlot's vertical gridlines. The bar charts leave them out and draw gridlines at
+ *   the sides of the bars instead, in the draw hook.
+ * - rotate: label rotation in degrees, where 45 runs from the bottom left to the top right.
+ * - size: the axis height in px, which needs extra room when the labels are tilted.
+ *
+ * `incrs: [1]` and a small `space` ask for one tick per bar: uPlot's default `space: 50` picks an
+ * increment of 2 or more and skips bars. `values` walks uPlot's `splits`, the bar indices where it
+ * placed ticks, and returns one label for each.
+ */
 function catAxis(
   labels: () => string[],
   opts: { maxLabels?: number; showTicks?: boolean; showAllLabels?: boolean; showGrid?: boolean; rotate?: number; size?: number } = {},
@@ -58,9 +67,19 @@ function catAxis(
   const showTicks = opts.showTicks !== false
   const showGrid = opts.showGrid !== false
   const rotate = opts.rotate ?? 0
-  const stride = () => {
+  const baseStride = () => {
     const len = labels().length
     return len <= maxLabels ? 1 : Math.ceil(len / maxLabels)
+  }
+
+  // A tilted label takes its own width times the sine of the tilt away from the next bar. Names
+  // that would overlap by more than a slot thin out to every other one, and the summary above the
+  // chart still shows the hovered bar in full.
+  const tiltedStride = (width: number, splits: number[]): number => {
+    if (rotate === 0 || width <= 0) return 1
+    const slot = width / Math.max(1, splits.length - 1)
+    const need = Math.max(...labels().map(labelWidth)) * Math.sin((rotate * Math.PI) / 180) + 4
+    return need > slot * 2 ? Math.ceil(need / slot) : 1
   }
   return {
     stroke: AXIS_STROKE,
@@ -73,9 +92,9 @@ function catAxis(
     size: opts.size ?? 26, // snug - labels (10px) + gap 5 + ticks 4
     gap: 6, // labels close to the axis
     // offset 0 keeps the LEFTMOST label (uPlot's default offset keeps the last).
-    values: (_self: uPlot, splits: number[], _axisIdx: number, _foundSpace: number, _foundIncr: number) => {
+    values: (self: uPlot, splits: number[], _axisIdx: number, _foundSpace: number, _foundIncr: number) => {
       const l = labels()
-      const s = stride()
+      const s = Math.max(baseStride(), tiltedStride(self?.width ?? 0, splits))
       const out = splits.map((v: number) => (s === 1 || v % s === 0) ? (l[v] ?? '') : '')
       return out
     },
@@ -201,7 +220,8 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-// Bar charts (颜色/物种/每月新增): gridlines at bar sides + count labels.
+// The hooks that every bar chart shares: gridlines at the sides of the bars, and a count label above
+// each bar.
 function barChartHooks(): uPlot.Hooks.Arrays {
   return { draw: [drawBarGrid, drawBarLabels] }
 }
@@ -244,26 +264,35 @@ function chart(
   )
 }
 
-// Bar chart (颜色分布 / 物种分布 / 每月新增) — gridlines at bar sides, count above
-// each bar; every label or adaptive stride; optional ticks; optional 45° rotated
-// labels (物种).
+// A bar chart: gridlines at the sides of the bars, the count above each bar, every label or an
+// adaptive stride, optional ticks, and optional labels tilted 45°.
 export function StatBarChart(props: {
   labels: string[]; values: number[]; color: string; maxLabels?: number; showTicks?: boolean; showAllLabels?: boolean; rotate?: number; axisSize?: number; onHover?: (idx: number | null) => void; onReady?: (u: uPlot) => void
 }) {
   const data = (): AlignedData => [props.labels.map((_, i) => i), props.values]
   const series = (): uPlot.Series[] => [
     {},
-    { label: '数量', stroke: props.color, fill: props.color, paths: barPaths(), points: { show: false } },
+    { label: tr('stats.axisCount'), stroke: props.color, fill: props.color, paths: barPaths(), points: { show: false } },
   ]
+  // Words longer than 红 and 龙 need the labels tilted and the track wider, or the color names land
+  // on each other. A tilted word takes its own length times sin(45°) of vertical room, at about
+  // 6px per character in the axis font.
+  const longest = () => props.labels.reduce((m, l) => Math.max(m, l.length), 0)
+  const tilt = () => props.rotate ?? (longest() > 3 && props.labels.length > 6 ? 45 : 0)
+  const track = (): number => {
+    const flat = props.axisSize ?? 26
+    return tilt() === 0 ? flat : Math.min(150, Math.max(flat, Math.round(longest() * 6 * 0.71) + 12))
+  }
   const axes = (): uPlot.Axis[] => [
-    catAxis(() => props.labels, { maxLabels: props.maxLabels, showTicks: props.showTicks, showAllLabels: props.showAllLabels, showGrid: false, rotate: props.rotate ?? 0, size: props.axisSize ?? 26 }),
+    catAxis(() => props.labels, { maxLabels: props.maxLabels, showTicks: props.showTicks, showAllLabels: props.showAllLabels, showGrid: false, rotate: tilt(), size: track() }),
     yAxis(),
   ]
   return chart(data, series, axes, xScales, barChartHooks, (p) => props.onHover?.(p.cursor.idx >= 0 ? p.cursor.idx : null), () => props.onHover?.(null), [cursor()], props.onReady)
 }
 
-// Price histogram (一次性支付价格) — edge labels with bars BETWEEN them; count above
-// each bar. `edges` = bin boundaries (one more than the bars), `values` = counts.
+// The price histogram: one label at each gridline, with a bar standing between two labels, and the
+// count above each bar. `edges` holds the bin boundaries, one more than the number of bars, and
+// `values` holds the counts.
 export function StatHistChart(props: {
   edges: string[]; values: number[]; color: string; maxLabels?: number; showAllLabels?: boolean; onHover?: (idx: number | null) => void
 }) {
@@ -271,16 +300,16 @@ export function StatHistChart(props: {
   const data = (): AlignedData => [Array.from({ length: n() }, (_, i) => i), props.values]
   const series = (): uPlot.Series[] => [
     {},
-    { label: '数量', stroke: props.color, fill: props.color, paths: barPaths(), points: { show: false } },
+    { label: tr('stats.axisCount'), stroke: props.color, fill: props.color, paths: barPaths(), points: { show: false } },
   ]
   const axes = (): uPlot.Axis[] => [histAxis(() => props.edges, { maxLabels: props.maxLabels, showAllLabels: props.showAllLabels }), yAxis()]
   return chart(data, series, axes, xScales, histHooks, (p) => props.onHover?.(p.cursor.idx >= 0 ? p.cursor.idx : null), () => props.onHover?.(null), [cursor()])
 }
 
-// Line + area chart (每月价格走势) — 千元 y-axis, adaptive stride, native gridlines
-// at the data points. No per-point labels (too cluttered); instead `onHover`
-// reports the hovered/clicked point index (or null) so the parent can refresh the
-// section's summary span. `onMouseLeave` resets to null when the cursor exits.
+// The line and area chart, with a y-axis counted in thousands of yuan, an adaptive stride, and
+// uPlot's gridlines at the data points. No label per point, because they would cover each other.
+// Instead `onHover` reports the index of the point under the cursor, or null, so the parent can
+// refresh the summary line for this section, and `onMouseLeave` resets it to null.
 export function StatLineChart(props: {
   labels: string[]
   /** A null marks a month with nothing to plot, and the line has a gap there. */
@@ -293,7 +322,7 @@ export function StatLineChart(props: {
   const data = (): AlignedData => [props.labels.map((_, i) => i), props.values]
   const series = (): uPlot.Series[] => [
     {},
-    { label: '均价', stroke: props.color, fill: withAlpha(props.color, 0.15), width: 2, points: { show: true } },
+    { label: tr('stats.axisAvg'), stroke: props.color, fill: withAlpha(props.color, 0.15), width: 2, points: { show: true } },
   ]
   const axes = (): uPlot.Axis[] => [catAxis(() => props.labels, { maxLabels: props.maxLabels }), yAxisK()]
   return chart(

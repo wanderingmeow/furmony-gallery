@@ -5,6 +5,9 @@
 // or network layer, so domain logic stays off infrastructure.
 import type { AdoptListing } from './types'
 import { stableImageUrl } from '../data/image'
+import { tr } from '../i18n'
+import { listingPainterName } from './translatedText'
+import { colorLabel, raceLabel } from '../i18n/glossary'
 
 // Static race-name dictionary (mirrors Swift raceNamesMap)
 const RACE_NAMES: Record<number, string> = {
@@ -27,8 +30,18 @@ export function colorNames(listing: AdoptListing): string[] {
   return listing.harmonyAdoptColorVos?.map((c) => c.harmonyColor?.colorName).filter((n): n is string => !!n) ?? []
 }
 
+// The two functions above hand back the name the API wrote, in Chinese, and that name is a key:
+// a saved filter holds it, the color dots and species icons are looked up by it, and the related
+// rows are matched on it. A change of language happens on the way to the screen, through these.
+export const raceDisplay = (listing: AdoptListing): string | undefined => {
+  const name = raceName(listing)
+  return name === undefined ? undefined : raceLabel(listing.raceId, name)
+}
+
+export const colorDisplay = colorLabel
+
 export function painterName(listing: AdoptListing): string | undefined {
-  return listing.harmonyPainterVo?.painterName
+  return listingPainterName(listing)
 }
 
 export function painterAvatar(listing: AdoptListing): string | undefined {
@@ -111,8 +124,9 @@ export const MISSING_PRICE = '?'
 
 /** Furmony leaves the price at 0 when a listing has none. Sorting also uses 0, which puts such
  *  a listing at the cheap end. */
+// The shape of a sum of money belongs to the language on screen: ¥40500, 40500元, RMB 40,500.
 export function formatPrice(n: number): string {
-  return n > 0 ? `¥${Math.round(n)}` : MISSING_PRICE
+  return n > 0 ? tr('money.amount', Math.round(n)) : MISSING_PRICE
 }
 
 export function formatDiscount(listing: AdoptListing): number {
@@ -125,9 +139,14 @@ export function formatDiscount(listing: AdoptListing): number {
   return 0
 }
 
+// The shelf translates painter names when a request asks in another language, so the words
+// 「自设委托」 only arrive that way in Chinese. The painter id behind them is 1 on every row of
+// the shelf, and ids stay put across the whole saved copy.
 export function isSelfCommission(listing: AdoptListing): boolean {
-  return painterName(listing) === '自设委托'
+  return listing.harmonyPainterVo?.painterid === SELF_COMMISSION_PAINTER_ID
 }
+
+export const SELF_COMMISSION_PAINTER_ID = 1
 
 // ---- price display modes ---------------------------------------------------
 // The bottom-right FAB sets this; the cards and the detail sheet read it.
@@ -143,11 +162,14 @@ export function isSelfCommission(listing: AdoptListing): boolean {
 export const PRICE_MODES = ['once', 'installment', 'hidden'] as const
 export type PriceMode = typeof PRICE_MODES[number]
 
-export const PRICE_MODE_LABELS: Record<PriceMode, string> = {
-  once: '一口价',
-  installment: '12期分期',
-  hidden: '隐藏',
-}
+/** The name of a price display mode, in the language on screen. */
+const PRICE_MODE_KEY = {
+  once: 'price.once',
+  installment: 'price.installment',
+  hidden: 'price.hidden',
+} as const
+
+export const priceModeLabel = (mode: PriceMode): string => tr(PRICE_MODE_KEY[mode])
 
 export const INSTALLMENTS = 12
 
@@ -221,14 +243,14 @@ export function priceParts(listing: AdoptListing, mode: PriceMode): PriceParts |
     const per = monthlyPayment(listing)
     // A listing with no price has neither a deposit nor a monthly amount. The card shows a
     // price slot either way, so this one holds an unlabeled 0.
-    const card: CardPrice = down !== null ? { label: '首付', value: down }
-      : per !== null ? { label: '月供', value: per } : { label: null, value: 0 }
+    const card: CardPrice = down !== null ? { label: tr('info.downPayment'), value: down }
+      : per !== null ? { label: tr('info.monthly'), value: per } : { label: null, value: 0 }
     return {
       mode,
       down,
       main: per,
-      mainLabel: per === null ? null : '月供',
-      note: per === null ? null : `×${INSTALLMENTS}期`,
+      mainLabel: per === null ? null : tr('info.monthly'),
+      note: per === null ? null : tr('info.periods', INSTALLMENTS),
       total: per === null ? null : installmentTotal(listing),
       card,
     }

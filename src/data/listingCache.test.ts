@@ -25,20 +25,28 @@ describe('listings cache (adoptId-keyed table + order record)', () => {
       makeListing({ adoptId: 1, adoptName: 'a' }),
       makeListing({ adoptId: 2, adoptName: 'b' }),
     ]
-    await mod.saveListings(rows)
-    const loaded = await mod.loadListings()
+    await mod.saveListings(rows, 'zh')
+    const loaded = await mod.loadListings('zh')
     expect(loaded!.map((l) => l.adoptId)).toEqual([3, 1, 2]) // order preserved, not adoptId-sorted
     expect(loaded![0].adoptName).toBe('c')
   })
 
   it('returns null when empty', async () => {
-    expect(await mod.loadListings()).toBeNull()
+    expect(await mod.loadListings('zh')).toBeNull()
+  })
+
+  // The shelf writes names and descriptions in the language the request asked in, so a cache
+  // kept in another language would paint the old words for a moment before the new ones arrived.
+  it('answers null to a language the cache was not kept in', async () => {
+    await mod.saveListings([makeListing({ adoptId: 1, adoptName: '名字甲' })], 'zh')
+    expect(await mod.loadListings('pa')).toBeNull()
+    expect((await mod.loadListings('zh'))!.map((l) => l.adoptName)).toEqual(['名字甲'])
   })
 
   it('clearListings empties the table', async () => {
-    await mod.saveListings([makeListing({ adoptId: 1 })])
+    await mod.saveListings([makeListing({ adoptId: 1 })], 'zh')
     await mod.clearListings()
-    expect(await mod.loadListings()).toBeNull()
+    expect(await mod.loadListings('zh')).toBeNull()
   })
 })
 
@@ -54,7 +62,7 @@ describe('mergeListings (what the reader would see)', () => {
   it('a new signature is the same row, and keeps its object', async () => {
     const before = signed(1, 'aaa')
     const after = signed(1, 'bbb')
-    const r = await mod.mergeListings([before], [after])
+    const r = await mod.mergeListings([before], [after], 'zh')
     expect(r.changed).toBe(false)
     expect(r.updated[0]).toBe(before)
   })
@@ -65,7 +73,7 @@ describe('mergeListings (what the reader would see)', () => {
     // a fresh parse of the same row: equal content, different object
     const aAgain = { ...makeListing({ adoptId: 1, allcost: 10 }) }
     const bCheaper = makeListing({ adoptId: 2, allcost: 80 })
-    const r = await mod.mergeListings([a, b], [aAgain, bCheaper])
+    const r = await mod.mergeListings([a, b], [aAgain, bCheaper], 'zh')
     expect(r.changed).toBe(true)
     expect(r.updated[0]).toBe(a) // the card for row 1 keeps its DOM node
     expect(r.updated[1]).toBe(bCheaper)
@@ -74,7 +82,7 @@ describe('mergeListings (what the reader would see)', () => {
   it('a shuffle is a change, and every row keeps its object', async () => {
     const a = makeListing({ adoptId: 1 })
     const b = makeListing({ adoptId: 2 })
-    const r = await mod.mergeListings([a, b], [{ ...b }, { ...a }])
+    const r = await mod.mergeListings([a, b], [{ ...b }, { ...a }], 'zh')
     expect(r.changed).toBe(true)
     expect(r.updated[0]).toBe(b)
     expect(r.updated[1]).toBe(a)
@@ -83,7 +91,7 @@ describe('mergeListings (what the reader would see)', () => {
   it('a removed row is a change', async () => {
     const a = makeListing({ adoptId: 1 })
     const b = makeListing({ adoptId: 2 })
-    const r = await mod.mergeListings([a, b], [{ ...a }])
+    const r = await mod.mergeListings([a, b], [{ ...a }], 'zh')
     expect(r.changed).toBe(true)
     expect(r.updated.map((l) => l.adoptId)).toEqual([1])
   })
@@ -96,44 +104,74 @@ describe('mergeListings (what the reader would see)', () => {
       adoptId: 1, paintersId: 1, productId: 1,
       harmonyAdoptColorVos: colors.map((colorId) => ({ colorId })),
     })
-    const r = await mod.mergeListings([row([4, 1])], [row([1, 4])])
+    const r = await mod.mergeListings([row([4, 1])], [row([1, 4])], 'zh')
     expect(r.changed).toBe(false)
   })
 
   it('the field order in the answer is not a change', async () => {
     const a = { adoptId: 1, adoptName: 'A', paintersId: 1, productId: 1 } as AdoptListing
     const b = { paintersId: 1, productId: 1, adoptId: 1, adoptName: 'A' } as AdoptListing
-    expect((await mod.mergeListings([a], [b])).changed).toBe(false)
+    expect((await mod.mergeListings([a], [b], 'zh')).changed).toBe(false)
   })
 
   it('a name with a question mark is not cut at it', async () => {
     const a = makeListing({ adoptId: 1, adoptName: '这是什么?' })
     const b = makeListing({ adoptId: 1, adoptName: '这是什么' })
-    expect((await mod.mergeListings([a], [b])).changed).toBe(true)
+    expect((await mod.mergeListings([a], [b], 'zh')).changed).toBe(true)
   })
 
   it('changed when row count differs', async () => {
-    const r = await mod.mergeListings([], [makeListing({ adoptId: 1 })])
+    const r = await mod.mergeListings([], [makeListing({ adoptId: 1 })], 'zh')
     expect(r.changed).toBe(true)
   })
 
   it('unchanged for identical rows → does not rewrite the table', async () => {
     const rows = [makeListing({ adoptId: 1, adoptName: 'A' })]
-    await mod.saveListings(rows)
-    const r = await mod.mergeListings(rows, [{ ...rows[0] }])
+    await mod.saveListings(rows, 'zh')
+    const r = await mod.mergeListings(rows, [{ ...rows[0] }], 'zh')
     expect(r.changed).toBe(false)
     // table still intact (no rewrite happened)
-    const loaded = await mod.loadListings()
+    const loaded = await mod.loadListings('zh')
     expect(loaded!.map((l) => l.adoptId)).toEqual([1])
   })
 
   it('a real change rewrites the table with the merged rows', async () => {
     const a = signed(1, 'aaa')
-    await mod.saveListings([a])
+    await mod.saveListings([a], 'zh')
     const b = makeListing({ adoptId: 2, adoptName: 'B' })
-    const r = await mod.mergeListings([a], [a, b])
+    const r = await mod.mergeListings([a], [a, b], 'zh')
     expect(r.changed).toBe(true)
-    const loaded = await mod.loadListings()
+    const loaded = await mod.loadListings('zh')
     expect(loaded!.map((l) => l.adoptId)).toEqual([1, 2])
+  })
+})
+
+describe('a new language', () => {
+  // The shelf answers the name, the description and the painter in the language of the request,
+  // and nothing else on a row moves. The waterfall keys each card by its row, so a row that keeps
+  // its object keeps its picture painted.
+  it('keeps the row when only the words the shelf translates changed', async () => {
+    const before = makeListing({
+      adoptId: 1, adoptName: '名字甲', detailDescription: '文字甲', nonrecurringExpense: 12345,
+      harmonyPainterVo: { painterid: 7, painterName: '画师甲' },
+    })
+    const after = makeListing({
+      adoptId: 1, adoptName: 'Name A', detailDescription: 'Text A', nonrecurringExpense: 12345,
+      harmonyPainterVo: { painterid: 7, painterName: 'Painter A' },
+    })
+    const r = await mod.mergeListings([before], [after], 'us')
+    expect(r.updated[0]).toBe(before)
+    // The cache holds the words too, and the language they were answered in.
+    expect(r.changed).toBe(true)
+    expect(before.adoptName).toBe('Name A')
+    expect(before.harmonyPainterVo?.painterName).toBe('Painter A')
+  })
+
+  it('replaces the row when the money moves, words or no words', async () => {
+    const before = makeListing({ adoptId: 1, adoptName: '名字甲', nonrecurringExpense: 12345 })
+    const after = makeListing({ adoptId: 1, adoptName: 'Name A', nonrecurringExpense: 39000 })
+    const r = await mod.mergeListings([before], [after], 'us')
+    expect(r.updated[0]).toBe(after)
+    expect(r.changed).toBe(true)
   })
 })

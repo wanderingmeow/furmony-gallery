@@ -8,6 +8,8 @@ export const DB_VERSION = 2
 export const IMG_URL_STORE = 'img_url_map'
 export const LISTINGS_STORE = 'listings'
 export const ORDER_KEY = 'order'
+/** The code the shelf was asked in when the rows were saved. */
+export const LANG_KEY = 'lang'
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((res, rej) => {

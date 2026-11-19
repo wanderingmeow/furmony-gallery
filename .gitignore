@@ -13,6 +13,8 @@ dist-ssr
 *.local
 .vite
 
+.env
+
 # not pushed to the repo
 agent/
 package-lock.json

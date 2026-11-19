@@ -4,6 +4,7 @@ import { batch, createEffect, createMemo, createRoot, createSignal, on } from 's
 import type { AdoptListing } from '../model/types'
 import { compute, hasSocial } from '../model/filter'
 import { colorNames, isLocked, raceName } from '../model/domain'
+import { browserLocale, requestedLocale, setLocale } from '../i18n'
 import type { PriceRange } from '../model/priceRange'
 import { pickEmptyState, type EmptyAction, type EmptyState as EmptyChoice } from '../model/emptyState'
 import { createPriceFacet, type PriceFacet } from './priceFacet'
@@ -230,6 +231,7 @@ export function resetPanel(): void {
     setPriceRange(null)
     setPriceMode(DEFAULT_PRICE_MODE)
     setSemanticSearch(false)
+    setLocale(browserLocale())
   })
 }
 
@@ -238,6 +240,7 @@ export function resetPanel(): void {
  *  while the reader is still one tap away from wanting them back. */
 function prefsChanged(): boolean {
   return sortMode() !== DEFAULT_SORT || priceMode() !== DEFAULT_PRICE_MODE || semanticSearch()
+    || requestedLocale() !== browserLocale()
 }
 
 /** Whether 重置 has anything to give back. */

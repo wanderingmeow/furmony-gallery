@@ -1,3 +1,4 @@
+import { tr } from '../../i18n'
 import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
 import { filteredListings } from '../../stores/derivedStore'
@@ -144,25 +145,25 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
         <EmptyState />
       </Show>
       <div class="w-full text-center text-sm text-muted px-6 py-5 border-t border-border">
-        所有图片与文字素材均源自 Furmony（furmony.com），版权归原作者所有；本页面仅作浏览展示，不用于商业用途。
+        {tr('band.copyright')}
         <div class="mt-1.5">
-          代码以{' '}
+          {tr('band.codeBefore')}{' '}
           <a
             href="https://github.com/wanderingmeow/furmony-gallery/blob/main/LICENSE"
             target="_blank"
             rel="noopener noreferrer"
             class="text-accent-soft hover:underline"
           >
-            MIT 协议
+            {tr('band.license')}
           </a>{' '}
-          开源 ·{' '}
+          {tr('band.codeAfter')} ·{' '}
           <a
             href="https://github.com/wanderingmeow/furmony-gallery"
             target="_blank"
             rel="noopener noreferrer"
             class="text-accent-soft hover:underline"
           >
-            项目仓库
+            {tr('band.repository')}
           </a>
         </div>
       </div>

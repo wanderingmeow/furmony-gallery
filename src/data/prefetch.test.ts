@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { ENDPOINT_URL, LIST_PAGE_SIZE, LIST_REQUEST_INIT, listKey, pageUrl, type Endpoint } from './endpoints'
+import { ENDPOINT_URL, LIST_PAGE_SIZE, listRequestInit, listKey, pageUrl, type Endpoint } from './endpoints'
 import { prefetchScript, takePrefetched } from './prefetch'
+import { API_LANGUAGE, LOCALE_KEY } from '../i18n/apiLanguage'
+import { browserLocale } from '../i18n/locale'
 
 // The code runs with its own fetch and its own window, so nothing here reaches the site.
 const run = (ask: (url: string, init: RequestInit) => Promise<Response>) =>
@@ -13,6 +15,9 @@ const site = (total: number, rows: unknown[]) => (_url: string) =>
   Promise.resolve(answered({ code: 200, total, rows }))
 
 const endpoints = Object.keys(ENDPOINT_URL) as Endpoint[]
+
+/** The language one ask carried. */
+const header = (init: RequestInit): string => (init.headers as Record<string, string>)['Target-Language']
 
 // The document asks for both lists, so a test needs one list's addresses out of the script.
 const ofList = (endpoint: Endpoint, urls: string[]) => urls.filter((u) => u.startsWith(ENDPOINT_URL[endpoint]))
@@ -38,15 +43,29 @@ describe('the chain the document starts for itself', () => {
   })
 
   it('asks the way api.ts asks', async () => {
+    localStorage.setItem(LOCALE_KEY, 'ja')
     const seen: RequestInit[] = []
     run((_url, init) => {
       seen.push(init)
       return site(1, [])(_url)
     })
     await Promise.all(endpoints.map((endpoint) => takePrefetched(listKey(endpoint))))
-    // One per list.
+    // One request per list.
     expect(seen).toHaveLength(2)
-    for (const init of seen) expect(init).toEqual(LIST_REQUEST_INIT)
+    // The language sits in the header, so a page that opens in 日本語 does not fill the screen with
+    // names from another language while the app waits for its own request.
+    for (const init of seen) expect(init).toEqual(listRequestInit('pa'))
+    localStorage.removeItem(LOCALE_KEY)
+  })
+
+  it('asks a first visit in the language the browser speaks', async () => {
+    const seen: RequestInit[] = []
+    run((_url, init) => {
+      seen.push(init)
+      return site(1, [])(_url)
+    })
+    await takePrefetched(listKey('primary'))
+    expect(header(seen[0])).toBe(API_LANGUAGE[browserLocale()])
   })
 
   it('resolves to the whole list, not to the first page', async () => {

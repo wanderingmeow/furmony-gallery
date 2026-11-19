@@ -11,6 +11,7 @@ import { DETAIL_BODY } from './components/ui/boxes'
 import { DETAIL_PAD_X } from './draw/layout'
 import type { LockFilter } from './model/statistics'
 import { NotificationCenter } from './components/ui/NotificationCenter'
+import { tr } from './i18n'
 import { Alert } from './components/ui/Alert'
 import { loadData, loadError, setLoadError } from './stores/listingsStore'
 
@@ -74,7 +75,7 @@ function Shell() {
                 <button
                   class="rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-semibold whitespace-nowrap text-red-700 active:bg-red-100 dark:border-red-800 dark:bg-red-900 dark:text-red-200 dark:active:bg-red-800"
                   onClick={() => { setLoadError(null); void loadData() }}
-                >重试</button>
+                >{tr('common.retry')}</button>
               </Alert>
             )}
           </Show>

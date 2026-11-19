@@ -1,14 +1,15 @@
 // What loadData() hands the screen, with the network and the cache held by mocks.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AdoptListing } from '../model/types'
+import { SELF_COMMISSION_PAINTER_ID } from '../model/domain'
 
-const loadListings = vi.fn()
+const readCache = vi.fn()
 const fetchAllListings = vi.fn()
 const mergeListings = vi.fn()
 const notifyListingChanges = vi.fn()
 
 vi.mock('../data/listingCache', () => ({
-  loadListings: () => loadListings(),
+  readCache: () => readCache(),
   mergeListings: (prev: AdoptListing[], next: AdoptListing[]) => mergeListings(prev, next),
 }))
 vi.mock('../data/api', () => ({ fetchAllListings: () => fetchAllListings() }))
@@ -19,17 +20,18 @@ vi.mock('./notificationStore', () => ({
 
 const { loadData, listings } = await import('./listingsStore')
 
-const row = (adoptId: number, painterName: string): AdoptListing => ({
+const row = (adoptId: number, painterid: number, painterName: string): AdoptListing => ({
   adoptId,
   paintersId: 1,
   productId: 1,
-  harmonyPainterVo: { painterid: 1, painterName },
+  harmonyPainterVo: { painterid, painterName },
 })
-const shelfRow = row(2, '某画师')
-const selfRow = row(1, '自设委托')
+const shelfRow = row(2, 77, '某画师')
+const selfRow = row(1, SELF_COMMISSION_PAINTER_ID, '自设委托')
+const selfTranslated = row(1, SELF_COMMISSION_PAINTER_ID, 'Self commission')
 
 beforeEach(() => {
-  loadListings.mockReset().mockResolvedValue(null)
+  readCache.mockReset().mockResolvedValue(null)
   fetchAllListings.mockReset().mockResolvedValue([shelfRow])
   mergeListings.mockReset().mockResolvedValue({ updated: [shelfRow], changed: true })
   notifyListingChanges.mockReset()
@@ -43,8 +45,18 @@ describe('loadData', () => {
     expect(listings().map((l) => l.adoptId)).toEqual([2])
   })
 
+  // The shelf translates painter names, so the words 「自设委托」 only arrive in Chinese. The id
+  // behind them is what stays put across languages.
+  it('drops a self-commission piece whose name came back in another language', async () => {
+    fetchAllListings.mockResolvedValue([selfTranslated, shelfRow])
+    mergeListings.mockResolvedValue({ updated: [selfTranslated, shelfRow], changed: true })
+    await loadData()
+    expect(listings().map((l) => l.adoptId)).toEqual([2])
+  })
+
   it('applies the same rule to a cache that still holds one', async () => {
-    loadListings.mockResolvedValue([selfRow, shelfRow])
+    readCache.mockResolvedValue({ rows: [selfRow, shelfRow], lang: 'zh' })
+    mergeListings.mockResolvedValue({ updated: [], changed: false })
     await loadData()
     expect(listings().map((l) => l.adoptId)).toEqual([2])
   })
@@ -52,7 +64,7 @@ describe('loadData', () => {
   // A notification offers a page the reader could open, so a piece they cannot reach stays out of
   // the comparison on both sides.
   it('leaves self-commission pieces out of the change comparison', async () => {
-    loadListings.mockResolvedValue([shelfRow])
+    readCache.mockResolvedValue({ rows: [shelfRow], lang: 'zh' })
     fetchAllListings.mockResolvedValue([shelfRow, selfRow])
     mergeListings.mockResolvedValue({ updated: [shelfRow, selfRow], changed: true })
     await loadData()

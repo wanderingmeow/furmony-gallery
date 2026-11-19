@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_ACTION_LABELS, pickEmptyState, type EmptyFacts, type EmptyState } from './emptyState'
+import { emptyActionLabel, pickEmptyState, type EmptyFacts, type EmptyState } from './emptyState'
 
 const none: EmptyFacts = {
   loadFailed: false,
@@ -22,12 +22,13 @@ const pick = (over: Partial<EmptyFacts>): EmptyState => {
 
 describe('pickEmptyState', () => {
   it('says nothing while the enhanced search is still running', () => {
-    // 没有「狼」相关设定 would be a guess about a reply that has not landed.
+    // A title that names the search word would be a guess about a reply that has not landed.
     expect(pickEmptyState({ ...none, asking: true, query: '狼' })).toBeNull()
   })
 
   it('says a load failed before anything else', () => {
-    // A list that never arrived looks like every other empty list, and 重试 is the only way out.
+    // A list that never arrived looks like every other empty list, and the retry button is the only
+    // way out.
     const s = pick({ loadFailed: true, query: '狼', picked: 3, onWishlistTab: true })
     expect(s.title).toBe('没能载入设定')
     expect(s.action).toBe('retry')
@@ -76,7 +77,8 @@ describe('pickEmptyState', () => {
   })
 
   it('blames the service when its request ended with nothing in hand', () => {
-    // The words were never looked at, so 换个词试试 would send the reader off the wrong path.
+    // The words were never looked at, so a line that suggests another word would send the reader off
+    // the wrong path.
     const s = pick({ query: '狼', picked: 2, filtersAreTheCause: true, sentenceFailed: true })
     expect(s.icon).toBe('spark')
     expect(s.title).toBe('增强搜索失败')
@@ -106,7 +108,8 @@ describe('pickEmptyState', () => {
   })
 
   it('speaks for the picture search without a button', () => {
-    // The picture banner already carries the chips, so a second set of buttons would fight it.
+    // The picture banner already carries the chips, so a second set of buttons would repeat what is
+    // already on screen.
     const s = pick({ pictureSay: 'noMatch' })
     expect(s.title).toBe('没有很像的')
     expect(s.action).toBeUndefined()
@@ -138,6 +141,6 @@ describe('pickEmptyState', () => {
         { pictureSay: 'noMatch' }, { query: 'x' }, { picked: 1 },
       ].map((over) => pick(over as Partial<EmptyFacts>).action).filter(Boolean),
     )
-    for (const a of actions) expect(EMPTY_ACTION_LABELS[a!].length).toBeGreaterThan(0)
+    for (const a of actions) expect(emptyActionLabel(a!).length).toBeGreaterThan(0)
   })
 })

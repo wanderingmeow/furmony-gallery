@@ -1,12 +1,12 @@
 import { createSignal, For, onCleanup, onMount } from 'solid-js'
-import { FILTER_TABS, TAB_LABELS, type FilterTab } from '../../model/filter'
+import { FILTER_TABS, tabLabel, type FilterTab } from '../../model/filter'
 import { edgeFade, fadeMask, NO_FADE, type EdgeFade } from '../../draw/fade'
 import { tab, setTab } from '../../stores/filterStore'
 import { countAll, countUnlocked, countLocked, wishlistCount } from '../../stores/derivedStore'
 import { TABS_ROW } from '../ui/boxes'
 
-// 渐隐最宽 40px，在 80px 的滑动距离内退到 0。tab 排是自由滑动（不吸附），所以不用像
-// 卡片那一排把 range 拉到比一档 snap 宽
+// The fade is 40px wide at most and empties over 80px of scrolling. The tab row slides freely, so the
+// range only has to cover the fade. The card row snaps, so its range has to be wider than one step.
 const FADE_PX = 40
 const FADE_RANGE = 80
 
@@ -54,9 +54,9 @@ export function FilterTabs() {
       style={{ '-webkit-mask-image': mask(), 'mask-image': mask() }}
     >
       <For each={FILTER_TABS}>
-        {(t) => {
-          const selected = () => tab() === t
-          const count = COUNT_FOR[t]
+        {(name) => {
+          const selected = () => tab() === name
+          const count = COUNT_FOR[name]
           return (
             <button
               class="h-8 px-3 rounded-lg text-sm whitespace-nowrap"
@@ -64,9 +64,9 @@ export function FilterTabs() {
                 'bg-accent text-white': selected(),
                 'bg-surface-2 text-ink': !selected(),
               }}
-              onClick={() => setTab(t)}
+              onClick={() => setTab(name)}
             >
-              {TAB_LABELS[t]}
+              {tabLabel(name)}
               <span class={selected() ? 'text-white/70' : 'text-muted'}> ({count()})</span>
             </button>
           )
