@@ -3,8 +3,9 @@
 import type { AdoptListing } from './types'
 import type { SocialSearchEntry } from '../data/socials'
 import {
-  colorNames, displayPrice, formatPrice, isLocked, isSelfCommission, raceName,
+  colorNames, displayPrice, formatPrice, isLocked, raceName,
 } from './domain'
+import { keepsByPrice, type PriceRange } from './priceRange'
 
 export type SortMode = 'timeDesc' | 'timeAsc' | 'priceAsc' | 'priceDesc'
 export type FilterTab = 'all' | 'unlocked' | 'locked' | 'wishlist'
@@ -55,6 +56,8 @@ export interface ComputeOptions {
   wishlist: Map<number, number>
   // owner/account search text, keyed by adoptId
   socials?: Map<number, SocialSearchEntry>
+  // 价格区间 - the two ends in yuan, both inside. A listing with no price is outside every range.
+  priceRange?: PriceRange | null
   // 只显示有主人账号的: leave the listings whose owner has an account we can link to. Only a
   // few dozen listings have one, so this list is short by design - the panel says so.
   socialOnly?: boolean
@@ -103,14 +106,19 @@ function matchesQuery(query: string, socials?: Map<number, SocialSearchEntry>) {
 }
 
 export function compute(o: ComputeOptions): AdoptListing[] {
-  const { rows, tab, sort, colors, races, query, wishlist, socials, socialOnly, only, skip, keepOrder } = o
-  let result = rows.filter((l) => !isSelfCommission(l))
+  const {
+    rows, tab, sort, colors, races, query, wishlist, socials, socialOnly, priceRange, only, skip,
+    keepOrder,
+  } = o
+  // A copy: the sort below runs in place, and `rows` is the store's own array.
+  let result = rows.slice()
 
   // Both set filters run first: they are the cheapest test and everything after them works on
   // the smaller list. They apply to every tab, the wishlist early-return included.
   if (only) result = result.filter((l) => only.has(l.adoptId))
   if (skip && skip.size > 0) result = result.filter((l) => !skip.has(l.adoptId))
   if (socialOnly) result = result.filter((l) => hasSocial(l.adoptId, socials))
+  if (priceRange) result = result.filter((l) => keepsByPrice(l, priceRange))
 
   if (colors.size > 0) result = result.filter((l) => colorNames(l).some((c) => colors.has(c)))
   if (races.size > 0) {

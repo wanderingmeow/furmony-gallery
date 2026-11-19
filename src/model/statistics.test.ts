@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AdoptListing } from './types'
 import {
-  filterByLock, priceBins, medianPrice, colorCounts, raceCounts,
+  filterByLock, priceBins, priceEdges, withEmptyBar, medianPrice, colorCounts, raceCounts,
   monthlyPriceStats, monthlyCounts,
 } from './statistics'
 
@@ -36,13 +36,53 @@ describe('medianPrice', () => {
 })
 
 describe('priceBins', () => {
-  it('buckets by 2000 with 千元 labels', () => {
+  it('buckets by ¥1000 with 千元 labels', () => {
     const bins = priceBins([500, 1500, 2500, 3500])
-    expect(bins.map((b) => b.label)).toEqual(['0-2', '2-4'])
-    expect(bins.map((b) => b.count)).toEqual([2, 2])
+    expect(bins.map((b) => b.label)).toEqual(['0-1', '1-2', '2-3', '3-4'])
+    expect(bins.map((b) => b.count)).toEqual([1, 1, 1, 1])
   })
   it('empty -> []', () => expect(priceBins([])).toEqual([]))
   it('single distinct value -> []', () => expect(priceBins([1000, 1000])).toEqual([]))
+
+  // Prices are round numbers, so a lot of them land exactly on a boundary.
+  it('puts a price that lands on a boundary in the bar that starts there', () => {
+    const bins = priceBins([1000, 2000, 3000])
+    expect(bins.map((b) => b.count)).toEqual([1, 1, 1])
+    expect(bins.reduce((n, b) => n + b.count, 0)).toBe(3)
+  })
+
+  // The panel counts a shorter list over a wider grid, so a bar keeps its place.
+  it('draws over a grid handed in from outside', () => {
+    const bins = priceBins([22000, 22500], 1000, [20000, 25000])
+    expect(bins.map((b) => b.label)).toEqual(['20-21', '21-22', '22-23', '23-24', '24-25'])
+    expect(bins.map((b) => b.count)).toEqual([0, 0, 2, 0, 0])
+  })
+})
+
+describe('withEmptyBar', () => {
+  const bins = priceBins([21000, 24000])
+
+  it('adds one empty bar past the top', () => {
+    const out = withEmptyBar(bins, 1000, 'above')
+    const last = out[out.length - 1]
+    expect(out.length).toBe(bins.length + 1)
+    expect([last.low, last.high, last.count, last.label]).toEqual([25000, 26000, 0, '25-26'])
+    // The edges stay in step, so a thumb over the empty bar points at it.
+    expect(priceEdges(out).length).toBe(out.length + 1)
+  })
+
+  it('adds one below the bottom, and one on each end', () => {
+    expect(withEmptyBar(bins, 1000, 'below')[0].low).toBe(20000)
+    const both = withEmptyBar(bins, 1000, 'both')
+    expect(both.length).toBe(bins.length + 2)
+    expect(both[0].count).toBe(0)
+    expect(both[both.length - 1].count).toBe(0)
+  })
+
+  it('adds nothing when no bar is needed', () => {
+    expect(withEmptyBar(bins, 1000, 'none')).toBe(bins)
+    expect(withEmptyBar([], 1000, 'above')).toEqual([])
+  })
 })
 
 describe('colorCounts / raceCounts', () => {

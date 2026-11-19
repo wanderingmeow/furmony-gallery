@@ -16,16 +16,6 @@ function ids(result: AdoptListing[]): number[] {
   return result.map((l) => l.adoptId)
 }
 
-describe('compute - base', () => {
-  it('excludes self-commission (自设委托) listings', () => {
-    const rows = [
-      listing(1, { harmonyPainterVo: { painterid: 1, painterName: '自设委托' } }),
-      listing(2, { harmonyPainterVo: { painterid: 2, painterName: '某画师' } }),
-    ]
-    expect(ids(compute({ rows, tab: 'all', sort: 'timeAsc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP }))).toEqual([2])
-  })
-})
-
 describe('compute - tab', () => {
   const rows = [
     listing(1, { isLock: 2 }), // locked
@@ -225,6 +215,40 @@ describe('compute - socialOnly filter', () => {
   })
 })
 
+describe('compute - 价格区间', () => {
+  // Three priced listings and a fourth with no price: Furmony leaves those at 0.
+  const rows = [
+    listing(1, { nonrecurringExpense: 20000 }),
+    listing(2, { nonrecurringExpense: 22000 }),
+    listing(3, { nonrecurringExpense: 26000 }),
+    listing(4),
+  ]
+  const at = (priceRange: [number, number] | null) => ids(compute({
+    rows, tab: 'all', sort: 'timeAsc', colors: EMPTY, races: EMPTY, query: '', wishlist: EMPTY_MAP,
+    priceRange,
+  }))
+
+  it('keeps the rows between the ends, both ends included', () => {
+    expect(at([20000, 22000])).toEqual([1, 2])
+  })
+
+  it('drops the row with no price, because there is no number to compare', () => {
+    expect(at([0, 90000])).toEqual([1, 2, 3])
+  })
+
+  it('leaves the list alone while no range is set', () => {
+    expect(at(null)).toEqual([1, 2, 3, 4])
+  })
+
+  it('applies within the 收藏 tab, like the other picks', () => {
+    const saved = new Map([[1, 5], [3, 4], [4, 3]])
+    expect(ids(compute({
+      rows, tab: 'wishlist', sort: 'timeAsc', colors: EMPTY, races: EMPTY, query: '',
+      wishlist: saved, priceRange: [20000, 20000],
+    }))).toEqual([1])
+  })
+})
+
 describe('hasSocial', () => {
   it('true only for an entry with a processable platform', () => {
     const SOCIALS = new Map<number, SocialSearchEntry>([
@@ -254,8 +278,8 @@ describe('compute - semantic group', () => {
     expect(ids(compute({ ...base, only: new Set([1, 2, 3]), skip: new Set([2]) }))).toEqual([1, 3])
   })
 
-  // The text match is the one filter the group skips - its whole purpose is the listing
-  // whose description never says what the piece looks like. Everything else still bites.
+  // The text match is the one filter this group skips: its purpose is the listing whose
+  // description never says what the piece looks like. Every other filter still runs.
   it('still filters by color, tab and lock state', () => {
     const colored = [
       listing(1, { harmonyAdoptColorVos: [{ harmonyColor: { colorName: '蓝' } }] }),

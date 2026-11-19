@@ -1,9 +1,11 @@
-// src/stores/filterStore.ts: filter state signals (tab / sort / colors / races / search / 主人账号).
+// src/stores/filterStore.ts: filter state signals (tab / sort / colors / races / search / 主人账号
+// / 价格区间).
 //
 // The filter signals live in memory, and the setters write them to localStorage on the spot,
 // so a refresh keeps the filters the reader left.
 import { batch, createSignal } from 'solid-js'
 import { FILTER_TABS, SORT_MODES, type FilterTab, type SortMode } from '../model/filter'
+import type { PriceRange } from '../model/priceRange'
 import { hasUncommittedText } from '../model/composing'
 
 const FILTER_KEY = 'furmony_filter'
@@ -16,6 +18,8 @@ const [selectedColors, setSelectedColorsSignal] = createSignal<Set<string>>(new 
 const [selectedRaces, setSelectedRacesSignal] = createSignal<Set<string>>(new Set())
 const [searchText, setSearchTextSignal] = createSignal('')
 const [socialOnly, setSocialOnlySignal] = createSignal(false)
+// 价格区间. null is the whole list: the reader has not narrowed the price.
+const [priceRange, setPriceRangeSignal] = createSignal<PriceRange | null>(null)
 
 function persistFilters(): void {
   const f = {
@@ -25,13 +29,14 @@ function persistFilters(): void {
     races: [...selectedRaces()],
     search: searchText(),
     socialOnly: socialOnly(),
+    price: priceRange(),
   }
   try {
     localStorage.setItem(FILTER_KEY, JSON.stringify(f))
   } catch { /* ignore */ }
 }
 
-export type FilterChangeKind = 'tab' | 'sort' | 'search' | 'colors' | 'races' | 'socialOnly'
+export type FilterChangeKind = 'tab' | 'sort' | 'search' | 'colors' | 'races' | 'socialOnly' | 'priceRange'
 /** The page hands the store what a filter change should do. The store never touches the document,
  *  so the waterfall registers its own scroll reset here. */
 let onFilterChange: ((kind: FilterChangeKind) => void) | null = null
@@ -59,8 +64,11 @@ export function setSearchText(v: string): void {
 export function setSocialOnly(v: boolean): void {
   batch(() => { setSocialOnlySignal(v); persistFilters(); notify('socialOnly') })
 }
+export function setPriceRange(v: PriceRange | null): void {
+  batch(() => { setPriceRangeSignal(v); persistFilters(); notify('priceRange') })
+}
 
-export { tab, sortMode, selectedColors, selectedRaces, searchText, socialOnly }
+export { tab, sortMode, selectedColors, selectedRaces, searchText, socialOnly, priceRange }
 
 export function loadFilters(): void {
   try {
@@ -68,7 +76,7 @@ export function loadFilters(): void {
     if (!raw) return
     const f = JSON.parse(raw) as {
       tab?: string; sort?: string; colors?: string[]; races?: string[]; search?: string
-      socialOnly?: boolean
+      socialOnly?: boolean; price?: number[]
     }
     // validate tab/sort against the known vocab before applying (stale/corrupt data ignored)
     if (f.tab && FILTER_TABS.includes(f.tab as FilterTab)) setTabSignal(f.tab as FilterTab)
@@ -79,5 +87,11 @@ export function loadFilters(): void {
     // committed. That is not a question, so `loadFilters` ignores it.
     if (typeof f.search === 'string' && !hasUncommittedText(f.search)) setSearchTextSignal(f.search)
     setSocialOnlySignal(f.socialOnly === true)
+    // Two finite numbers in order, or nothing: a stored range that lost a number would hide
+    // every row.
+    const p = f.price
+    if (Array.isArray(p) && p.length === 2 && p.every((n) => Number.isFinite(n)) && p[0] <= p[1]) {
+      setPriceRangeSignal([p[0], p[1]])
+    }
   } catch { /* ignore */ }
 }

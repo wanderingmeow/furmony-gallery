@@ -1,8 +1,9 @@
-// src/stores/listingsStore.ts — listings + loading state, data loading.
+// src/stores/listingsStore.ts - listings, loading state, and the load itself.
 import { createSignal } from 'solid-js'
 import type { AdoptListing } from '../model/types'
 import { loadListings, mergeListings } from '../data/listingCache'
 import { fetchAllListings } from '../data/api'
+import { isSelfCommission } from '../model/domain'
 import { cleanStaleWishlist } from './wishlistStore'
 import { notifyListingChanges } from './notificationStore'
 
@@ -18,11 +19,18 @@ export const [loadError, setLoadError] = createSignal<LoadError | null>(null)
 export const [fetchFailed, setFetchFailed] = createSignal(false) // retries exhausted → refresh button
 export const [dataReady, setDataReady] = createSignal(false) // cache or first data loaded → show page
 
+/**
+ * The rows the page is drawn from. Self-commission pieces are dropped here, where rows enter the
+ * store, so no list, chart, count or bar needs a rule for them. The API answer, the cache and the
+ * stale-id cleanup still see those rows.
+ */
+const onShelf = (rows: AdoptListing[]): AdoptListing[] => rows.filter((l) => !isSelfCommission(l))
+
 export async function loadData(): Promise<void> {
   // 1. cache → immediate render (IndexedDB read is async but fast)
   const cached = await loadListings()
   if (cached && cached.length > 0) {
-    setListings(cached)
+    setListings(onShelf(cached))
     setDataReady(true)
   }
 
@@ -39,7 +47,7 @@ export async function loadData(): Promise<void> {
     if (listings().length === 0) {
       const fallback = await loadListings()
       if (fallback && fallback.length > 0) {
-        setListings(fallback)
+        setListings(onShelf(fallback))
         setDataReady(true)
       } else {
         setLoadError({ title: '载入失败', line: '网络连接失败，请检查网络设置' })
@@ -58,10 +66,10 @@ export async function loadData(): Promise<void> {
   const { updated, changed } = await mergeListings(oldRows, newRows)
 
   if (changed) {
-    setListings(updated)
-    // notification diff — first visit has empty oldRows, so nothing to diff; that
-    // also serves as the "visited" check, no need for a separate hasVisited flag
-    notifyListingChanges(oldRows, updated)
+    setListings(onShelf(updated))
+    // The notification diff. On a first visit oldRows is empty, so nothing is announced, and
+    // that doubles as the "have we visited before" check: no extra flag is needed.
+    notifyListingChanges(onShelf(oldRows), onShelf(updated))
   }
   setDataReady(true)
 

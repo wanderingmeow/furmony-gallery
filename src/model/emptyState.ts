@@ -23,7 +23,7 @@ export interface EmptyFacts {
   onWishlistTab: boolean
   savedCount: number
   query: string
-  /** How many colors and species the reader picked. */
+  /** How many picks the reader made: the colors, the species, and the price range as one pick. */
   picked: number
   /** Dropping those picks would bring results back, so the picks are what emptied the list. */
   filtersAreTheCause: boolean

@@ -5,7 +5,7 @@ import { listings } from '../stores/listingsStore'
 import { StatBarChart, StatHistChart, StatLineChart } from '../components/stats/StatChart'
 import {
   filterByLock, priceBins, priceEdges, colorCounts, raceCounts, monthlyPriceStats, monthlyCounts,
-  fmtMonth, medianPrice, LOCK_FILTERS, LOCK_LABELS, type LockFilter,
+  fmtMonth, medianPrice, STATS_PRICE_BUCKET, LOCK_FILTERS, LOCK_LABELS, type LockFilter,
 } from '../model/statistics'
 import { STATS_TITLE } from '../model/titles'
 import { displayPrice } from '../model/domain'
@@ -66,7 +66,7 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
 
   // ---- price ----
   const prices = createMemo(() => data().map(displayPrice).filter((p) => p > 0))
-  const bins = createMemo(() => priceBins(prices()))
+  const bins = createMemo(() => priceBins(prices(), STATS_PRICE_BUCKET))
   // Hovering/clicking any chart refreshes its section's summary span (the top-right
   // `ml-auto` one) with the hovered data point's value - it doubles as the tooltip.
   const [priceHover, setPriceHover] = createSignal<number | null>(null)

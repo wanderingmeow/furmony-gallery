@@ -3,12 +3,15 @@
 import { batch, createEffect, createMemo, createRoot, createSignal, on } from 'solid-js'
 import type { AdoptListing } from '../model/types'
 import { compute, hasSocial } from '../model/filter'
-import { colorNames, isLocked, isSelfCommission, raceName } from '../model/domain'
+import { colorNames, isLocked, raceName } from '../model/domain'
+import type { PriceRange } from '../model/priceRange'
 import { pickEmptyState, type EmptyAction, type EmptyState as EmptyChoice } from '../model/emptyState'
+import { createPriceFacet, type PriceFacet } from './priceFacet'
 import { fetchFailed, listings, loadData } from './listingsStore'
 import {
-  DEFAULT_SORT, selectedColors, selectedRaces, setSearchText, setSelectedColors,
-  setSelectedRaces, setSocialOnly, setSortMode, socialOnly, searchText, sortMode, tab,
+  DEFAULT_SORT, priceRange, selectedColors, selectedRaces, setPriceRange, setSearchText,
+  setSelectedColors, setSelectedRaces, setSocialOnly, setSortMode, socialOnly, searchText, sortMode,
+  tab,
 } from './filterStore'
 import {
   DEFAULT_PRICE_MODE, priceMode, semanticSearch, setPriceMode, setSemanticSearch,
@@ -38,14 +41,20 @@ export let socialCount: () => number
  *  every listing, so a switch left on would empty the page. A switch on with nothing to filter on
  *  is not on. */
 export let socialFilterOn: () => boolean
+/** What the 价格区间 block reads: the bars, where a thumb may rest, and what the band keeps. */
+export let price: PriceFacet
 /** Why the list is empty and the one thing the reader can press, or null while there is nothing
  *  to say. The empty state box shows this and nothing else. */
 export let emptyState: () => EmptyChoice | null
 
-/** Code that needs the answer to "what would this list look like" starts here, so a new filter
- *  dimension is added in one place.
+/**
+ * Every filter the page runs with, in the shape `compute` takes. Each list on the screen starts
+ * from here, so a filter is read in one place.
+ *
+ * `band` is the price range to run with. The default is the one on screen; the price facet passes
+ * null to get the same list with its own filter left out.
  */
-export function listFilterBase() {
+export function listFilterBase(band: PriceRange | null = price.effective()) {
   return {
     rows: listings(),
     // A photograph's answer belongs to no tab: one picture returns locked and unlocked listings
@@ -57,6 +66,7 @@ export function listFilterBase() {
     wishlist: wishlist(),
     socials: socialSearch(),
     socialOnly: socialFilterOn(),
+    priceRange: band,
     // A semantic result list is ordered by relevance, so the sort buttons are hidden while
     // one is on screen - and hiding them would be a lie if the sort still applied.
     keepOrder: semanticActive(),
@@ -66,7 +76,7 @@ export function listFilterBase() {
 // Global on purpose: nothing disposes these memos, and createRoot keeps Solid from warning
 // about that.
 createRoot(() => {
-  // These three are created first. `merged` below calls `listFilterBase()`, which reads
+  // These three are created first. `listWith` below calls `listFilterBase()`, which reads
   // `socialFilterOn`, and a memo created after that call would still be undefined inside it.
   socialsReady = createMemo(() => socialSearch().size > 0)
   socialCount = createMemo(() =>
@@ -80,36 +90,50 @@ createRoot(() => {
 
   const sortedUnique = (values: string[]) => [...new Set(values)].sort()
 
-  const merged = createMemo<AdoptListing[]>(() => {
+  /** The panel's own picks. The price grid leaves them out, so the grid is the tab's shape: a
+   *  species with nothing to show still leaves the reader a band to widen. */
+  const NO_PANEL_PICKS = { colors: new Set<string>(), races: new Set<string>(), socialOnly: false }
+  const WIDE = true
+
+  /** The page's list under one price band: the exact matches, then the model's neighbors. */
+  const listWith = (band: PriceRange | null, wide = false): AdoptListing[] => {
     const r = route()
     const ids = r.by === 'none' ? [] : r.ids
     const rank = new Map(ids.map((id, i) => [id, i]))
+    const base = wide ? { ...listFilterBase(band), ...NO_PANEL_PICKS } : listFilterBase(band)
     // A photograph is the whole query: there is no exact-match group in front of it, and
     // leading with the plain list would bury the answer somewhere near the end.
     //
     // `only` still runs every other filter over the hits: a locked listing does not join a
     // picture's results because the picture happened to look like it.
     if (r.by === 'picture') {
-      return compute({ ...listFilterBase(), query: '', only: new Set(ids), keepOrder: true })
+      return compute({ ...base, query: '', only: new Set(ids), keepOrder: true })
         .sort(byRank(rank))
     }
-    const exact = compute({ ...listFilterBase(), query: searchText() })
+    const exact = compute({ ...base, query: wide ? '' : searchText() })
     if (ids.length === 0) return exact
     // Exact matches first, the model's neighbors after them. The second group keeps every
     // other filter but the text match - its whole purpose is the listing whose description
     // never says what it looks like.
     const similar = compute({
-      ...listFilterBase(),
+      ...base,
       query: '',
       only: new Set(ids),
       skip: new Set(exact.map((l) => l.adoptId)),
       keepOrder: true,
     }).sort(byRank(rank))
     return [...exact, ...similar]
-  })
+  }
 
-  // One paint per query: while the model is thinking the grid keeps the picture it already
-  // had, so the neighbors arrive with the exact matches instead of the list growing twice.
+  // The grid is the tab's own list, and the bars and the count read the list on screen, both with
+  // the band off. The facet is built before `merged` because a memo reads its inputs once at
+  // creation, and `merged` needs the band that the facet holds.
+  price = createPriceFacet(() => listWith(null, WIDE), () => listWith(null), priceRange)
+
+  const merged = createMemo(() => listWith(price.effective()))
+
+  // One paint per query: while the model is thinking the grid keeps the picture it already had, so
+  // the neighbors arrive with the exact matches and the list paints once.
   const [held, setHeld] = createSignal<AdoptListing[]>([])
   createEffect(on([merged, semanticPending], ([list, waiting]) => {
     if (!waiting) setHeld(list as AdoptListing[])
@@ -121,11 +145,9 @@ createRoot(() => {
   availableRaces = createMemo(() =>
     sortedUnique(listings().map(raceName).filter((r): r is string => !!r)))
 
-  // Self-commission pieces are in no count, whichever tab is looking.
-  const shoppable = createMemo(() => listings().filter((l) => !isSelfCommission(l)))
-  countAll = createMemo(() => shoppable().length)
-  countUnlocked = createMemo(() => shoppable().filter((l) => !isLocked(l)).length)
-  countLocked = createMemo(() => shoppable().filter((l) => isLocked(l)).length)
+  countAll = createMemo(() => listings().length)
+  countUnlocked = createMemo(() => listings().filter((l) => !isLocked(l)).length)
+  countLocked = createMemo(() => listings().filter((l) => isLocked(l)).length)
   // A wishlist outlives the feed: it keeps ids that are no longer on the shelf, and the tab
   // counts what it can actually show.
   wishlistCount = createMemo(() => {
@@ -135,7 +157,7 @@ createRoot(() => {
 
   emptyState = createMemo(() => {
     const query = searchText().trim()
-    const picked = selectedColors().size + selectedRaces().size
+    const picked = selectedColors().size + selectedRaces().size + (price.on() ? 1 : 0)
     const say = picture.on() ? pictureMeaning() : 'nothing'
     return pickEmptyState({
       loadFailed: fetchFailed(),
@@ -154,10 +176,12 @@ createRoot(() => {
   })
 })
 
-/** True when the picks are what emptied the list. Only the empty state calls it, so a plain
- *  call is enough. */
+/** True when the picks are what emptied the list: the colors, the species and the price range off,
+ *  the words still on. Only the empty state calls it, so a plain call is enough. */
 export function matchesWithoutPicks(query: string): boolean {
-  return compute({ ...listFilterBase(), colors: new Set(), races: new Set(), query }).length > 0
+  return compute({
+    ...listFilterBase(null), colors: new Set(), races: new Set(), query,
+  }).length > 0
 }
 
 /** Run the action the empty state named. Every action is a store call, so this is the only place
@@ -171,6 +195,7 @@ export function applyEmptyAction(action: EmptyAction): void {
       batch(() => {
         setSelectedColors(new Set())
         setSelectedRaces(new Set())
+        setPriceRange(null)
       })
       return
     case 'retry':
@@ -190,17 +215,19 @@ export function applyEmptyAction(action: EmptyAction): void {
  *  storage with nothing to filter on. */
 export function filtersOnCount(): number {
   return selectedColors().size + selectedRaces().size + (socialFilterOn() ? 1 : 0)
+    + (price.on() ? 1 : 0)
 }
 
 /** Every row the panel offers, back to the state the page starts in: the order, the picks, the
- *  主人账号 switch, the price display, the search switch. The query stays, because the input carries
- *  its own ✕, and the tab stays, because it sits outside the panel. */
+ *  主人账号 switch, the price range, the price display, the search switch. The query stays,
+ *  because the input carries its own ✕, and the tab stays, because it sits outside the panel. */
 export function resetPanel(): void {
   batch(() => {
     setSortMode(DEFAULT_SORT)
     setSelectedColors(new Set())
     setSelectedRaces(new Set())
     setSocialOnly(false)
+    setPriceRange(null)
     setPriceMode(DEFAULT_PRICE_MODE)
     setSemanticSearch(false)
   })

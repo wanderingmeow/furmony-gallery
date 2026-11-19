@@ -1,12 +1,13 @@
-// A photograph's answer belongs to no tab, so the tab does not filter those rows. These tests read
-// the filter the grid builds before, during and after a picture answers.
+// What the grid reads from the derived store, checked where several filters meet: a photograph's
+// answer across the tabs, the 主人账号 switch, the price range, and what 重置 gives back.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { settled } from '../testSetup'
 import {
   priceMode, semanticSearch, setPriceMode, setSemanticSearch,
 } from './displayStore'
 import {
-  setSocialOnly, setSelectedColors, setSelectedRaces, setSortMode, setTab, sortMode,
+  priceRange, setPriceRange, setSocialOnly, setSelectedColors, setSelectedRaces, setSortMode,
+  setTab, sortMode,
 } from './filterStore'
 import { setListings } from './listingsStore'
 import { loadSocials } from './socialsStore'
@@ -28,15 +29,22 @@ vi.mock('../data/pictureInput', () => ({
 
 const { picture, pictureAnswers } = await import('./semanticStore')
 const {
-  emptyState, filtersOnCount, listFilterBase, panelHasChanges, resetPanel, socialCount, socialsReady,
+  applyEmptyAction, emptyState, filteredListings, filtersOnCount, listFilterBase, panelHasChanges,
+  price, resetPanel, socialCount, socialsReady,
 } = await import('./derivedStore')
 
 const listing = (id: number): AdoptListing => ({ adoptId: id, paintersId: 1, productId: 1 })
+const priced = (id: number, price: number): AdoptListing => ({ ...listing(id), nonrecurringExpense: price })
+const locked = (id: number, price: number): AdoptListing => ({ ...priced(id, price), isLock: 2 })
 
 beforeEach(() => {
+  // The panel's picks are module state, so each test starts from the page's own state. The mount
+  // call is what the panel does when it opens, and it decides whether to hold an empty bar.
+  resetPanel()
   picture.close()
   setTab('all')
   setSemanticSearch(true)
+  price.remount()
 })
 
 describe('the tabs a picture answers across', () => {
@@ -101,6 +109,7 @@ describe('the 主人账号 filter', () => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     ))
     await loadSocials()
+    setSocialOnly(true)
     expect(socialsReady()).toBe(true)
     expect(listFilterBase().socialOnly).toBe(true)
     expect(emptyState()?.title).toBe('没有查到主人账号的设定')
@@ -139,5 +148,141 @@ describe('the 主人账号 filter', () => {
     expect(semanticSearch()).toBe(false)
     // With nothing changed, the row goes gray again.
     expect(panelHasChanges()).toBe(false)
+  })
+})
+
+// The prices here are the sizes the reader meets on the shelf.
+describe('the price range', () => {
+  it('reads a range that still covers the shelf as no range at all', () => {
+    setListings([priced(1, 20000), priced(2, 26000)])
+    setPriceRange([20000, 27000])
+    expect(price.full()).toEqual([20000, 27000])
+    expect(price.on()).toBe(false)
+    expect(listFilterBase().priceRange).toBeNull()
+    expect(filtersOnCount()).toBe(0)
+  })
+
+  it('keeps the rows between the ends, both ends included', () => {
+    setListings([priced(1, 20000), priced(2, 22000), priced(3, 26000)])
+    setPriceRange([20000, 22000])
+    expect(price.on()).toBe(true)
+    expect(price.count()).toBe(2)
+    // The page's own order: newest first.
+    expect(filteredListings().map((l) => l.adoptId)).toEqual([2, 1])
+    expect(filtersOnCount()).toBe(1)
+  })
+
+  it('leaves the listings with no price out', () => {
+    setListings([priced(1, 21000), priced(3, 61000), listing(2)])
+    setPriceRange([20000, 22000])
+    expect(price.on()).toBe(true)
+    expect(filteredListings().map((l) => l.adoptId)).toEqual([1])
+  })
+
+  it('重置 hands the range back with the rest', () => {
+    setListings([priced(1, 20000), priced(2, 60000)])
+    setPriceRange([20000, 22000])
+    expect(panelHasChanges()).toBe(true)
+    resetPanel()
+    expect(priceRange()).toBeNull()
+    expect(listFilterBase().priceRange).toBeNull()
+  })
+
+  // A bin can hold nothing: the shelf has gaps. The box then names the picks, and its button takes
+  // the range back along with the colors and the species.
+  it('blames the picks when the range leaves an empty bin', () => {
+    setListings([priced(1, 20000), priced(2, 60000)])
+    setPriceRange([22000, 24000])
+    expect(price.on()).toBe(true)
+    expect(emptyState()?.title).toBe('当前筛选下没有设定')
+    expect(emptyState()?.action).toBe('filters')
+    applyEmptyAction('filters')
+    expect(priceRange()).toBeNull()
+  })
+
+  it('draws the tab the reader is on', () => {
+    setPriceRange(null)
+    setListings([priced(1, 21000), locked(2, 61000), locked(3, 65000)])
+    setTab('all')
+    expect(price.full()).toEqual([21000, 66000])
+    setTab('locked')
+    expect(price.full()).toEqual([61000, 66000])
+    expect(price.bars().reduce((n, b) => n + b.count, 0)).toBe(2)
+  })
+
+  // The shelf's most expensive piece is locked, so the 未锁定 tab stops well below the band.
+  it('gives a band the new tab cannot hold a bar of its own', () => {
+    setPriceRange(null)
+    setListings([priced(1, 21000), priced(2, 49000), locked(3, 61000)])
+    setPriceRange([57000, 68000])
+    setTab('all')
+    expect(price.count()).toBe(1)
+
+    // A tab change closes the panel, so the next look at the block is a fresh mount.
+    setTab('unlocked')
+    price.remount()
+
+    // The pair the reader chose stays, and one empty bar beyond this tab's top holds it.
+    expect(price.effective()).toEqual([57000, 68000])
+    expect(price.full()).toEqual([21000, 51000])
+    expect(price.bars().at(-1)!.count).toBe(0)
+    expect(price.count()).toBe(0)
+    expect(filteredListings()).toHaveLength(0)
+  })
+
+  // The grid keeps its shape for the length of the visit, so a drag never moves the bars under a
+  // thumb that is mid-drag.
+  it('holds the empty bar until the block mounts again', () => {
+    setPriceRange(null)
+    setListings([priced(1, 21000), priced(2, 49000), locked(3, 61000)])
+    setPriceRange([57000, 68000])
+    setTab('unlocked')
+    price.remount()
+    expect(price.full()).toEqual([21000, 51000])
+
+    setPriceRange([21000, 25000])
+    expect(price.full()).toEqual([21000, 51000])
+    price.remount()
+    expect(price.full()).toEqual([21000, 50000])
+  })
+
+  it('counts what the range keeps inside the tab', () => {
+    setPriceRange(null)
+    setListings([priced(1, 21000), priced(2, 23000), locked(3, 22000), locked(4, 24000)])
+    setPriceRange([21000, 23000])
+    setTab('all')
+    expect(price.count()).toBe(3)
+    setTab('locked')
+    expect(price.count()).toBe(1)
+  })
+
+  it('keeps the scale and the band while a pick leaves nothing to show', () => {
+    setPriceRange(null)
+    setListings([
+      { ...priced(1, 21000), harmonyRace: { raceName: '狼' } },
+      { ...priced(2, 61000), harmonyRace: { raceName: '狼' } },
+      { ...priced(3, 31000), harmonyRace: { raceName: '猫' } },
+    ])
+    setPriceRange([21000, 22000])
+    const full = price.full()
+    const bars = price.bars().length
+    expect(price.count()).toBe(1)
+
+    setSelectedRaces(new Set(['猫']))
+
+    // The band the reader set stays on screen at the same scale, and says it now keeps nothing.
+    expect(price.full()).toEqual(full)
+    expect(price.bars().length).toBe(bars)
+    expect(price.count()).toBe(0)
+    expect(filteredListings()).toHaveLength(0)
+  })
+
+  it('leaves the bars where they are while a thumb moves', () => {
+    setPriceRange(null)
+    setListings([priced(1, 21000), priced(2, 23000), priced(3, 61000)])
+    const before = price.bars().map((b) => b.count)
+    setPriceRange([21000, 22000])
+    expect(price.bars().map((b) => b.count)).toEqual(before)
+    expect(filteredListings().map((l) => l.adoptId)).toEqual([1])
   })
 })

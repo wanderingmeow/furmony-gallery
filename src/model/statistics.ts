@@ -38,14 +38,36 @@ export function medianPrice(prices: number[]): number {
   return sorted[(n - 1) / 2]
 }
 
-// Bucket size 2000; labels are `low/1000 - high/1000` (千元), e.g. "0-2".
-export function priceBins(prices: number[], bucket = 2000): Bin[] {
+/** The width of one bar in the panel's price grid. Its histogram and the slider's steps sit on
+ *  this one grid, so a thumb over a bar points at that bar. */
+export const PRICE_BUCKET = 1000
+
+/** The width of one bar in the 一次性支付价格分布 chart. That chart keeps its own, wider grid. */
+export const STATS_PRICE_BUCKET = 2000
+
+/**
+ * Bars of `bucket` yuan each. A price that lands on a boundary belongs to the bar that starts
+ * there, so no price falls between two bars. Every bar is `bucket` wide, and the last one always
+ * holds the highest price. A label is the bar's two ends in thousands.
+ *
+ * `extent` draws over a grid decided elsewhere: it sets the first and the last edge, and prices
+ * outside it join no bar. The panel hands in the tab's extent, so a bar keeps its place while the
+ * picks change what sits in it.
+ *
+ * With no `extent` the grid is cut to the prices given, and prices that are all one value draw
+ * nothing: one bar would cover them all.
+ */
+export function priceBins(
+  prices: number[],
+  bucket = PRICE_BUCKET,
+  extent?: [number, number] | null,
+): Bin[] {
   if (prices.length === 0) return []
-  const min = Math.min(...prices)
+  const start = extent ? extent[0] : Math.floor(Math.min(...prices) / bucket) * bucket
   const max = Math.max(...prices)
-  if (min >= max) return []
-  const start = Math.floor(min / bucket) * bucket
-  const end = Math.ceil(max / bucket) * bucket
+  const end = extent ? extent[1] : (Math.floor(max / bucket) + 1) * bucket
+  if (start >= end) return []
+  if (!extent && Math.min(...prices) >= max) return []
   const bins: Bin[] = []
   let low = start
   while (low < end) {
@@ -64,6 +86,30 @@ export function priceEdges(bins: Bin[]): number[] {
   const edges = [bins[0].low]
   for (const b of bins) edges.push(b.high)
   return edges
+}
+
+/** Which end gets an empty bar: above the top, below the bottom, both, or neither. */
+export type EmptyBarSide = 'none' | 'above' | 'below' | 'both'
+
+/**
+ * The bars with one empty bar at the end the band sits past.
+ *
+ * A band left over from another tab can reach past every price this tab holds. Snapped back onto
+ * the grid, it would cover the last bar of real listings and look like a choice the reader made.
+ * The empty bar gives that band somewhere else to sit.
+ */
+export function withEmptyBar(bins: Bin[], bucket: number, side: EmptyBarSide): Bin[] {
+  if (bins.length === 0 || side === 'none') return bins
+  const bar = (low: number): Bin => ({
+    label: `${Math.round(low / 1000)}-${Math.round((low + bucket) / 1000)}`,
+    count: 0,
+    low,
+    high: low + bucket,
+  })
+  const below = bar(bins[0].low - bucket)
+  const above = bar(bins[bins.length - 1].high)
+  if (side === 'both') return [below, ...bins, above]
+  return side === 'above' ? [...bins, above] : [below, ...bins]
 }
 
 // ---- color / race (sorted desc like Swift) ----

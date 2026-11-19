@@ -47,6 +47,9 @@ vi.mock('../../stores/semanticStore', () => ({
   semanticActive: () => facts.semantic,
   semanticOn: () => false,
 }))
+// The price block draws a histogram and a slider from the derived store, and its own file tests
+// what it does with them.
+vi.mock('./PriceRange', () => ({ PriceRangeBlock: () => null }))
 
 let dispose: (() => void) | undefined
 let host: HTMLDivElement

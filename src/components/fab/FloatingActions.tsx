@@ -53,9 +53,10 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
           <AntIcon icon={VerticalAlignTopOutlined} size="1.25em" />
         </FabCircle>
       </Show>
-      {/* One button for the whole panel: the order, colors, species, the owner-account switch,
-          the price display and the search switch. It opens upward, which FabMenu handles. The
-          fill is the panel being open; the number is what stays on. */}
+      {/* One button for the whole panel: the order, the colors, the species, the 主人账号 switch,
+          the price range, the price display and the search switch. It opens upward, which FabMenu
+          handles. The filled look says the panel is open, and the badge counts the picks that
+          stay on. */}
       <FabMenu
         label={orderLabel()}
         icon={() => (filtersOnCount() > 0 ? FilterFilled : FilterOutlined)}

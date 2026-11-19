@@ -1,0 +1,131 @@
+/* 价格区间: the histogram and the two-ended slider. The two share one coordinate space, so a band
+   that starts at a bin's edge is drawn over that edge. */
+
+/* A thumb is 22px, so its centre reaches 11px in from each end of the box. The bars and the band
+   start there too: otherwise the leftmost bar would sit under a thumb that can never arrive. */
+.pr-hist {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 44px;
+  padding-inline: 11px;
+}
+.pr-bar {
+  flex: 1 1 0;
+  min-width: 1px;
+  border-radius: 1px;
+  background: color-mix(in oklab, var(--color-accent) 22%, transparent);
+}
+.pr-bar-on {
+  background: var(--color-accent);
+}
+
+.pr-slide {
+  position: relative;
+  height: 26px;
+}
+.pr-rail {
+  position: absolute;
+  top: 12px;
+  left: 11px;
+  right: 11px;
+  height: 2px;
+  border-radius: 9999px;
+  background: rgba(120, 120, 128, 0.32);
+}
+.pr-band {
+  position: absolute;
+  top: 12px;
+  height: 2px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  left: calc(11px + (100% - 22px) * var(--lo));
+  right: calc(11px + (100% - 22px) * (1 - var(--hi)));
+}
+
+/* Two inputs in one box. The input passes the pointer through and only its thumb takes it, so the
+   reader can grab either end wherever the two thumbs sit. */
+.pr-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.pr-thumb::-webkit-slider-runnable-track {
+  background: transparent;
+  border: none;
+}
+.pr-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  border-radius: 9999px;
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out;
+}
+.pr-thumb::-moz-range-track {
+  background: transparent;
+  border: none;
+}
+.pr-thumb::-moz-range-thumb {
+  pointer-events: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out;
+}
+
+/* The end being held grows from its own centre, which keeps the circle where the finger put it,
+   and its fill and ring turn grey together. `transition: none` makes the press land on the frame
+   the finger arrives; the release eases back through the rule above. */
+.pr-thumb.pr-grab::-webkit-slider-thumb {
+  transform: scale(1.18);
+  transform-origin: 50% 50%;
+  background-color: rgba(120, 120, 128, 0.6);
+  border-color: rgba(120, 120, 128, 0.6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+  transition: none;
+}
+.pr-thumb.pr-grab::-moz-range-thumb {
+  transform: scale(1.18);
+  transform-origin: 50% 50%;
+  background-color: rgba(120, 120, 128, 0.6);
+  border-color: rgba(120, 120, 128, 0.6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+  transition: none;
+}
+/* The keyboard ring goes on the thumb. The input spans the whole row, so a ring around the input
+   would not show which end is chosen. */
+.pr-thumb:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 35%, transparent);
+}
+.pr-thumb:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 35%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pr-rail {
+    background: rgba(120, 120, 128, 0.5);
+  }
+  .pr-bar {
+    background: color-mix(in oklab, var(--color-accent) 30%, transparent);
+  }
+  /* The dim bar is written here, after .pr-bar-on, and both selectors carry one class, so this
+     block would take the highlight away from the bars inside the band. */
+  .pr-bar-on {
+    background: var(--color-accent);
+  }
+}

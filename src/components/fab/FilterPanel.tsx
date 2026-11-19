@@ -22,6 +22,8 @@ import { SegmentedControl, type Segment } from '../ui/SegmentedControl'
 import { AntIcon } from '../ui/AntIcon'
 import { Switch } from '../ui/Switch'
 import { SORT_BTN } from '../ui/boxes'
+import { PANEL_BLOCK, PanelHeader, UNDER_NOTE, UNDER_TEXT } from './panelParts'
+import { PriceRangeBlock } from './PriceRange'
 
 const COLOR_DOT: Record<string, string> = {
   红: 'bg-red-500', 橙: 'bg-orange-500', 黄: 'bg-yellow-500', 绿: 'bg-green-600',
@@ -65,25 +67,6 @@ function toggleIn(cur: Set<string>, value: string): Set<string> {
   else next.add(value)
   return next
 }
-
-/** A header row: 6px of padding, a 12px glyph, an 8px gap, then its name. */
-function PanelHeader(props: { icon: JSXElement; children: JSXElement }) {
-  return (
-    <div class="min-h-7 px-1.5 flex items-center gap-2 text-xs font-semibold">
-      {props.icon} {props.children}
-    </div>
-  )
-}
-
-/** So section content starts under the name, not under the icon beside it: 6 + 12 + 8. */
-const UNDER_TEXT = 'pl-[26px] pr-1.5'
-// The line that explains the row above it. One class for all of them, so no note ends up a
-// different size from its neighbours.
-const UNDER_NOTE = `mt-1 mb-2 ${UNDER_TEXT} text-[11px] leading-relaxed text-muted`
-
-/** The rule that keeps a block apart from what came before, so the panel reads as the same blocks
- *  whether or not the foldable sections above it are open. */
-const PANEL_BLOCK = 'mt-1.5 pt-1.5 border-t border-border'
 
 /**
  * A foldable list of choices. It starts shut when nothing is picked, and open when something is:
@@ -316,6 +299,7 @@ export function FilterPanel() {
         mark={(v) => <span class="w-4 text-center">{RACE_ICON[v] ?? '❔'}</span>}
       />
       <OwnerBlock />
+      <PriceRangeBlock />
       <PriceModeBlock />
       {/* A build without a search address hides the switch rather than offering a search that
           quietly does nothing. */}
