@@ -6,6 +6,9 @@ const MONTHS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]
 
+/** English needs the singular for one thing. Pass `many` when the plural is not `one` + "s". */
+const countOf = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
+
 export const en: Dict = {
   common: {
     retry: 'Retry',
@@ -45,14 +48,14 @@ export const en: Dict = {
     enhanceNote: 'Search by meaning and by picture runs on an embedding model. The words and pictures you search with go to the server, and the server keeps no data.',
     socialOnly: 'Owner account only',
     socialNote: (n: number) =>
-      `Only ${n} listings have an owner account, so the list gets much shorter.`,
+      `Only ${countOf(n, 'listing')} ${n === 1 ? 'has' : 'have'} an owner account, so the list gets much shorter.`,
     socialMissing: 'Owner accounts did not load, so this filter is unavailable for now.',
     onlyUnlocked: 'Unlocked only',
     priceRange: 'Price range',
     priceMin: 'Lowest price',
     priceMax: 'Highest price',
     /** How many rows the band holds, under the slider. */
-    bandCount: (n: number) => (n === 1 ? '1 listing' : `${n} listings`),
+    bandCount: (n: number) => countOf(n, 'listing'),
   },
 
   price: {
@@ -79,7 +82,6 @@ export const en: Dict = {
     translate: 'Machine-translate this description',
     showOriginal: 'Show the original',
     translatedNote: 'Machine translation',
-    translateFailed: 'Translation failed. Tap to try again.',
     lockedNow: 'Lock in progress',
     locked: 'Locked',
     unlocked: 'Open',
@@ -147,7 +149,7 @@ export const en: Dict = {
     priceUp: '↑ Price up',
     priceDown: '↓ Price down',
     dismiss: 'Dismiss',
-    expand: (n: number) => `Show ${n} notifications`,
+    expand: (n: number) => `Show ${countOf(n, 'notification')}`,
     title: 'Changes',
     collapse: 'Collapse',
   },
@@ -162,13 +164,13 @@ export const en: Dict = {
     axisCount: 'Count',
     axisAvg: 'Average',
     mysteryRace: 'Unknown species',
-    count: (n: number) => `${n} listings`,
-    times: (n: number) => `${n} times`,
-    totalTimes: (n: number) => `${n} appearances in total`,
-    totalListings: (n: number) => `${n} listings in total`,
-    months: (n: number) => `${n} months in total`,
+    count: (n: number) => countOf(n, 'listing'),
+    times: (n: number) => countOf(n, 'time', 'times'),
+    totalTimes: (n: number) => `${countOf(n, 'appearance')} in total`,
+    totalListings: (n: number) => `${countOf(n, 'listing')} in total`,
+    months: (n: number) => `${countOf(n, 'month')} in total`,
     avgMedian: (avg: string, median: string) => `Mean ${avg} | Median ${median}`,
-    band: (low: string, high: string, count: number) => `${low}-${high}: ${count} listings`,
+    band: (low: string, high: string, count: number) => `${low}-${high}: ${countOf(count, 'listing')}`,
     monthLabel: (year: number, month: number) => `${MONTHS[month - 1]} ${year}`,
     noData: 'No data',
   },
@@ -198,7 +200,7 @@ export const en: Dict = {
     /** The money paid first, which is the number a reader decides on. */
     downPayment: 'Deposit',
     monthly: 'Per month',
-    periods: (n: number) => `× ${n} months`,
+    periods: (n: number) => `× ${countOf(n, 'month')}`,
     total: (price: string) => `${price} in total`,
     /** Chinese 折 names the part of the price left to pay, so it becomes a percentage here. */
     discount: (tenths: number) => `${Math.round((10 - tenths) * 10)}% off`,

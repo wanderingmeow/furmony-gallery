@@ -102,6 +102,23 @@ describe('the four dictionaries', () => {
     }
   })
 
+  // English needs the singular at one, so no formatter here may render "1 listings".
+  it('takes the singular at one', () => {
+    const pluralAfterOne = /\b1 [a-z]+s\b/
+    for (const [key, value] of Object.entries(flatten(DICTIONARIES.en))) {
+      if (typeof value !== 'function') continue
+      const args = SAMPLES[key]
+      if (!args) continue
+      args.forEach((arg, i) => {
+        if (typeof arg !== 'number') return
+        const one = [...args]
+        one[i] = 1
+        const said = (value as (...a: unknown[]) => string)(...one)
+        expect(said, key).not.toMatch(pluralAfterOne)
+      })
+    }
+  })
+
   it('names a month in its own way', () => {
     pick('zh')
     expect(tr('stats.monthLabel', 2024, 3)).toBe('24年3月')

@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { setLocale } from '../i18n/locale'
 import type { AdoptListing } from './types'
 import {
-  listingBlurb, listingName, listingPainterName, rememberWords, wordsPending,
+  listingDescription, listingName, listingPainterName, rememberWords, wordsPending,
 } from './translatedText'
 
 function row(over: Partial<AdoptListing> = {}): AdoptListing {
@@ -32,7 +32,7 @@ describe('a row the table has never been told about', () => {
   it('answers with the words the row carries', () => {
     const l = row()
     expect(listingName(l)).toBe('蓝色猫')
-    expect(listingBlurb(l)).toBe('一只猫')
+    expect(listingDescription(l)).toBe('一只猫')
     expect(listingPainterName(l)).toBe('画师甲')
   })
 })
@@ -42,7 +42,7 @@ describe('after the shelf answers in another language', () => {
     rememberWords([row({ adoptName: 'Blue cat', detailDescription: 'A cat', harmonyPainterVo: { painterid: 7, painterName: 'Painter A' } })], 'en')
     const l = row()
     expect(listingName(l)).toBe('Blue cat')
-    expect(listingBlurb(l)).toBe('A cat')
+    expect(listingDescription(l)).toBe('A cat')
     expect(listingPainterName(l)).toBe('Painter A')
   })
 
@@ -56,7 +56,7 @@ describe('after the shelf answers in another language', () => {
     rememberWords([row({ adoptName: 'Blue cat', detailDescription: undefined })], 'en')
     const l = row()
     expect(listingName(l)).toBe('Blue cat')
-    expect(listingBlurb(l)).toBe('一只猫')
+    expect(listingDescription(l)).toBe('一只猫')
   })
 
   it('replaces the whole table, so a screen never mixes two languages', () => {

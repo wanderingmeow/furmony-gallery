@@ -72,7 +72,6 @@ export const zh_tw: Dict = {
     translate: '機器翻譯這段介紹',
     showOriginal: '看原文',
     translatedNote: '機器翻譯',
-    translateFailed: '沒翻成，再點一次',
     lockedNow: '鎖定中',
     locked: '已鎖定',
     unlocked: '未鎖定',

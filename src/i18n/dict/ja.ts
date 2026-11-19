@@ -75,7 +75,6 @@ export const ja: Dict = {
     translate: 'この紹介を機械翻訳',
     showOriginal: '原文を見る',
     translatedNote: '機械翻訳',
-    translateFailed: '翻訳に失敗しました。もう一度',
     lockedNow: 'ロック中',
     locked: 'ロック済み',
     unlocked: '空き',

@@ -1,8 +1,8 @@
 /**
  * Translate the 详细描述 on the detail sheet into the language on screen.
  *
- * This is the only runtime translation in the app, and the only place that sends the shelf's own
- * words to a third party. It calls the internal endpoint that the site's translate widget calls,
+ * This is the only runtime translation in the app, and the only place that sends the original text
+ * to a third party. It calls the internal endpoint that the site's translate widget calls,
  * and that widget carries its key on every page it translates, so the key is public.
  *
  * The text goes out one paragraph at a time, because the endpoint translates a block as one unit,
@@ -58,6 +58,12 @@ function remember(key: string, text: string): string {
   return text
 }
 
+/** Whether the answer for these words is already in this visit's table, so a caller can tell
+ *  whether asking would take a moment. */
+export function translationIsCached(text: string, target: string): boolean {
+  return done.has(`${target}\u0000${text}`)
+}
+
 /**
  * The endpoint copies the spacing of the text it was given. Chinese sentences put no space after a
  * full stop, so a translation can arrive as `forest.He`. A space goes in where a Latin letter
@@ -70,7 +76,7 @@ function spaceAfterPunctuation(text: string): string {
 /**
  * The endpoint usually answers inside a second and can hold a request for more than ten seconds.
  * This is how long the row waits. Past the limit the row looks like a failed translation: the
- * shelf's words stay on screen, the button turns red, and the next tap sends the request again.
+ * original words stay on screen, the button reads as off, and the next tap sends the request again.
  */
 const PATIENCE_MS = 8000
 

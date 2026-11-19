@@ -167,6 +167,14 @@ body {
   display: none;
 }
 
+/* A panel of controls: without these a long press answers 复制 and a drag paints a selection.
+   The callout is iOS's own; the selection needs the prefixed spelling on older iOS. */
+.no-pick {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 /* Card image aspect ratio reservation (921/597) */
 .card-img {
   aspect-ratio: 921 / 597;

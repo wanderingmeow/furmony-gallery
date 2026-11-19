@@ -79,7 +79,6 @@ export const zh = {
     translate: '机器翻译这段介绍',
     showOriginal: '看原文',
     translatedNote: '机器翻译',
-    translateFailed: '没翻成，再点一次',
     lockedNow: '锁定中',
     locked: '已锁定',
     unlocked: '未锁定',

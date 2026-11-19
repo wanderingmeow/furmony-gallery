@@ -1,0 +1,24 @@
+@keyframes flow-blur-in {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* Without `backwards` the whole paragraph would show at once, then snap back into a blur as each
+   word's turn came. */
+.flow-unit {
+  animation: flow-blur-in 0.5s ease-in-out backwards;
+  animation-delay: calc(var(--i) * var(--step));
+}
+
+/* The words still show: the animation only ever hides them. */
+@media (prefers-reduced-motion: reduce) {
+  .flow-unit {
+    animation: none;
+  }
+}

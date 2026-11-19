@@ -1,0 +1,141 @@
+/* PriceRail.css: the two-ended slider. It reads --thumb, --inset and --travel from .pr-row, the
+   coordinate space it shares with the histogram, so the band lands on the bars it covers. */
+
+.pr-slide {
+  position: relative;
+  height: 26px;
+  --low-x: calc(var(--inset) + var(--travel) * var(--lo));
+  --high-x: calc(var(--inset) + var(--travel) * var(--hi));
+  --mid-x: calc((var(--low-x) + var(--high-x)) / 2);
+  /* Where a press changes from the low end to the high end: the midpoint of the two centers, or
+     the near edge of the top thumb when they overlap, so a visible thumb is pressed as a whole. */
+  --split: min(var(--mid-x), calc(var(--high-x) - var(--inset)));
+  /* Each end owns the rail from one thumb-width outside its thumb to the boundary with the other,
+     so nobody has to aim at a 22px circle. The middle of a wide band is left to the page, where a
+     swipe scrolls the panel. */
+  --low-hit: max(0px, calc(var(--low-x) - var(--thumb)));
+  --low-edge: min(var(--split), calc(var(--low-x) + var(--thumb)));
+  --high-hit: max(var(--split), calc(var(--high-x) - var(--thumb)));
+  --high-edge: min(100%, calc(var(--high-x) + var(--thumb)));
+}
+.pr-slide.pr-top-low {
+  --split: max(var(--mid-x), calc(var(--low-x) + var(--inset)));
+}
+.pr-rail {
+  position: absolute;
+  top: 12px;
+  left: var(--inset);
+  right: var(--inset);
+  height: 2px;
+  border-radius: 9999px;
+  background: rgba(120, 120, 128, 0.32);
+}
+.pr-band {
+  position: absolute;
+  top: 12px;
+  height: 2px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  left: var(--low-x);
+  right: calc(100% - var(--high-x));
+}
+
+/* Two invisible strips take the pointer, so the inputs only carry the value, the screen reader and
+   the keyboard. */
+.pr-seek {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* Without this, the page keeps the swipe and a drag becomes a scroll. */
+  touch-action: none;
+}
+.pr-seek-low {
+  left: var(--low-hit);
+  right: calc(100% - var(--low-edge));
+}
+.pr-seek-high {
+  left: var(--high-hit);
+  right: calc(100% - var(--high-edge));
+}
+
+/* The thumb is painted directly, not inside a wrapper box: on Safari a filter there would land on
+   the box, not on the paint. */
+.pr-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+  /* Safari rings a range input for any focus, including one a press hands over, so this input
+     asks for no ring. */
+  outline: none;
+}
+.pr-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--thumb);
+  height: var(--thumb);
+  margin-top: 2px;
+  border-radius: 9999px;
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out;
+}
+.pr-thumb::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out;
+}
+.pr-thumb::-webkit-slider-runnable-track {
+  background: transparent;
+  border: none;
+}
+.pr-thumb::-moz-range-track {
+  background: transparent;
+  border: none;
+}
+
+/* The thumb grows from its own center, so it stays where the finger put it. `transition: none`
+   makes the press land on the frame the finger arrives; the release eases back through the rule
+   above. */
+.pr-thumb.pr-grab::-webkit-slider-thumb {
+  transform: scale(1.18);
+  transform-origin: 50% 50%;
+  background-color: rgba(120, 120, 128, 0.6);
+  border-color: rgba(120, 120, 128, 0.6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+  transition: none;
+}
+.pr-thumb.pr-grab::-moz-range-thumb {
+  transform: scale(1.18);
+  transform-origin: 50% 50%;
+  background-color: rgba(120, 120, 128, 0.6);
+  border-color: rgba(120, 120, 128, 0.6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+  transition: none;
+}
+
+/* The keyboard ring goes on the thumb. The input spans the whole row, so a ring around the input
+   would not show which end is chosen. A class says when, not :focus-visible: Safari gives that to
+   a focus a press hands over, and a press should not ring. */
+.pr-thumb.pr-key::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 35%, transparent);
+}
+.pr-thumb.pr-key::-moz-range-thumb {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 35%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pr-rail {
+    background: rgba(120, 120, 128, 0.5);
+  }
+}

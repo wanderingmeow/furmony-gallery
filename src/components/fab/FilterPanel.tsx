@@ -28,7 +28,7 @@ import { tr } from '../../i18n'
 import { LOCALES, LOCALE_NAME, requestedLocale, setLocale } from '../../i18n/locale'
 import { colorLabel, raceLabelByName } from '../../i18n/glossary'
 import { PANEL_BLOCK, PanelHeader, UNDER_NOTE, UNDER_TEXT } from './panelParts'
-import { PriceRangeBlock } from './PriceRange'
+import { PriceRangeBlock } from '../priceRange'
 
 const COLOR_DOT: Record<string, string> = {
   红: 'bg-red-500', 橙: 'bg-orange-500', 黄: 'bg-yellow-500', 绿: 'bg-green-600',
@@ -264,8 +264,8 @@ function SemanticBlock() {
 }
 
 /**
- * The language of the interface and of the words the shelf answers in. Four names in four scripts
- * have no room side by side, so they take two rows of two.
+ * The language of the interface and of the words the API returns translated. Four names in four
+ * scripts have no room side by side, so they take two rows of two.
  */
 function LanguageBlock() {
   const items = LOCALES.map((code) => ({ value: code, label: LOCALE_NAME[code] }))
@@ -273,8 +273,8 @@ function LanguageBlock() {
     <div class={PANEL_BLOCK}>
       <PanelHeader icon={<AntIcon icon={GlobalOutlined} />}>{tr('filter.language')}</PanelHeader>
       <div class={`mt-1 mb-2 ${UNDER_TEXT}`}>
-        {/* The tick follows the pick, not the page: the reader just chose this, and the words
-            arrive a moment later with the shelf's answer. */}
+        {/* The tick follows the pick, not the page: the reader just chose this, and the translated
+            words arrive a moment later. */}
         <ChoiceGrid label={tr('filter.language')} columns={2}
           value={requestedLocale} onChange={setLocale} items={items} />
       </div>
@@ -305,7 +305,7 @@ function ResetRow() {
 // to the glass edge and `FabMenu` only has to draw the box.
 export function FilterPanel() {
   return (
-    <div class="min-h-0 overflow-y-auto p-2">
+    <div class="no-pick min-h-0 overflow-y-auto p-2">
       <SortBlock />
       <Section
         title={tr('filter.colors')}

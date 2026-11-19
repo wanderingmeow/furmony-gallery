@@ -13,7 +13,7 @@ import type { AdoptListing } from './types'
 
 export interface ListingWords {
   name?: string
-  blurb?: string
+  description?: string
   painter?: string
 }
 
@@ -32,7 +32,7 @@ export function rememberWords(rows: AdoptListing[], language: Locale): void {
   for (const row of rows) {
     next.set(row.adoptId, {
       name: row.adoptName,
-      blurb: row.detailDescription,
+      description: row.detailDescription,
       painter: row.harmonyPainterVo?.painterName,
     })
   }
@@ -59,8 +59,8 @@ export const listingName = (listing: AdoptListing): string | undefined =>
   held(listing)?.name ?? listing.adoptName
 
 /** The description in the language on screen. */
-export const listingBlurb = (listing: AdoptListing): string | undefined =>
-  held(listing)?.blurb ?? listing.detailDescription
+export const listingDescription = (listing: AdoptListing): string | undefined =>
+  held(listing)?.description ?? listing.detailDescription
 
 /** The painter as the shelf writes their name in the language on screen. */
 export const listingPainterName = (listing: AdoptListing): string | undefined =>

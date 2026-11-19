@@ -1,0 +1,37 @@
+/* 价格区间: the histogram, and the slider over it in PriceRail.css. */
+
+/* The coordinate space the two share: a thumb is 22px, so its center travels from --inset inside
+   one end to --inset inside the other. The bars start there too, so none sits under a thumb that
+   can never arrive. */
+.pr-row {
+  --thumb: 22px;
+  --inset: calc(var(--thumb) / 2);
+  --travel: calc(100% - var(--thumb));
+}
+.pr-hist {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 44px;
+  padding-inline: var(--inset);
+}
+.pr-bar {
+  flex: 1 1 0;
+  min-width: 1px;
+  border-radius: 1px;
+  background: color-mix(in oklab, var(--color-accent) 22%, transparent);
+}
+.pr-bar-on {
+  background: var(--color-accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pr-bar {
+    background: color-mix(in oklab, var(--color-accent) 30%, transparent);
+  }
+  /* The dim bar is written here, after .pr-bar-on, and both selectors carry one class, so this
+     block would take the highlight away from the bars inside the band. */
+  .pr-bar-on {
+    background: var(--color-accent);
+  }
+}

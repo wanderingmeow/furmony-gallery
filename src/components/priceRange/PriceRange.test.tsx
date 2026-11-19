@@ -1,5 +1,6 @@
 // 价格区间: what the block draws from the bins it is handed, and what a drag sends back. The rules
-// behind it (where an end lands, which rows a range keeps) are in model/priceRange.test.ts.
+// behind it (where an end lands, which rows a range keeps) are in model/priceRange.test.ts, and the
+// slider's own mechanics are in PriceRail.test.tsx.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'solid-js/web'
 import { PriceRangeBlock } from './PriceRange'

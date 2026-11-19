@@ -2,10 +2,12 @@
 // is translated when it is not in the language on screen. Both are about the same row: the reader
 // should not watch it resize, and should not have to read a language they did not pick.
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createSignal } from 'solid-js'
 import { render } from 'solid-js/web'
 import type { AdoptListing } from '../../model/types'
 import { setLocale } from '../../i18n'
 import { rememberWords } from '../../model/translatedText'
+import { FLOW_OVER_MS } from './FlowText'
 import { InfoTable } from './InfoTable'
 
 // Made-up words about nothing. The translation cache is keyed by text, so each listing carries its
@@ -77,24 +79,27 @@ afterEach(() => {
   hosts = []
   setLocale('zh')
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
-/** Draw the table for a listing whose words the shelf has already answered. One table at a time,
- *  so a render the test has moved on from does not answer to the next language. */
-function draw(l: AdoptListing, lang: 'en' | 'ja' | 'zh' | 'zh_tw') {
+/** Draw the table for a listing whose translated words are already in hand, one table at a time. A
+ *  render the test has moved on from would otherwise answer to the next language. Pass an accessor
+ *  to hand the row a new listing later. */
+function draw(source: AdoptListing | (() => AdoptListing), lang: 'en' | 'ja' | 'zh' | 'zh_tw') {
+  const l = () => (typeof source === 'function' ? source() : source)
   dispose?.()
-  rememberWords([l], lang)
+  rememberWords([l()], lang)
   setLocale(lang)
   const host = document.createElement('div')
   document.body.appendChild(host)
   hosts.push(host)
-  dispose = render(() => <InfoTable listing={l} />, host)
+  dispose = render(() => <InfoTable listing={l()} />, host)
   const label = [...host.querySelectorAll('span')].find((s) => s.textContent === 'Description')
   return { host, body: () => label!.parentElement! }
 }
 
 describe('the description row', () => {
-  it('holds three lines of their own length while the shelf answer is on its way', () => {
+  it('holds three lines of their own length while the translation is on its way', () => {
     const { body } = draw(row(1), 'en')
 
     const bars = [...body().querySelectorAll('span[aria-hidden="true"]')]
@@ -103,7 +108,7 @@ describe('the description row', () => {
     expect(new Set(widths).size, `three lengths, got ${widths.join(' ')}`).toBe(3)
   })
 
-  it('writes what the shelf answered when it already fits the screen', () => {
+  it('writes what the listing came with when it already fits the screen', () => {
     const english = { ...row(2), detailDescription: 'Some made-up English words about nothing.' }
     const { body } = draw(english, 'en')
     expect(body().textContent).toContain('Some made-up English words')
@@ -124,7 +129,7 @@ describe('the description row', () => {
     const button = body().querySelector('button')!
 
     expect(button.className, 'the offer is on from the start').toContain('bg-accent/15')
-    expect(button.getAttribute('title'), 'a tap shows the shelf words').toContain('original')
+    expect(button.getAttribute('title'), 'a tap shows the original words').toContain('original')
 
     button.click()
     expect(body().querySelectorAll('span[aria-hidden="true"]'), 'the placeholder is gone').toHaveLength(0)
@@ -160,7 +165,7 @@ describe('the description row', () => {
     expect(sent, 'the answer is kept, so no second request').toHaveLength(1)
   })
 
-  it('keeps the shelf words and turns the button red when the request fails', async () => {
+  it('keeps the original words and leaves the button off when the request fails', async () => {
     const sent = endpoint(null)
     const { body } = draw(row(6), 'en')
     await settle()
@@ -168,8 +173,11 @@ describe('the description row', () => {
     expect(body().textContent).toContain(words(6))
     expect(body().querySelectorAll('span[aria-hidden="true"]')).toHaveLength(0)
     const button = body().querySelector('button')!
-    expect(button.className).toContain('text-red-600')
-    expect(button.getAttribute('title'), 'the button says what a tap does').toContain('again')
+    expect(button.className, 'a failure is not marked').not.toContain('red')
+    expect(button.className).toContain('bg-surface-2')
+    const title = button.getAttribute('title')!
+    expect(title, 'a failure says nothing about itself').not.toMatch(/fail|again/i)
+    expect(title, 'the ordinary offer, which is what a tap does').toContain('translate')
 
     button.click()
     expect(sent, 'the tap that asked for it sends the request again').toHaveLength(2)
@@ -184,8 +192,73 @@ describe('the description row', () => {
     const twButtons = draw(traditional, 'zh_tw').host.querySelectorAll('button').length
     const twSimplified = draw(simplified, 'zh_tw')
 
-    expect(zhButtons, 'a 简体中文 screen reads the shelf as it is').toBe(0)
+    expect(zhButtons, 'a 简体中文 screen has nothing to translate').toBe(0)
     expect(twButtons, 'traditional words need no translation').toBe(0)
     expect([...twSimplified.host.querySelectorAll('button')], 'simplified words do').toHaveLength(1)
+  })
+})
+
+describe('the way the answer comes in', () => {
+  const units = (host: ParentNode) => host.querySelectorAll('.flow-unit')
+
+  it('arrives out of a blur, and stops once it has all landed', async () => {
+    vi.useFakeTimers()
+    endpoint(['Some made-up words, kept short.'])
+    const { host, body } = draw(row(20), 'en')
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(body().textContent).toContain('Some made-up words, kept short.')
+    expect(units(host).length, 'the arrival is shown as one').toBeGreaterThan(1)
+
+    await vi.advanceTimersByTimeAsync(FLOW_OVER_MS + 10)
+    expect(units(host), 'spent: the words are just words now').toHaveLength(0)
+    expect(body().textContent).toContain('Some made-up words, kept short.')
+  })
+
+  it('opens a second time with the answer already in hand, and says nothing about it', async () => {
+    vi.useFakeTimers()
+    const sent = endpoint(['Some made-up words, kept short.'])
+    draw(row(23), 'en')
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(FLOW_OVER_MS + 10)
+
+    const { host, body } = draw(row(23), 'en')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(body().textContent).toContain('Some made-up words, kept short.')
+    expect(units(host), 'nothing arrived, so nothing announces itself').toHaveLength(0)
+    expect(sent, 'the answer came out of the table').toHaveLength(1)
+  })
+
+  it('says nothing when the store hands the same words over again', async () => {
+    vi.useFakeTimers()
+    endpoint(['Some made-up words, kept short.'])
+    const [listing, setListing] = createSignal(row(21))
+    const { host, body } = draw(listing, 'en')
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(FLOW_OVER_MS + 10)
+
+    setListing({ ...listing(), adoptName: '列表刷新了' })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(body().textContent).toContain('Some made-up words, kept short.')
+    expect(units(host), 'the same answer is no arrival').toHaveLength(0)
+  })
+
+  it('brings back an answer already in hand the way it came', async () => {
+    vi.useFakeTimers()
+    const sent = endpoint(['Some made-up words, kept short.'])
+    const { host, body } = draw(row(22), 'en')
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(FLOW_OVER_MS + 10)
+    const button = body().querySelector('button')!
+
+    button.click()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(units(host), 'the original words came plainly').toHaveLength(0)
+
+    button.click()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(body().textContent).toContain('Some made-up words, kept short.')
+    expect(units(host).length, 'this tap is when it arrived').toBeGreaterThan(1)
+    expect(sent, 'and nothing was asked for twice').toHaveLength(1)
   })
 })

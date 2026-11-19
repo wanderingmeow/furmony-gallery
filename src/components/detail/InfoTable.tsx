@@ -1,10 +1,10 @@
-import { tr, locale } from '../../i18n'
-import { listingBlurb, listingName, listingPainterName, wordsPending } from '../../model/translatedText'
-import { batch, createEffect, createMemo, createSignal, For, Show, type JSXElement } from 'solid-js'
+import { tr } from '../../i18n'
+import { listingDescription, listingName, listingPainterName, wordsPending } from '../../model/translatedText'
+import { createMemo, For, Show, type JSXElement } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
-import { needsTranslation } from '../../model/descriptionText'
-import { translateProse, translateTarget } from '../../data/translateText'
 import { AntIcon } from '../ui/AntIcon'
+import { FlowText, FLOW_OVER_MS } from './FlowText'
+import { useTranslation } from '../../hooks/useTranslation'
 import { TranslationOutlined } from '@ant-design/icons-svg'
 import {
   MISSING_PRICE, colorDisplay, colorNames, formatPrice, isAdopted, isLocked, painterAvatar, priceParts, raceDisplay, type InstallmentPrice, type OncePrice
@@ -58,127 +58,40 @@ function DescSkel() {
   )
 }
 
-type Job =
-  | { kind: 'idle' }
-  | { kind: 'busy'; id: number }
-  | { kind: 'done'; id: number; text: string }
-  | { kind: 'failed'; id: number }
-
-/**
- * 详细描述, in the language on screen when the shelf answered in a different one.
- *
- * The shelf translates this field along with the rest of the answer, so most arrive ready to read. `needsTranslation` finds the ones that did not come that way, and the request goes out on
- * its own. The placeholder lines stay up until the answer lands, and the button is lit while the
- * translation is what the row offers, so the same tap that declines it also calls a request off.
- * A request that came back wrong leaves the shelf's own words on screen and turns the button red,
- * and the next tap sends it out again.
- */
+/** The 详细描述 row: the words, the placeholder while a request is on its way, and the button that
+ *  turns the translation down. The request itself is in `hooks/useTranslation`. */
 function Description(props: { listing: () => AdoptListing }) {
-  const [job, setJob] = createSignal<Job>({ kind: 'idle' })
-  const [wantTranslation, setWantTranslation] = createSignal(true)
-  let inFlight: AbortController | undefined
-
-  // The detail sheet keeps this component alive while one listing's picture gives way to the next,
-  // so an answer that belongs to an earlier listing counts as no answer.
-  const current = createMemo<Job>(() => {
-    const j = job()
-    return j.kind !== 'idle' && j.id !== props.listing().adoptId ? { kind: 'idle' } : j
+  const t = useTranslation({
+    text: () => listingDescription(props.listing()) ?? '',
+    id: () => props.listing().adoptId,
+    arrivalMs: FLOW_OVER_MS,
   })
-
-  function stop() {
-    inFlight?.abort()
-    inFlight = undefined
-  }
-
-  async function run(id: number, text: string, into: string) {
-    // Whatever is on its way belongs to a question the row no longer has.
-    stop()
-    const giveUp = new AbortController()
-    inFlight = giveUp
-    setJob({ kind: 'busy', id })
-    try {
-      const out = await translateProse(text, into, giveUp.signal)
-      if (inFlight === giveUp) setJob({ kind: 'done', id, text: out })
-    } catch {
-      if (inFlight === giveUp) setJob({ kind: 'failed', id })
-    } finally {
-      if (inFlight === giveUp) inFlight = undefined
-    }
-  }
-
-  // A job that is busy, done or failed is left alone, so the app sends one request per listing and
-  // language. After a failure the next request goes out on the reader's tap.
-  createEffect(() => {
-    if (!wantTranslation() || current().kind !== 'idle') return
-    const lang = locale()
-    const into = translateTarget(lang)
-    const text = listingBlurb(props.listing()) ?? ''
-    if (into && needsTranslation(text, lang)) void run(props.listing().adoptId, text, into)
-  })
-
-  const translated = () => {
-    const j = current()
-    return j.kind === 'done' ? j.text : undefined
-  }
-  const showing = () => wantTranslation() && translated() !== undefined
-  // Off means the shelf's own words, even when an answer is sitting there.
-  const shownText = () => (showing() ? translated()! : listingBlurb(props.listing()))
-  const offer = () =>
-    translateTarget(locale()) !== undefined && needsTranslation(listingBlurb(props.listing()), locale())
-  // Lit means the translation is what the row offers, on its way or already on screen. The request
-  // goes out on its own, so the button starts lit and putting it out is how the reader stops it.
-  const lit = () => wantTranslation() && current().kind !== 'failed'
-  const label = () =>
-    current().kind === 'failed'
-      ? tr('detail.translateFailed')
-      : lit()
-        ? tr('detail.showOriginal')
-        : tr('detail.translate')
-
-  const toggle = () => {
-    if (lit()) {
-      stop()
-      // An answer that already landed stays in the job, so the next tap shows it without a request.
-      batch(() => {
-        setWantTranslation(false)
-        // An answer that already landed stays in the job, so the next tap shows it without a request.
-        if (current().kind === 'busy') setJob({ kind: 'idle' })
-      })
-      return
-    }
-    setWantTranslation(true)
-    const into = translateTarget(locale())
-    const j = current()
-    if (into && (j.kind === 'idle' || j.kind === 'failed')) {
-      void run(props.listing().adoptId, listingBlurb(props.listing()) ?? '', into)
-    }
-  }
   return (
     <>
-      <Show when={current().kind === 'busy'} fallback={<span class="whitespace-pre-wrap">{shownText()}</span>}>
+      {/* The placeholder stays while the answer is on its way. The words it gives way to blur in
+          once, when they land, and plainly every other time they are on the screen. */}
+      <Show when={t.busy()} fallback={<FlowText text={t.shownText()} flow={t.arriving() && t.showing()} />}>
         <DescSkel />
       </Show>
-      <Show when={offer()}>
+      <Show when={t.offer()}>
         {/* A row of its own under the text. Pinned to the corner it would sit on the last line. The
             note takes the left end, so the row still holds one button. */}
         <div class="mt-1.5 flex items-center justify-end gap-2">
-          <Show when={showing()}>
+          <Show when={t.showing()}>
             <span class="mr-auto text-[11px] text-faint">{tr('detail.translatedNote')}</span>
           </Show>
           <button
             type="button"
-            onClick={toggle}
-            title={label()}
-            aria-label={label()}
+            onClick={t.toggle}
+            title={t.label()}
+            aria-label={t.label()}
             class={[
               'grid h-7 w-7 place-items-center rounded-lg border transition-colors',
               // `ink` flips with the theme, so an ink wash darkens the button in light mode and
               // lights it in dark mode: one hover state for both.
-              current().kind === 'failed'
-                ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100 active:bg-red-200 dark:border-red-900 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900'
-                : lit()
-                  ? 'border-accent/40 bg-accent/15 text-accent-soft hover:bg-accent/25 active:bg-accent/30'
-                  : 'border-border bg-surface-2 text-ink-faint hover:border-ink/30 hover:bg-ink/10 active:bg-ink/20',
+              t.lit()
+                ? 'border-accent/40 bg-accent/15 text-accent-soft hover:bg-accent/25 active:bg-accent/30'
+                : 'border-border bg-surface-2 text-ink-faint hover:border-ink/30 hover:bg-ink/10 active:bg-ink/20',
             ].join(' ')}
           >
             <AntIcon icon={TranslationOutlined} size={15} />
@@ -300,8 +213,8 @@ export function InfoTable(props: { listing: AdoptListing }) {
             <Show when={painterAvatar(l())} fallback={<span class="w-6 h-6 rounded-full bg-surface-2" />}>
               {(url) => <img src={url()} alt={tr('detail.painter')} class="w-6 h-6 rounded-full object-cover" />}
             </Show>
-            {/* The painter is one of the fields the shelf answers, so the name the row carries
-                belongs to the language before the reader's pick. */}
+            {/* The painter's name is one of the fields the API returns translated, so the one the
+                row carries belongs to the language before the reader's pick. */}
             {wordsPending() ? <SkelText class="h-4 w-20" /> : <span>{listingPainterName(l()) ?? tr('common.unknown')}</span>}
           </div>
         </Row>
@@ -335,7 +248,7 @@ export function InfoTable(props: { listing: AdoptListing }) {
       <OptRow label={tr('detail.note')} when={!!l().remark}>
         <span class="whitespace-pre-wrap">{l().remark}</span>
       </OptRow>
-      <OptRow label={tr('detail.description')} when={wordsPending() || !!listingBlurb(l())}>
+      <OptRow label={tr('detail.description')} when={wordsPending() || !!listingDescription(l())}>
         <Show when={!wordsPending()} fallback={<DescSkel />}>
           <Description listing={l} />
         </Show>

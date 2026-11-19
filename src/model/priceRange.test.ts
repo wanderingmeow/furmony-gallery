@@ -1,8 +1,8 @@
 // Functional tests for the price range rules (priceRange.ts). No reactivity, no I/O.
 import { describe, expect, it } from 'vitest'
 import {
-  barInside, countInRange, inPriceRange, isFullRange, keepsByPrice, priceRangeLabel,
-  rangeExtent, snapRange,
+  barInside, countInRange, edgeOf, inPriceRange, isFullRange, keepsByPrice, otherEnd, priceRangeLabel,
+  railShare, rangeExtent, slideRange, snapRange, stepAt, stepIndex,
 } from './priceRange'
 import { PRICE_BUCKET, priceBins, priceEdges } from './statistics'
 import type { AdoptListing } from './types'
@@ -48,7 +48,7 @@ describe('snapRange', () => {
     expect(snapRange(STEPS, 5900, 6100)).toEqual([6000, 8000])
   })
 
-  it('stops a thumb at its neighbour, so the two never cross', () => {
+  it('widens a pair that arrived crossed', () => {
     expect(snapRange(STEPS, 9000, 3000)).toEqual([6000, 8000])
   })
 
@@ -58,6 +58,64 @@ describe('snapRange', () => {
 
   it('has nothing to snap to below three edges', () => {
     expect(snapRange([2000, 4000], 2000, 4000)).toBeNull()
+  })
+})
+
+describe('slideRange', () => {
+  it('holds the neighbor while the other end travels', () => {
+    expect(slideRange(STEPS, 'low', 2000, 6000)).toEqual([2000, 6000])
+    expect(slideRange(STEPS, 'high', 8000, 4000)).toEqual([4000, 8000])
+  })
+
+  // The one-bar pair is the case a reader drags most: the far end stays where it is.
+  it('stops the dragged end beside its neighbor', () => {
+    expect(slideRange(STEPS, 'low', 6000, 6000)).toEqual([4000, 6000])
+    expect(slideRange(STEPS, 'low', 8000, 6000)).toEqual([4000, 6000])
+    expect(slideRange(STEPS, 'high', 4000, 4000)).toEqual([4000, 6000])
+    expect(slideRange(STEPS, 'high', 2000, 4000)).toEqual([4000, 6000])
+  })
+
+  it('keeps one bar when the pair already sits at an end of the rail', () => {
+    expect(slideRange(STEPS, 'high', 2000, 2000)).toEqual([2000, 4000])
+    expect(slideRange(STEPS, 'low', 8000, 8000)).toEqual([6000, 8000])
+  })
+
+  it('has nothing to slide over below three edges', () => {
+    expect(slideRange([2000, 4000], 'low', 2000, 4000)).toBeNull()
+  })
+})
+
+describe('the rail a thumb travels', () => {
+  // A row 244px wide: half a thumb (11px) in from each end is where a thumb's center may sit.
+  const ROW = { left: 100, width: 244 }
+
+  it('reads a press as the step it lands on', () => {
+    expect(stepAt(STEPS, ROW, 111)).toBe(0)
+    expect(stepAt(STEPS, ROW, 100 + 11 + 222 / 3)).toBe(1)
+    expect(stepAt(STEPS, ROW, 100 + 11 + 222 * (2 / 3))).toBe(2)
+    expect(stepAt(STEPS, ROW, 344)).toBe(3)
+  })
+
+  it('keeps a press that strays past the row on the end it came from', () => {
+    expect(stepAt(STEPS, ROW, 0)).toBe(0)
+    expect(stepAt(STEPS, ROW, 900)).toBe(3)
+  })
+
+  it('has nothing to map on a row no wider than a thumb', () => {
+    expect(stepAt(STEPS, { left: 0, width: 22 }, 11)).toBe(0)
+  })
+
+  it('places an edge along the rail from 0 to 1', () => {
+    expect(railShare(STEPS, 2000)).toBe(0)
+    expect(railShare(STEPS, 4000)).toBeCloseTo(1 / 3)
+    expect(railShare(STEPS, 8000)).toBe(1)
+    expect(stepIndex(STEPS, 5000)).toBe(-1)
+  })
+
+  it('names the end the other one is not', () => {
+    expect(edgeOf([2000, 6000], 'low')).toBe(2000)
+    expect(edgeOf([2000, 6000], 'high')).toBe(6000)
+    expect(otherEnd('low')).toBe('high')
   })
 })
 

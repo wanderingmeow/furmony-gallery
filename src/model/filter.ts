@@ -2,7 +2,7 @@
 // plus the vocabulary that goes with it (tabs, sort modes, labels). No reactivity, no I/O.
 import type { AdoptListing } from './types'
 import { tr } from '../i18n'
-import { listingBlurb, listingName } from './translatedText'
+import { listingDescription, listingName } from './translatedText'
 import type { SocialSearchEntry } from '../data/socials'
 import {
   colorNames, displayPrice, formatPrice, isLocked, raceName,
@@ -112,7 +112,7 @@ function matchesQuery(query: string, socials?: Map<number, SocialSearchEntry>) {
   }
   return (l: AdoptListing) =>
     (listingName(l)?.toLowerCase().includes(q) ?? false) ||
-    (listingBlurb(l)?.toLowerCase().includes(q) ?? false) ||
+    (listingDescription(l)?.toLowerCase().includes(q) ?? false) ||
     socialText(l).includes(q) ||
     (digits && (String(l.adoptId).startsWith(q) || uidPrefix(l)))
 }
