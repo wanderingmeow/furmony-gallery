@@ -1,5 +1,6 @@
 import { createSignal, For, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
+import { detailPath } from '../../router'
 import { getNotifications, removeNotification } from '../../stores/notificationStore'
 import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
 import { formatPrice } from '../../model/domain'
@@ -16,7 +17,7 @@ export function NotificationCenter() {
   const n = () => getNotifications()
 
   const open = (c: ListingChange) => {
-    navigate(`/detail/${c.id}`, { scroll: false })
+    navigate(detailPath(c.id), { scroll: false })
     removeNotification(c.uid)
   }
 

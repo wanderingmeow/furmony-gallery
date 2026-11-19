@@ -1,4 +1,4 @@
-import { createEffect, createSignal, For, onCleanup, onMount, Show, type JSX } from 'solid-js'
+import { createEffect, createSignal, For, on, onCleanup, onMount, Show, type JSX } from 'solid-js'
 import './SegmentedControl.css'
 
 /** A getter lets the line follow its own data while the row stays put. */
@@ -51,10 +51,7 @@ export function SegmentedControl<V extends string>(props: {
     for (const el of seen.values()) ro.observe(el)
     onCleanup(() => ro.disconnect())
   })
-  createEffect(() => {
-    props.value()
-    measure()
-  })
+  createEffect(on(() => props.value(), measure))
 
   return (
     <div

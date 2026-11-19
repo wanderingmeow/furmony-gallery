@@ -1,5 +1,6 @@
-import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, on, onCleanup, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
+import { detailPath } from '../router'
 import { dataReady, fetchFailed } from '../stores/listingsStore'
 import { Toolbar } from '../components/toolbar/Toolbar'
 import { ToolbarSkeleton } from '../components/toolbar/ToolbarSkeleton'
@@ -17,7 +18,7 @@ export function Home() {
   // live in the store, so the URL carries nothing and the history stack stays short.
   // `scroll: false` keeps the reading position: the router scrolls the document to the top on
   // every navigation, and only the initial-load restore may scroll.
-  const onOpen = (id: number) => navigate(`/detail/${id}`, { scroll: false })
+  const onOpen = (id: number) => navigate(detailPath(id), { scroll: false })
 
   // Until the data lands, the bar and the list are both placeholders in the real boxes.
   const listReady = () => dataReady() || fetchFailed()
@@ -26,11 +27,11 @@ export function Home() {
   // answers within a few frames, and placeholders that come and go are only a flash.
   const SKELETON_DELAY_MS = 200
   const [slow, setSlow] = createSignal(false)
-  createEffect(() => {
-    if (listReady()) return
+  createEffect(on(listReady, (ready) => {
+    if (ready) return
     const timer = setTimeout(() => setSlow(true), SKELETON_DELAY_MS)
     onCleanup(() => clearTimeout(timer))
-  })
+  }))
 
   // What the screen shows: `hold` while the document spinner covers it, `skeleton` for the
   // placeholders, `list` for the real screen, or `both` for the dev overlay.
@@ -45,17 +46,15 @@ export function Home() {
   const showList = () => view() === 'list' || view() === 'both'
 
   // The document spinner stays until the screen has something on it.
-  createEffect(() => {
-    if (view() !== 'hold') document.getElementById('boot-spinner')?.remove()
-  })
+  createEffect(on(view, (v) => { if (v !== 'hold') document.getElementById('boot-spinner')?.remove() }))
 
   // While the placeholders are up, nothing sits below the fold, so the document cannot scroll. A
   // programmatic scroll still works, and the real list removes the lock.
-  createEffect(() => {
+  createEffect(on(view, (v) => {
     const root = document.documentElement
-    root.style.overflow = view() === 'skeleton' ? 'hidden' : ''
+    root.style.overflow = v === 'skeleton' ? 'hidden' : ''
     onCleanup(() => { root.style.overflow = '' })
-  })
+  }))
 
   // In overlay mode the placeholder bar sits above the real one (z-40), and the placeholder
   // grid stays under the cards.

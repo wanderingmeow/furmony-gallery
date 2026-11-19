@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
+import { createEffect, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import { CloseOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons-svg'
 import Panzoom from '@panzoom/panzoom'
 import { onImageError, preloadImage } from '../../data/image'
@@ -35,10 +35,9 @@ export function FullScreenZoom(props: {
    */
   const [sharp, setSharp] = createSignal(false)
 
-  createEffect(() => {
-    const url = props.fullUrl
+  createEffect(on([() => props.fullUrl, () => props.imageUrl], ([url, thumb]) => {
     setSharp(false)
-    if (!url || url === props.imageUrl) return
+    if (!url || url === thumb) return
     const job = preloadImage(url)
     onCleanup(job.cancel)
     void job.ready.then((pic) => {
@@ -50,10 +49,9 @@ export function FullScreenZoom(props: {
       // sharp picture a frame or two later.
       pic.decode?.().then(show, () => {}) ?? show()
     })
-  })
+  }))
 
-  createEffect(() => {
-    const url = props.imageUrl
+  createEffect(on(() => props.imageUrl, (url) => {
     if (!url) return
     if (pz) { pz.destroy(); pz = null }
 
@@ -77,7 +75,7 @@ export function FullScreenZoom(props: {
       pz?.destroy()
       pz = null
     })
-  })
+  }))
 
   // One tap on the picture closes the viewer. The buttons are outside the stage, so anything
   // inside it is the picture.

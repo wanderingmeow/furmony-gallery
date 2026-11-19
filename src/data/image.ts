@@ -1,5 +1,5 @@
 // Maps an image path to one stable signed URL, and keeps that map across visits in IndexedDB.
-// Reads go through an in-memory Map. Writes are debounced, and only the paths added since the
+// Reads go through an in-memory Map. Writes are debounced, and only the paths changed since the
 // last write go to the store.
 import { IMG_URL_STORE, putMany, readAll } from './idb'
 
@@ -31,6 +31,13 @@ async function persistNow(): Promise<void> {
 function persist() {
   if (persistTimer) clearTimeout(persistTimer)
   persistTimer = setTimeout(() => { persistNow() }, 1000)
+}
+
+/** Put this path in the queue that the next write to IndexedDB takes. */
+function markDirty(path: string): void {
+  if (!dirtyPaths) dirtyPaths = new Set()
+  dirtyPaths.add(path)
+  persist()
 }
 
 // Load the saved map into memory. A saved URL beats a newer one from this session: the browser
@@ -70,9 +77,7 @@ export function stableImageUrl(raw: string | undefined): string | undefined {
   const memo = map.get(path)
   if (memo) return memo
   map.set(path, raw)
-  if (!dirtyPaths) dirtyPaths = new Set()
-  dirtyPaths.add(path)
-  persist()
+  markDirty(path)
   return raw
 }
 
@@ -154,8 +159,8 @@ export function imageReady(src: string): boolean {
   return pic.complete && pic.naturalWidth > 0
 }
 
-// On a failed load, retry with the newest signed URL seen for this path, up to twice. A URL
-// remembered from an earlier visit can expire.
+// A URL remembered from an earlier visit can expire. On a failed load, the newest signed URL seen
+// for this path takes over this element, up to twice, and the map as well.
 export function onImageError(e: Event): void {
   const img = e.target as HTMLImageElement
   if (!img) return
@@ -165,6 +170,13 @@ export function onImageError(e: Event): void {
   const path = urlPath(src)
   const fresh = recentRaw.get(path)
   img.dataset.retry = String(tries + 1)
+  const map = loadMap()
+  if (fresh && map.get(path) !== fresh) {
+    // Every later read of this path is handed what the map holds, and this element just failed to
+    // load what is in there now.
+    map.set(path, fresh)
+    markDirty(path)
+  }
   img.src = fresh && fresh !== src ? fresh : src
 }
 

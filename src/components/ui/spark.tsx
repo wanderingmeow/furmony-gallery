@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup, onMount } from 'solid-js'
+import { createEffect, createSignal, on, onCleanup, onMount, untrack } from 'solid-js'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { AntIcon } from './AntIcon'
 
@@ -46,10 +46,8 @@ export function SparkMark(props: {
 }) {
   const wanted = (): boolean =>
     typeof props.working === 'function' ? props.working() : props.working !== false
-  const [pulsing, setPulsing] = createSignal(wanted())
-  createEffect(() => {
-    if (wanted()) setPulsing(true)
-  })
+  const [pulsing, setPulsing] = createSignal(untrack(wanted))
+  createEffect(on(wanted, (go) => { if (go) setPulsing(true) }))
   let wrap!: HTMLSpanElement
   const endCycle = () => {
     if (!wanted()) setPulsing(false)

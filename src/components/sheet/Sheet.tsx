@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, on, onCleanup, Show, type JSX } from 'solid-js'
+import { createEffect, createMemo, createSignal, on, onCleanup, Show, untrack, type JSX } from 'solid-js'
 import { scrollLock } from '../../draw/scrollLock'
 import { EASE, prefersReducedMotion, SHEET_MOVE_MS, ease } from '../../draw/anim'
 import { MAX_SAMPLES, flingVelocity, shouldDismiss, type Sample } from '../../draw/fling'
@@ -112,8 +112,8 @@ export function Sheet(props: {
   // Hold the document still while the sheet is open, so a wheel or touch over the backdrop
   // does not scroll the list behind it. release() is safe to call twice, and scrollLock
   // counts how many sheets hold the lock, so each open pairs with one release.
-  createEffect(() => {
-    if (!open()) return
+  createEffect(on(open, (shown) => {
+    if (!shown) return
     // A getter rather than a fixed element: the content can mount later than the lock does
     // (StatsLazy loads on demand), so we look up the scroller when the touch arrives.
     const release = scrollLock.acquire({
@@ -121,22 +121,22 @@ export function Sheet(props: {
       getScrollable: () => sheetEl?.querySelector(SCROLLER) ?? null,
     })
     onCleanup(release)
-  })
+  }))
 
   // Firefox folds the mount style and the target style into one frame, so the transition has
   // no start value and the sheet jumps in. Reading offsetHeight forces a layout between the
   // two, and then the slide happens.
-  createEffect(() => {
-    if (!open()) return
+  createEffect(on(open, (shown) => {
+    if (!shown) return
     setClosing(false)
     setPos(1)
     if (sheetEl) void sheetEl.offsetHeight
     requestAnimationFrame(() => setPos(0))
-  })
+  }))
 
   // The layer keeps its own signal: a back press moves the route away from outside, and the
   // layer still has one slide to finish.
-  const [shown, setShown] = createSignal(open())
+  const [shown, setShown] = createSignal(untrack(open))
   let exitTimer: number | undefined
 
   function slideOut(settle: () => void) {

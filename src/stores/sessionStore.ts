@@ -5,7 +5,6 @@ import { createSignal } from 'solid-js'
 const SESSION_KEY = 'furmony_session'
 
 export const [firstVisibleId, setFirstVisibleId] = createSignal<number | null>(null)
-export const [restored, setRestored] = createSignal(false) // scroll restore done once
 
 export function loadSession(): void {
   try {
@@ -18,8 +17,9 @@ export function loadSession(): void {
   } catch { /* ignore */ }
 }
 
-export function persistSession(): void {
+/** Store the row the reader is on, so a refresh returns to it. */
+export function persistSession(firstVisibleId: number | null): void {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ firstVisibleId: firstVisibleId() }))
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ firstVisibleId }))
   } catch { /* ignore */ }
 }

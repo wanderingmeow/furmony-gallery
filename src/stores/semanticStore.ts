@@ -1,5 +1,5 @@
 // src/stores/semanticStore.ts - state for the enhanced search, sentence and picture.
-import { batch, createEffect, createMemo, createRoot, createSignal, on } from 'solid-js'
+import { batch, createEffect, createMemo, createRoot, createSignal, on, untrack } from 'solid-js'
 import {
   askPicture, askSettings, PICTURE_TIMEOUT_MS, searchConfigured, SEARCH_TIMEOUT_MS,
   type PictureResult, type SemanticResult,
@@ -128,7 +128,9 @@ const store = createRoot(() => {
     const release = () => {
       stagedTurn += 1
       setPreparing(false)
-      const previous = staged()
+      // The staged picture is the one to release. `release` runs from a tap, from an async
+      // continuation, and from an effect, and it means the same thing in all three.
+      const previous = untrack(staged)
       if (previous) URL.revokeObjectURL(previous.url)
       setStaged(null)
     }

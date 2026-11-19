@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onMount, splitProps, type JSX } from 'solid-js'
+import { createEffect, createSignal, on, onMount, splitProps, type JSX } from 'solid-js'
 import { onImageError } from '../../data/image'
 import { SK_FILL } from './boxes'
 
@@ -30,10 +30,7 @@ export function SkelImg(props: BoxProps & { url: string; box?: string; imgClass?
   })
   // The element stays in place when the url changes, so the state from the previous picture has
   // to be cleared.
-  createEffect(() => {
-    own.url
-    setFilled(false)
-  })
+  createEffect(on(() => own.url, () => setFilled(false)))
 
   return (
     <div

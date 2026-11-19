@@ -1,6 +1,6 @@
 // src/components/toolbar/PictureSearch.tsx - the toolbar's picture mode: one word at a time in
 // the toolbar row, and the picture that was searched beside it.
-import { createEffect, createSignal, onCleanup, Show } from 'solid-js'
+import { createEffect, createSignal, on, onCleanup, Show } from 'solid-js'
 import type { JSX } from 'solid-js'
 import { PictureOutlined } from '@ant-design/icons-svg'
 import { picture, type PictureState } from '../../stores/semanticStore'
@@ -217,8 +217,8 @@ function watchPictureArrival(
 ) {
   const [dragging, setDragging] = createSignal(false)
 
-  createEffect(() => {
-    if (!picture.on()) return
+  createEffect(on(picture.on, (shown) => {
+    if (!shown) return
     const zone = drop()
     const hand = (file: File | undefined) => {
       if (file) take(file)
@@ -246,7 +246,7 @@ function watchPictureArrival(
       zone?.removeEventListener('dragover', onOver)
       zone?.removeEventListener('dragleave', onLeave)
     })
-  })
+  }))
 
   return { dragging }
 }

@@ -5,6 +5,7 @@ import {
 } from '@ant-design/icons-svg'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { useNavigate } from '@solidjs/router'
+import { statsPath } from '../../router'
 import { filtersOnCount } from '../../stores/derivedStore'
 import { semanticActive } from '../../stores/semanticStore'
 import { sortMode } from '../../stores/filterStore'
@@ -64,7 +65,7 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
       >
         <FilterPanel />
       </FabMenu>
-      <FabCircle accent glow onClick={() => navigate('/stats', { scroll: false })} title={STATS_TITLE}>
+      <FabCircle accent glow onClick={() => navigate(statsPath(), { scroll: false })} title={STATS_TITLE}>
         <AntIcon icon={BarChartOutlined} size="1.25em" />
       </FabCircle>
     </div>

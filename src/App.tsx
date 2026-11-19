@@ -1,5 +1,6 @@
 import { createSignal, lazy, onMount, Show, Suspense } from 'solid-js'
 import { Router, Route, useMatch, useNavigate } from '@solidjs/router'
+import { detailPattern, detailRoute, homePath, indexRoute, routerBase, statsPattern, statsRoute } from './router'
 import { initStore } from './initStore'
 import { flushUrlMapOnExit, initImageUrlMap } from './data/image'
 import { Home } from './routes/Home'
@@ -16,24 +17,17 @@ import { loadData, loadError, setLoadError } from './stores/listingsStore'
 const StatsLazy = lazy(() => import('./routes/Stats').then((m) => ({ default: m.Stats })))
 const DetailLazy = lazy(() => import('./routes/Detail').then((m) => ({ default: m.Detail })))
 
-// The router base takes no trailing slash: a base that ends in '/' turns /detail into
-// `//detail`.
-const routerBase = import.meta.env.BASE_URL.replace(/\/+$/, '')
 
-// The routes are no-ops: they keep the URL, deep links and the back button working, while
-// Shell reads the path and decides which sheet is open.
 function Shell() {
   const navigate = useNavigate()
-  // This router version keeps `location.pathname` base-prefixed, so the match pattern needs
-  // the base too.
-  const detailMatch = useMatch(() => `${routerBase}/detail/:id`)
-  const isDetail = () => !!detailMatch()
-  const statsMatch = useMatch(() => `${routerBase}/stats`)
-  const isStats = () => !!statsMatch()
+  const detailMatch = useMatch(() => detailPattern)
+  const isDetailOpen = () => !!detailMatch()
+  const statsMatch = useMatch(() => statsPattern)
+  const isStatsOpen = () => !!statsMatch()
   // The lock filter lives here, not inside the screen, so the header and the charts share
   // one value and it survives opening and closing the sheet.
   const [mode, setMode] = createSignal<LockFilter>('all')
-  const closeSheet = () => navigate('/', { scroll: false })
+  const closeSheet = () => navigate(homePath(), { scroll: false })
 
   onMount(() => {
     // The saved image URLs load first, so the listings that follow find the cache warm.
@@ -45,7 +39,7 @@ function Shell() {
       {/* Home stays mounted behind the sheets: the backdrop blurs the real list, and its
           scroll position is there when a sheet closes. */}
       <Home />
-      <StatsSheet open={isStats} onDismiss={closeSheet} mode={mode} setMode={setMode}>
+      <StatsSheet open={isStatsOpen} onDismiss={closeSheet} mode={mode} setMode={setMode}>
         {(dismiss) => (
           // The header waits for the chunk too, so the placeholder paints the ✕.
           <Suspense fallback={<SheetBodySkeleton onClose={dismiss} />}>
@@ -53,7 +47,7 @@ function Shell() {
           </Suspense>
         )}
       </StatsSheet>
-      <Sheet open={isDetail} onDismiss={closeSheet}>
+      <Sheet open={isDetailOpen} onDismiss={closeSheet}>
         {(dismiss) => (
           <Suspense
             fallback={
@@ -92,9 +86,9 @@ function Shell() {
 export default function App() {
   return (
     <Router root={Shell} base={routerBase}>
-      <Route path="/" />
-      <Route path="/detail/:id" />
-      <Route path="/stats" />
+      <Route path={indexRoute} />
+      <Route path={detailRoute} />
+      <Route path={statsRoute} />
     </Router>
   )
 }

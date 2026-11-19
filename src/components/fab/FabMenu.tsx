@@ -3,7 +3,7 @@
 //
 // 面板 Portal 到 <body>：在瀑布流的固定层里再套一层 .glass，backdrop-filter 会被外层图
 // 层裁掉，模糊出不来。
-import { createEffect, createSignal, onCleanup, Show, type JSX } from 'solid-js'
+import { createEffect, createSignal, on, onCleanup, Show, type JSX } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { AntIcon } from '../ui/AntIcon'
@@ -47,8 +47,8 @@ export function FabMenu(props: {
   let popup!: HTMLDivElement
   const [pos, setPos] = createSignal<{ bottom: number; right: number; roomAbove: number } | null>(null)
 
-  createEffect(() => {
-    if (!open()) { setPos(null); return }
+  createEffect(on(open, (shown) => {
+    if (!shown) { setPos(null); return }
     // 每次量都重新算：FAB 列会因为「回到顶部」出现/消失而整体上下移动
     const measure = () => {
       const r = wrap.getBoundingClientRect()
@@ -65,11 +65,11 @@ export function FabMenu(props: {
       window.removeEventListener('resize', measure)
       window.removeEventListener('scroll', measure, true)
     })
-  })
+  }))
 
   // 用捕获阶段：卡片自己的 click 会 stopPropagation，冒泡阶段就收不到「点别处」了
-  createEffect(() => {
-    if (!open()) return
+  createEffect(on(open, (shown) => {
+    if (!shown) return
     const onClick = (e: MouseEvent) => {
       const t = e.target as Node
       if (wrap.contains(t) || popup.contains(t)) return
@@ -82,7 +82,7 @@ export function FabMenu(props: {
       document.removeEventListener('click', onClick, true)
       document.removeEventListener('keydown', onKey)
     })
-  })
+  }))
 
   return (
     <div class="relative" ref={wrap}>

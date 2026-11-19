@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from 'solid-js'
+import { createSignal, For, Show, untrack } from 'solid-js'
 import type { JSXElement } from 'solid-js'
 import {
   ArrowDownOutlined, ArrowUpOutlined, BgColorsOutlined, BulbOutlined,
@@ -100,7 +100,7 @@ function Section(props: {
   // The fold is set once, from the picks at the moment the panel opens, and only the reader moves
   // it after that. Following the picks live would close the section the instant its last pick is
   // cleared, under the finger that cleared it.
-  const [open, setOpen] = createSignal(props.selected.size > 0)
+  const [open, setOpen] = createSignal(untrack(() => props.selected.size) > 0)
   const fold = () => setOpen((o) => !o)
   return (
     <div class={PANEL_BLOCK}>

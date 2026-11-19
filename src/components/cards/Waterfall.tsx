@@ -1,8 +1,8 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
 import { filteredListings } from '../../stores/derivedStore'
 import {
-  firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
+  firstVisibleId, setFirstVisibleId, persistSession,
 } from '../../stores/sessionStore'
 import { semanticActive } from '../../stores/semanticStore'
 import { sortMode, setOnFilterChange } from '../../stores/filterStore'
@@ -26,10 +26,6 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   // follow the window.
   const { viewportW, viewportH } = watchViewport()
   const [scrollTop, setScrollTop] = createSignal(window.scrollY)
-
-  // A store write, so it goes in an effect rather than the body. This effect must be created
-  // before `createScrollRestore` reads the flag: Solid runs effects in creation order.
-  onMount(() => setRestored(false))
 
   const items = filteredListings
   const cols = createMemo(() => waterfallCols(viewportW()))
@@ -93,7 +89,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
 
   // A sort can change while the chip is up, between two scroll frames, and the label on screen
   // would be the old order's answer. Scroll alone cannot catch that.
-  createEffect(() => { if (semanticActive()) preview.hide() })
+  createEffect(on(semanticActive, (ranked) => { if (ranked) preview.hide() }))
 
   onMount(() => {
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -106,7 +102,7 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   createScrollRestore({
     scrollToTop: (target) => window.scrollTo(0, target),
     items, cols, rowHeight, setScrollTop, firstRow, scrollTop,
-    firstVisibleId, setFirstVisibleId, persistSession, restored, setRestored,
+    firstVisibleId, setFirstVisibleId, persistSession,
   })
 
   // A filter change starts the list from the top. The store slot is written here rather than in
@@ -247,24 +243,24 @@ function createScrollRestore(args: {
   scrollTop: () => number
   firstVisibleId: () => number | null
   setFirstVisibleId: (v: number | null) => void
-  persistSession: () => void
-  restored: () => boolean
-  setRestored: (v: boolean) => void
+  persistSession: (id: number | null) => void
 }) {
-  createEffect(() => {
-    const id = args.firstVisibleId()
-    const ready = args.cols() > 0 && args.rowHeight() > 0 && args.items().length > 0
-    if (ready && id != null && !args.restored()) {
-      args.setRestored(true)
-      const row = rowOfIndex(findIndex(args.items(), id), args.cols())
+  // The restore runs once per page visit, so `done` is a local: every remount starts with a fresh
+  // one.
+  let done = false
+  createEffect(
+    on([args.firstVisibleId, args.items, args.cols, args.rowHeight], ([id, items, cols, rowHeight]) => {
+      if (done || id == null || cols <= 0 || rowHeight <= 0 || items.length === 0) return
+      done = true
+      const row = rowOfIndex(findIndex(items, id), cols)
       // The saved row sat at y=topPad when it was captured, and the content's padding-top
       // still provides that offset, so the target is row*rowHeight with NO topPad. Adding
       // it would land the card at y=0, behind the toolbar.
-      const target = row * args.rowHeight()
+      const target = row * rowHeight
       args.scrollToTop(target)
       args.setScrollTop(target)
-    }
-  })
+    }),
+  )
 
   // At the top (row <= 0) any saved position is dropped, so a refresh lands at the top
   // instead of returning to the previous spot.
@@ -272,30 +268,29 @@ function createScrollRestore(args: {
     if (row <= 0) {
       if (args.firstVisibleId() != null) {
         args.setFirstVisibleId(null)
-        args.persistSession()
+        args.persistSession(null)
       }
       return
     }
     const item = args.items()[indexOfRow(row, args.cols(), args.items().length)]
     if (item) {
       args.setFirstVisibleId(item.adoptId)
-      args.persistSession()
+      args.persistSession(item.adoptId)
     }
   }
 
   // Depends on firstRow, which changes at row boundaries only, so the body does not run on
   // every scroll frame.
   let saveTimer: number | null = null
-  createEffect(() => {
+  createEffect(on(args.firstRow, () => {
     // Read the row inside the timer: a value captured here could go stale and clear or save
     // the wrong row.
-    void args.firstRow()
     if (saveTimer) return
     saveTimer = setTimeout(() => {
       saveTimer = null
       saveRow(args.firstRow())
     }, SAVE_THROTTLE_MS)
-  })
+  }))
   onCleanup(() => {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null }
     // final save on exit - read the CURRENT scrollTop (the memo may be mid-disposal)
@@ -303,10 +298,10 @@ function createScrollRestore(args: {
   })
 }
 
-// A flat, identity-keyed list: every card is keyed by its listing object, so a card that
-// moves during scroll or drag keeps its DOM slot and only updates top/left. It never
-// unmounts and its <img> never reloads, which is what removed the Safari drag flash (was
-// ~815 mounts and 366 image loads per drag). Only cards entering the window mount.
+// Solid's <For> matches rows by object identity, so a row that comes back as the same object
+// keeps its card and its DOM node wherever the row moves. Scroll and drag only write top/left,
+// and a cover keeps the picture it already decoded: a card that remounted would load its cover
+// again, and the reader sees it arrive. Only cards entering the window mount.
 function VirtualCards(props: {
   items: () => AdoptListing[]; start: () => number; end: () => number; cols: () => number
   cardWidth: () => number; rowHeight: () => number; onOpen: (id: number) => void

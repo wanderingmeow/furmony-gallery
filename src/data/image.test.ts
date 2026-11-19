@@ -38,6 +38,31 @@ describe('stableImageUrl (img_url_map)', () => {
     // remembered URL from DB wins over the fresh signature
     expect(img.stableImageUrl('https://a.jpg?y=2')).toBe('https://a.jpg?x=1')
   })
+
+  it('a load that failed leaves the dead address out of the map', () => {
+    const dead = img.stableImageUrl('https://cdn.example/1.jpg?sig=old')
+    // The API signs again. The map still answers the address it already has.
+    img.stableImageUrl('https://cdn.example/1.jpg?sig=new')
+
+    const el = { src: dead, dataset: {} } as unknown as HTMLImageElement
+    img.onImageError({ target: el } as unknown as Event)
+
+    expect(img.stableImageUrl('https://cdn.example/1.jpg?sig=again')).toBe('https://cdn.example/1.jpg?sig=new')
+  })
+
+  it('the address a failed load corrected is what the next visit reads', async () => {
+    const dead = img.stableImageUrl('https://cdn.example/2.jpg?sig=old')
+    img.stableImageUrl('https://cdn.example/2.jpg?sig=new')
+
+    const el = { src: dead, dataset: {} } as unknown as HTMLImageElement
+    img.onImageError({ target: el } as unknown as Event)
+    await img.flushImageUrlMap()
+
+    vi.resetModules()
+    img = await import('./image')
+    await img.initImageUrlMap()
+    expect(img.stableImageUrl('https://cdn.example/2.jpg?sig=later')).toBe('https://cdn.example/2.jpg?sig=new')
+  })
 })
 
 describe('flushUrlMapOnExit', () => {

@@ -1,4 +1,4 @@
-import { createEffect, createSignal, For, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
+import { createEffect, createSignal, For, Match, on, onCleanup, onMount, Show, Switch, untrack } from 'solid-js'
 import { onImageError, preloadImage, imageReady } from '../../data/image'
 import { EASE } from '../../draw/anim'
 import { ART_PLACEHOLDER, DETAIL_THUMB, DETAIL_THUMB_ROW, SK_FILL } from '../ui/boxes'
@@ -11,12 +11,13 @@ export function Gallery(props: {
   const current = () => props.images[Math.min(props.index(), count - 1)]
 
   // A picture already in memory has a known height at the first layout, so the skeleton, the
-  // grow, and the fade have no wait to cover.
-  const readyNow = !!current() && imageReady(current())
+  // grow, and the fade have no wait to cover. These two reads are for the first picture only, so
+  // `untrack` keeps them from subscribing: the layers below follow the index.
+  const readyNow = untrack(() => !!current() && imageReady(current()))
 
   // Two layers, so a switch never shows a blank frame: the old picture stays where it is, the
   // next one loads behind it, then fades in and takes its place.
-  const [displayed, setDisplayed] = createSignal(current())
+  const [displayed, setDisplayed] = createSignal(untrack(current))
   const [incoming, setIncoming] = createSignal<string | null>(null)
   const [ready, setReady] = createSignal(false)
   // the displayed picture fades in when it loads
@@ -56,16 +57,15 @@ export function Gallery(props: {
   const [loading, setLoading] = createSignal(count > 0 && !readyNow)
   let firstDone = readyNow
   let settled = readyNow
-  createEffect(() => {
+  createEffect(on(current, (src) => {
     if (firstDone) return
-    const src = current()
     if (!src) { firstDone = true; setLoading(false); return }
     const job = preloadImage(src)
     onCleanup(job.cancel)
     void job.ready.then(() => { firstDone = true; setLoading(false) })
-  })
+  }))
 
-  createEffect(() => {
+  createEffect(on([current, displayed, incoming], () => {
     const target = current()
     if (target === displayed() || target === incoming()) return
     cancelPending?.()
@@ -81,13 +81,13 @@ export function Gallery(props: {
       setReady(true)
       cancelPending = null
     })
-  })
+  }))
 
   // After the incoming picture has faded in it becomes the displayed one, and the overlay goes
   // away. The new picture is drawn at the old height first, then hPx animates to the height it
   // needs, so the switch grows or shrinks.
-  createEffect(() => {
-    if (!ready()) return
+  createEffect(on(ready, (isReady) => {
+    if (!isReady) return
     const t = setTimeout(() => {
       const inc = incoming()
       if (inc) {
@@ -99,7 +99,7 @@ export function Gallery(props: {
       }
     }, 220)
     onCleanup(() => clearTimeout(t))
-  })
+  }))
 
   // Stop a download that is still running when the gallery goes away: it would take bandwidth
   // away from whatever the user opens next.

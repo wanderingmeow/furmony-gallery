@@ -1,5 +1,6 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
+import { detailPath } from '../../router'
 import type { AdoptListing } from '../../model/types'
 import { listings } from '../../stores/listingsStore'
 import { loadRelated, related, relatedLoaded } from '../../stores/relatedStore'
@@ -25,7 +26,7 @@ export function RelatedRow(props: { item: AdoptListing }) {
   const navigate = useNavigate()
   const adoptId = () => props.item.adoptId
 
-  createEffect(() => { if (adoptId()) void loadRelated() })
+  createEffect(on(adoptId, (id) => { if (id) void loadRelated() }))
 
   const neighbors = createMemo(() => resolveRelated(relatedIds(related(), adoptId()), listings()))
   const items = createMemo(() =>
@@ -39,7 +40,7 @@ export function RelatedRow(props: { item: AdoptListing }) {
   // A related tap goes one level deeper, so it stays in browser history: back walks
   // C → B → A → the grid. model/detailTrail explains the marker in the state.
   const open = (id: number) =>
-    navigate(`/detail/${id}`, { scroll: false, state: { fromDetail: adoptId() } })
+    navigate(detailPath(id), { scroll: false, state: { fromDetail: adoptId() } })
 
   // The table loads after the sheet is open, so the block holds its space until it does;
   // the switch waits for the same reason - it changes a row that is not on screen yet.
@@ -144,10 +145,9 @@ function RelatedStrip(props: {
     onCleanup(() => cancelAnimationFrame(raf))
   }
 
-  createEffect(() => {
-    // This tracks which items are shown: a switch that removes nothing does not move the
-    // reader back to the first card.
-    props.items.map((l) => l.adoptId).join(',')
+  // The ids of the shown items are the dependency: a switch that removes nothing does not
+  // move the reader back to the first card.
+  createEffect(on(() => props.items.map((l) => l.adoptId).join(','), () => {
     if (!root) return
     if (scroller?.isConnected) rewind()
     // A node that just mounted has a width that changes as the sheet settles, so measure
@@ -156,7 +156,7 @@ function RelatedStrip(props: {
     const ro = new ResizeObserver(measure)
     ro.observe(widthSource())
     onCleanup(() => ro.disconnect())
-  })
+  }))
 
   return (
     <div

@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from 'solid-js'
 import { Portal } from 'solid-js/web'
 import { useParams, useLocation } from '@solidjs/router'
 import { ArrowLeftOutlined, CloseOutlined } from '@ant-design/icons-svg'
@@ -44,8 +44,7 @@ export function Detail(props: { onClose: () => void }) {
     return l?.adoptName ? `返回 #${from} ${l.adoptName}` : `返回 #${from}`
   }
 
-  createEffect(() => {
-    const id = params.id
+  createEffect(on(() => params.id, (id) => {
     // No id means the sheet is sliding out: keep the last listing on screen while it goes.
     if (!id) return
     setIndex(0) // how far the old listing was paged through says nothing about this one
@@ -55,15 +54,14 @@ export function Detail(props: { onClose: () => void }) {
     // without this the reader stays where the old listing left them. The scroll is
     // animated: the new cover should arrive as travel, not as a cut.
     scrollSheetToTop()
-  })
+  }))
 
   const goBack = () => history.back()
 
   // The title follows the sheet: a detail reads "#ID NAME - Furmony Gallery".
-  createEffect(() => {
-    const l = listing()
+  createEffect(on(listing, (l) => {
     if (l) document.title = `#${l.adoptId} ${l.adoptName ?? ''} - Furmony Gallery`
-  })
+  }))
   onCleanup(() => { document.title = 'Furmony Gallery' })
 
   const images = createMemo(() => {

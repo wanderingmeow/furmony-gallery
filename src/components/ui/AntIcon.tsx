@@ -1,5 +1,5 @@
 import { Dynamic } from 'solid-js/web'
-import { createEffect, createMemo } from 'solid-js'
+import { createEffect, createMemo, on } from 'solid-js'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 
 // Render an ant-design SVG glyph inline. `@ant-design/icons` ships React
@@ -37,7 +37,7 @@ export function AntIcon(props: { icon: IconDefinition | (() => IconDefinition); 
   // Written as an attribute rather than bound to a function: an SVG attribute takes a string,
   // and a function lands in the DOM as its own source text. An unreadable viewBox paints
   // nothing at all.
-  createEffect(() => el.setAttribute('viewBox', root().attrs?.viewBox ?? FALLBACK_VIEW_BOX))
+  createEffect(on(root, (icon) => el.setAttribute('viewBox', icon.attrs?.viewBox ?? FALLBACK_VIEW_BOX)))
   return (
     <svg
       ref={el}

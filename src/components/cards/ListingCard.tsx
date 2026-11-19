@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, on, onCleanup, Show } from 'solid-js'
 import type { AdoptListing } from '../../model/types'
 import { colorNames, formatPrice, isLocked, painterName, priceParts, raceName } from '../../model/domain'
 import { THUMB_ASPECT } from '../../draw/layout'
@@ -53,12 +53,12 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
   // hold keeps the address off while the page moves fast. The DOM is built as before, and the
   // picture waits.
   let imgRef!: HTMLImageElement
-  createEffect(() => {
-    if (props.hold?.()) return
+  createEffect(on(() => props.hold?.(), (held) => {
+    if (held) return
     const url = sizedUrl(stableImageUrl(l.adoptPicture), 'card')
     const raf = requestAnimationFrame(() => { if (url) imgRef.src = url })
     onCleanup(() => cancelAnimationFrame(raf))
-  })
+  }))
 
   return (
     <div
