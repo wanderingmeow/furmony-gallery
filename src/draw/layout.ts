@@ -119,6 +119,18 @@ export function relatedStripHeight(cardWidth: number): number {
   return relatedCardsHeight(cardWidth) + RELATED_BAR_H + RELATED_BAR_GAP
 }
 
+// ---- 顶栏 ----
+// The bar's bottom edge, added up from the class strings `BAR_BANNER`, `BAR_ROW` and `BAR_TABS`.
+// The sum is 110px, and the browser shows 110px on a phone.
+//
+// The list reserves this much space at the top, so the cards start under the bar. Picture mode
+// changes the bar's rows, and the page is at the top by then, so the list keeps this offset either
+// way and the bar covers more or less of the space that is already there.
+//
+// Change a row's height in those three class strings and change this sum too.
+export const BAR_BOTTOM = 12 + 1 + 12 + 32 + 8 + 32 + 12 + 1
+
+
 // ---- row preview chip ----
 // The chip sits at the right edge while you scroll. It shows the day of the row at the top of
 // the window, or that row's price when the list is sorted by price.

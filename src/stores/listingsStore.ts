@@ -8,7 +8,13 @@ import { notifyListingChanges } from './notificationStore'
 
 export const [listings, setListings] = createSignal<AdoptListing[]>([])
 export const [isLoading, setIsLoading] = createSignal(false)
-export const [errorMessage, setErrorMessage] = createSignal<string | null>(null)
+/** A load that did not finish: what the banner at the top of the page says, in two lines. */
+export interface LoadError {
+  title: string
+  line: string
+}
+
+export const [loadError, setLoadError] = createSignal<LoadError | null>(null)
 export const [fetchFailed, setFetchFailed] = createSignal(false) // retries exhausted → refresh button
 export const [dataReady, setDataReady] = createSignal(false) // cache or first data loaded → show page
 
@@ -21,7 +27,7 @@ export async function loadData(): Promise<void> {
   }
 
   setIsLoading(true)
-  setErrorMessage(null)
+  setLoadError(null)
   setFetchFailed(false)
 
   let newRows: AdoptListing[]
@@ -36,9 +42,12 @@ export async function loadData(): Promise<void> {
         setListings(fallback)
         setDataReady(true)
       } else {
-        setErrorMessage('网络连接失败，请检查网络设置')
+        setLoadError({ title: '载入失败', line: '网络连接失败，请检查网络设置' })
       }
     } else {
+      // Rows from the last successful request are still on screen, so this request was a
+      // refresh.
+      setLoadError({ title: '没能刷新', line: '页面上还是上一次的内容' })
       setDataReady(true)
     }
     setIsLoading(false)

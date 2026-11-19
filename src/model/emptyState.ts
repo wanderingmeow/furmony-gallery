@@ -57,7 +57,7 @@ function shortQuery(q: string): string {
 export function pickEmptyState(f: EmptyFacts): EmptyState | null {
   if (f.asking) return null
   if (f.loadFailed) {
-    return { icon: 'warning', title: '没能载入设定', line: '检查网络后重试', action: 'retry' }
+    return { icon: 'warning', title: '没能载入设定', line: '试过几次，还是没拿到', action: 'retry' }
   }
   if (f.socialOnly) {
     return { icon: 'filter', title: '没有查到主人账号的设定', action: 'socialOnly' }
@@ -83,7 +83,9 @@ export function pickEmptyState(f: EmptyFacts): EmptyState | null {
   if (f.picked) {
     return { icon: 'filter', title: '当前筛选下没有设定', action: 'filters' }
   }
-  return { icon: 'search', title: '没有可显示的设定', line: '稍后再试，或者去官网看看' }
+  // The request succeeded and the shelf holds nothing, so a retry is the only move the reader can
+  // make.
+  return { icon: 'search', title: '没有可显示的设定', line: '稍后再试，或者去官网看看', action: 'retry' }
 }
 
 export const EMPTY_ACTION_LABELS: Record<EmptyAction, string> = {

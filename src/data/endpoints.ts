@@ -21,6 +21,11 @@ export function pageUrl(endpoint: Endpoint, pageSize?: number, pageNum = 1): str
 }
 
 /**
+ * The number sits above the size of the whole shelf, so one request returns the whole list.
+ */
+export const LIST_PAGE_SIZE = 2000
+
+/**
  * What the document's own chain is filed under, one per list.
  *
  * The chain lives in memory only, and the app joins a download that is already running, so it needs

@@ -1,33 +1,17 @@
 import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
-import { dataReady, fetchFailed, errorMessage, setErrorMessage } from '../stores/listingsStore'
-import { picture } from '../stores/semanticStore'
+import { dataReady, fetchFailed } from '../stores/listingsStore'
 import { Toolbar } from '../components/toolbar/Toolbar'
 import { ToolbarSkeleton } from '../components/toolbar/ToolbarSkeleton'
 import { Waterfall } from '../components/cards/Waterfall'
 import { WaterfallSkeleton } from '../components/cards/WaterfallSkeleton'
 import { skeletonForced, skeletonOverlay } from '../components/ui/skeletonView'
+import { BAR_BOTTOM } from '../draw/layout'
 
 export function Home() {
   const navigate = useNavigate()
 
-  // The toolbar's bottom edge. The grid reserves that much space at the top, so the cards
-  // start under the bar. ResizeObserver measures it, so a taller bar needs no change here.
-  const [topOffset, setTopOffset] = createSignal(0)
-  let barWrap!: HTMLDivElement
-  // The bar is on screen from the first frame, placeholder or real, so the measurement does not
-  // wait on the data. It follows the bar's own height: the filter row collapses in picture mode.
-  createEffect(() => {
-    // In picture mode the bar grows, and the grid keeps the space it already had.
-    const measure = () => {
-      if (picture.on()) return
-      setTopOffset(barWrap.getBoundingClientRect().bottom)
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(barWrap)
-    onCleanup(() => ro.disconnect())
-  })
+  const topOffset = () => BAR_BOTTOM
 
   // Opening a card adds one history entry, so the back button pops it. Filters and scroll state
   // live in the store, so the URL carries nothing and the history stack stays short.
@@ -81,7 +65,7 @@ export function Home() {
 
   return (
     <>
-      <div ref={barWrap} class="fixed top-0 inset-x-0 z-40 pointer-events-none">
+      <div class="fixed top-0 inset-x-0 z-40 pointer-events-none">
         <Show when={showList()}>
           <Toolbar />
         </Show>
@@ -101,12 +85,6 @@ export function Home() {
             desktop Home key takes it to the top. The toolbar and the error chip are fixed and
             stay pinned while the cards move beneath. */}
         <Waterfall onOpen={onOpen} topOffset={topOffset} />
-      </Show>
-      <Show when={errorMessage()}>
-        <div class="fixed top-3 left-1/2 -translate-x-1/2 z-50 glass rounded-lg px-3 py-1.5 text-sm text-red-700 shadow flex items-center gap-2">
-          {errorMessage()}
-          <button class="text-xs text-muted" onClick={() => setErrorMessage(null)}>关闭</button>
-        </div>
       </Show>
     </>
   )

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { ENDPOINT_URL, LIST_REQUEST_INIT, listKey, pageUrl, type Endpoint } from './endpoints'
+import { ENDPOINT_URL, LIST_PAGE_SIZE, LIST_REQUEST_INIT, listKey, pageUrl, type Endpoint } from './endpoints'
 import { prefetchScript, takePrefetched } from './prefetch'
 
 // The code runs with its own fetch and its own window, so nothing here reaches the site.
@@ -9,9 +9,8 @@ const run = (ask: (url: string, init: RequestInit) => Promise<Response>) =>
 const answered = (body: unknown): Response =>
   ({ ok: true, json: async () => body }) as unknown as Response
 
-/** A site that answers the first page and then the whole list. */
-const site = (total: number, rows: unknown[]) => (url: string) =>
-  Promise.resolve(answered(url.includes('pageSize') ? { code: 200, total, rows } : { code: 200, total }))
+const site = (total: number, rows: unknown[]) => (_url: string) =>
+  Promise.resolve(answered({ code: 200, total, rows }))
 
 const endpoints = Object.keys(ENDPOINT_URL) as Endpoint[]
 
@@ -28,16 +27,14 @@ describe('the chain the document starts for itself', () => {
     for (const endpoint of endpoints) expect(takePrefetched(listKey(endpoint))).toBeInstanceOf(Promise)
   })
 
-  it('asks the second time for the total the first answer named', async () => {
+  it('asks once, for a page wide enough to hold the shelf', async () => {
     const asked: string[] = []
     run((url) => {
       asked.push(url)
       return site(7, [])(url)
     })
     await takePrefetched(listKey('primary'))
-    const urls = ofList('primary', asked)
-    expect(urls[0]).toBe(pageUrl('primary'))
-    expect(new URL(urls[1]).searchParams.get('pageSize')).toBe('7')
+    expect(ofList('primary', asked)).toEqual([pageUrl('primary', LIST_PAGE_SIZE)])
   })
 
   it('asks the way api.ts asks', async () => {
@@ -47,7 +44,8 @@ describe('the chain the document starts for itself', () => {
       return site(1, [])(_url)
     })
     await Promise.all(endpoints.map((endpoint) => takePrefetched(listKey(endpoint))))
-    expect(seen).toHaveLength(4)
+    // One per list.
+    expect(seen).toHaveLength(2)
     for (const init of seen) expect(init).toEqual(LIST_REQUEST_INIT)
   })
 
@@ -87,7 +85,7 @@ describe('the chain the document starts for itself', () => {
       return Promise.reject(new Error('offline'))
     })
     await expect(takePrefetched(listKey('primary'))).resolves.toBeNull()
-    expect(ofList('primary', asked)).toEqual([pageUrl('primary')])
+    expect(ofList('primary', asked)).toEqual([pageUrl('primary', LIST_PAGE_SIZE)])
   })
 
   it('answers null when the answer is not ok', async () => {
@@ -95,7 +93,8 @@ describe('the chain the document starts for itself', () => {
     await expect(takePrefetched(listKey('series'))).resolves.toBeNull()
   })
 
-  // A total that never arrives must not turn into a request for pageSize=undefined.
+  // The API can report a failure inside a response that is ok, and the page a WAF sends back is
+  // not JSON at all. Either way the app gets null, and it makes its own request.
   it('answers null when the first answer is not the API saying 200', async () => {
     const asked: string[] = []
     run((url) => {
@@ -103,7 +102,7 @@ describe('the chain the document starts for itself', () => {
       return Promise.resolve(answered({ code: 500, total: 9 }))
     })
     await expect(takePrefetched(listKey('primary'))).resolves.toBeNull()
-    expect(ofList('primary', asked)).toEqual([pageUrl('primary')])
+    expect(ofList('primary', asked)).toEqual([pageUrl('primary', LIST_PAGE_SIZE)])
   })
 })
 
@@ -111,11 +110,7 @@ describe('api.ts picks up what the document started', () => {
   it('paints both lists out of what the document brought back', async () => {
     run((url) =>
       Promise.resolve(
-        answered(
-          url.includes('pageSize')
-            ? { code: 200, total: 1, rows: [{ adoptId: url.includes('productSeries') ? 2 : 1 }] }
-            : { code: 200, total: 1 },
-        ),
+        answered({ code: 200, total: 1, rows: [{ adoptId: url.includes('productSeries') ? 2 : 1 }] }),
       ),
     )
     const { fetchAllListings } = await import('./api')

@@ -1,11 +1,10 @@
 import { createMemo, Show } from 'solid-js'
 import {
   BarChartOutlined, ClockCircleOutlined, DollarOutlined, FilterFilled, FilterOutlined,
-  SyncOutlined, VerticalAlignTopOutlined,
+  VerticalAlignTopOutlined,
 } from '@ant-design/icons-svg'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { useNavigate } from '@solidjs/router'
-import { fetchFailed, loadData } from '../../stores/listingsStore'
 import { filtersOnCount } from '../../stores/derivedStore'
 import { semanticActive } from '../../stores/semanticStore'
 import { sortMode } from '../../stores/filterStore'
@@ -23,13 +22,12 @@ const SORT_GLYPH: Record<SortMode, IconDefinition> = {
 }
 
 /**
- * The bottom-right column: back-to-top (a refresh button while the load failed), the
- * settings panel, and the stats entry.
+ * A load that failed is the banner at the top of the page to report, and that banner carries the
+ * retry. This column only scrolls up.
  */
 export function FloatingActions(props: { scrollTop: () => number; onTop: () => void }) {
-  const isRefresh = fetchFailed
   const navigate = useNavigate()
-  const show = () => props.scrollTop() > 0 || fetchFailed()
+  const show = () => props.scrollTop() > 0
   // The button shows the order the grid is in. A search answer is ranked by the service, so while
   // one is on screen the button goes back to the funnel.
   const orderFace = () => semanticActive()
@@ -47,14 +45,11 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
       <Show when={show()}>
         <FabCircle
           class="float-progress"
-          title={isRefresh() ? '刷新' : '回到顶部'}
+          title="回到顶部"
           style={{ '--float-btn-progress': `${progress()}turn` }}
-          onClick={() => {
-            if (isRefresh()) loadData()
-            else props.onTop()
-          }}
+          onClick={props.onTop}
         >
-          <AntIcon icon={() => (isRefresh() ? SyncOutlined : VerticalAlignTopOutlined)} size={"1.25em"} />
+          <AntIcon icon={VerticalAlignTopOutlined} size="1.25em" />
         </FabCircle>
       </Show>
       {/* One button for the whole panel: the order, colors, species, the owner-account switch,
@@ -70,7 +65,7 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
         <FilterPanel />
       </FabMenu>
       <FabCircle accent glow onClick={() => navigate('/stats', { scroll: false })} title={STATS_TITLE}>
-        <AntIcon icon={BarChartOutlined} size={"1.5em"} />
+        <AntIcon icon={BarChartOutlined} size="1.25em" />
       </FabCircle>
     </div>
   )

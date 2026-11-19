@@ -97,10 +97,11 @@ export function FullScreenZoom(props: {
     onCleanup(() => document.removeEventListener('keydown', handler))
   })
 
+  // The overlay is z-[70], above the sheet's z-[60]: it opens from inside the sheet and has to cover it.
   return (
     <div
       ref={container}
-      class="fixed inset-0 z-50 bg-black flex items-center justify-center"
+      class="fixed inset-0 z-[70] bg-black flex items-center justify-center"
     >
       <div ref={stage} class="relative w-full h-full">
         <img

@@ -5,11 +5,11 @@ import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
 import { formatPrice } from '../../model/domain'
 import type { ListingChange } from '../../stores/notificationStore'
 
-// Collapsed notification center (top-right):
+// The caller places this. App puts it in the top-right corner.
 // - collapsed: compact widget with a count badge; click to expand
 // - expanded: all notifications stacked; click a row to open detail + dismiss, or 忽略
 // - no auto-dismiss; persists until manually removed
-// Rows stay plain text — ↑/↓ carries the direction; colored badges belong on the cards.
+// Rows stay plain text. ↑/↓ shows the direction, and colored badges belong on the cards.
 export function NotificationCenter() {
   const navigate = useNavigate()
   const [expanded, setExpanded] = createSignal(false)
@@ -27,7 +27,7 @@ export function NotificationCenter() {
 
   return (
     <Show when={n().length > 0}>
-      <div class="fixed top-3 right-4 z-50 flex flex-col items-end gap-1">
+      <div class="flex flex-col items-end gap-1">
         <Show
           when={expanded()}
           fallback={

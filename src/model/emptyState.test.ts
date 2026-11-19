@@ -127,7 +127,8 @@ describe('pickEmptyState', () => {
   it('has something to say when nothing else applies', () => {
     const s = pick({})
     expect(s.title).toBe('没有可显示的设定')
-    expect(s.action).toBeUndefined()
+    // Nothing failed here, so the one move left is to try again.
+    expect(s.action).toBe('retry')
   })
 
   it('has a label for every action it can name', () => {

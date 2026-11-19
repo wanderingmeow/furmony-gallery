@@ -151,3 +151,10 @@ describe('one tap closing the viewer', () => {
     expect(closes).toBe(1)
   })
 })
+
+describe('the overlay over the sheet it opens from', () => {
+  it('out-ranks the sheet, whose z-[60] would otherwise cover it', () => {
+    const { container } = mount()
+    expect(container.className).toContain('z-[70]')
+  })
+})

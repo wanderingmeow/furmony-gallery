@@ -233,7 +233,7 @@ export function Sheet(props: {
 
   return (
     <Show when={shown()}>
-      <div class="fixed inset-0 z-50">
+      <div class="fixed inset-0 z-[60]">
         <div
           class={`absolute inset-0 bg-black/30 backdrop-blur-md ${closing() ? 'overlay-fade-out' : 'overlay-fade-in'}`}
         />

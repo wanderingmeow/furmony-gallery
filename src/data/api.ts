@@ -1,12 +1,18 @@
 // src/data/api.ts - fetching only. The local cache lives in listingCache.ts.
 import type { AdoptListing, AdoptListResponse } from '../model/types'
-import { LIST_REQUEST_INIT, listKey, pageUrl, type Endpoint } from './endpoints'
+import { LIST_PAGE_SIZE, LIST_REQUEST_INIT, listKey, pageUrl, type Endpoint } from './endpoints'
 import { takePrefetched } from './prefetch'
 import { urlPath } from './image'
 
 // No timeout: it would have to fit the slowest download, so shorter aborts loads that were about to succeed.
-// No retry delay either: this API has never rate-limited us.
 const ATTEMPTS_PER_LIST = 3
+
+// The WAF in front of the site sometimes gets between the app and the API and returns a challenge
+// page with no CORS header. The challenge clears on its own, so a retry that fires immediately
+// gets the same page back. The second attempt starts after 400ms, and the third after 1200ms.
+const RETRY_WAIT_MS = [400, 1200]
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 // Dev/tests read saved copies from agent/*.json instead of the live site. Kept at this
 // bottom layer so retrying and merging behave the same in dev as in production; the bundler
@@ -50,21 +56,33 @@ export function sortColorsAndPictures(row: AdoptListing): AdoptListing {
   return row
 }
 
-// The API sends only 10 rows unless pageSize is given: ask once for `total`, then again with
-// pageSize=total.
-async function fetchList(endpoint: Endpoint): Promise<AdoptListing[]> {
-  // The document can start this chain before the app exists, so the answer may already be running.
-  const whole = (await takePrefetched(listKey(endpoint))) as AdoptListResponse | null | undefined
-  if (whole?.code === 200 && Array.isArray(whole.rows)) return whole.rows.map(sortColorsAndPictures)
-
-  const { total } = await fetchPage(endpoint)
-  const { rows } = await fetchPage(endpoint, total)
-  return rows.map(sortColorsAndPictures)
+/** The pages that a response leaves out. */
+export function missingPages(total: number, pageSize = LIST_PAGE_SIZE): number[] {
+  const pages: number[] = []
+  for (let pageNum = 2; (pageNum - 1) * pageSize < total; pageNum++) pages.push(pageNum)
+  return pages
 }
 
-async function withRetry<T>(attempts: number, load: () => Promise<T>): Promise<T> {
+// The API sends only 10 rows unless the request sets pageSize, so every request states its size.
+async function fetchList(endpoint: Endpoint): Promise<AdoptListing[]> {
+  // The document can start this request before the app exists, so the answer can already be in
+  // flight here.
+  const started = (await takePrefetched(listKey(endpoint))) as AdoptListResponse | null | undefined
+  const first =
+    started?.code === 200 && Array.isArray(started.rows)
+      ? started
+      : await fetchPage(endpoint, LIST_PAGE_SIZE)
+  const pages = [first]
+  for (const pageNum of missingPages(first.total)) {
+    pages.push(await fetchPage(endpoint, LIST_PAGE_SIZE, pageNum))
+  }
+  return pages.flatMap((page) => page.rows).map(sortColorsAndPictures)
+}
+
+export async function withRetry<T>(attempts: number, load: () => Promise<T>): Promise<T> {
   let lastErr: unknown
   for (let i = 0; i < attempts; i++) {
+    if (i > 0) await sleep(RETRY_WAIT_MS[Math.min(i - 1, RETRY_WAIT_MS.length - 1)])
     try {
       return await load()
     } catch (e) {

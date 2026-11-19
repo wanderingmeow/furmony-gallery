@@ -1,8 +1,9 @@
 // Tests that both endpoints really end up in the result. In tests api.ts reads the saved
 // copies in agent/*.json instead of calling the site, so this needs no network — and those
 // copies are gitignored, hence the skip.
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AdoptListing } from '../model/types'
+import { LIST_PAGE_SIZE } from './endpoints'
 
 const fixtures = import.meta.glob('../../agent/*_sample.json')
 const haveFixtures = Object.keys(fixtures).length >= 2
@@ -52,4 +53,78 @@ describe('sortColorsAndPictures', () => {
     const { sortColorsAndPictures } = await import('./api')
     expect(sortColorsAndPictures(row({})).harmonyAdoptColorVos).toBeUndefined()
   })
+})
+
+// The timings are what this test is about: a retry that fires immediately gets the same challenge
+// page back from the WAF.
+describe('withRetry', () => {
+  afterEach(() => { vi.useRealTimers() })
+
+  it('returns the first success without waiting', async () => {
+    vi.useFakeTimers()
+    const { withRetry } = await import('./api')
+    let calls = 0
+    const done = withRetry(3, async () => { calls++; return 'ok' })
+    await expect(done).resolves.toBe('ok')
+    expect(calls).toBe(1)
+  })
+
+  it('waits 400ms before the second attempt and 1200ms more before the third', async () => {
+    vi.useFakeTimers()
+    const { withRetry } = await import('./api')
+    let calls = 0
+    const done = withRetry(3, async () => {
+      calls++
+      if (calls < 3) throw new Error('challenge')
+      return 'ok'
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(calls).toBe(1)
+    await vi.advanceTimersByTimeAsync(399)
+    expect(calls).toBe(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(calls).toBe(2)
+    await vi.advanceTimersByTimeAsync(1199)
+    expect(calls).toBe(2)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(calls).toBe(3)
+    await expect(done).resolves.toBe('ok')
+  })
+
+  it('gives up with the last error', async () => {
+    vi.useFakeTimers()
+    const { withRetry } = await import('./api')
+    let calls = 0
+    const done = withRetry(2, async () => {
+      calls++
+      throw new Error(`attempt ${calls} failed`)
+    })
+    // The expectation is attached before the clock moves, so the rejection has a handler the moment
+    // it exists.
+    const settles = expect(done).rejects.toThrow('attempt 2 failed')
+    await vi.advanceTimersByTimeAsync(5000)
+    await settles
+    expect(calls).toBe(2)
+  })
+})
+
+// The boundaries below are for a shelf that outgrows one page. They are written in page widths,
+// because the row count changes over time.
+describe('missingPages', () => {
+  const P = LIST_PAGE_SIZE
+  const cases: [number, number[]][] = [
+    [0, []],
+    [P - 1, []],
+    [P, []],
+    [P + 1, [2]],
+    [P * 2, [2]],
+    [P * 2 + 1, [2, 3]],
+  ]
+
+  for (const [total, want] of cases) {
+    it(`leaves ${want.length ? want.join(' and ') : 'no page'} for a shelf of ${total}`, async () => {
+      const { missingPages } = await import('./api')
+      expect(missingPages(total)).toEqual(want)
+    })
+  }
 })

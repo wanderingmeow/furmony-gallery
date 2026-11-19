@@ -1,4 +1,4 @@
-import { createSignal, lazy, onMount, Suspense } from 'solid-js'
+import { createSignal, lazy, onMount, Show, Suspense } from 'solid-js'
 import { Router, Route, useMatch, useNavigate } from '@solidjs/router'
 import { initStore } from './initStore'
 import { flushUrlMapOnExit, initImageUrlMap } from './data/image'
@@ -10,6 +10,8 @@ import { DETAIL_BODY } from './components/ui/boxes'
 import { DETAIL_PAD_X } from './draw/layout'
 import type { LockFilter } from './model/statistics'
 import { NotificationCenter } from './components/ui/NotificationCenter'
+import { Alert } from './components/ui/Alert'
+import { loadData, loadError, setLoadError } from './stores/listingsStore'
 
 const StatsLazy = lazy(() => import('./routes/Stats').then((m) => ({ default: m.Stats })))
 const DetailLazy = lazy(() => import('./routes/Detail').then((m) => ({ default: m.Detail })))
@@ -62,7 +64,27 @@ function Shell() {
           </Suspense>
         )}
       </Sheet>
-      <NotificationCenter />
+      {/* One column for both, so the notification center and the banner stack instead of
+          overlapping. */}
+      <div class="fixed top-3 right-4 z-50 flex flex-col items-end gap-2">
+        <NotificationCenter />
+          <Show when={loadError()}>
+            {(error) => (
+              <Alert
+                title={error().title}
+                line={error().line}
+                onClose={() => setLoadError(null)}
+                class="w-[min(20rem,calc(100vw-2rem))]"
+              >
+                {/* The banner names what failed. This is the way out of it. */}
+                <button
+                  class="rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-semibold whitespace-nowrap text-red-700 active:bg-red-100 dark:border-red-800 dark:bg-red-900 dark:text-red-200 dark:active:bg-red-800"
+                  onClick={() => { setLoadError(null); void loadData() }}
+                >重试</button>
+              </Alert>
+            )}
+          </Show>
+        </div>
     </>
   )
 }
