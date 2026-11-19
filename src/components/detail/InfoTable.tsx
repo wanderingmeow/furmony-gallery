@@ -18,12 +18,14 @@ const LABEL = 'w-8 shrink-0'
 
 function Row(props: { label: string; children: JSXElement }) {
   return (
+    // The 24px minimum, one line of body text, keeps a row of badges as tall as a row of words.
+    // It belongs on the label: Safari keeps a grid column's minimum from the first layout, and
+    // the label is the one box in the row whose height never changes.
     <div class={`${GRID} border-t border-border mt-1.5 pt-1.5`}>
-      <span class="text-xs text-muted pt-1">{props.label}</span>
-      {/* 24px is one line of body text, so a row of badges is not shorter than a row of
-          words. items-center keeps a 20.5px badge in the middle of that line, and grid
-          rather than flex leaves the child full width, which lets the color chips wrap. */}
-      <div class="min-w-0 min-h-6 grid items-center">{props.children}</div>
+      <span class="text-xs text-muted pt-1 min-h-6">{props.label}</span>
+      {/* items-center keeps a 20.5px badge in the middle of the line. The grid cell lets the child
+          fill the width, so the color chips can wrap. */}
+      <div class="min-w-0 grid items-center">{props.children}</div>
     </div>
   )
 }
