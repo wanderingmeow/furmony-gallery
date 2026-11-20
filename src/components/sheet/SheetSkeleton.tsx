@@ -26,14 +26,24 @@ export function SheetBodySkeleton(props: { onClose: () => void; pad?: string; pa
           <AntIcon icon={CloseOutlined} size={22} />
         </SheetFab>
       </div>
-      <div class="sk-pulse">
-        <div class={`sk-bar ${ART_PLACEHOLDER} ${SK_BOX}`} />
-        <div class="mt-5 flex flex-col gap-2.5">
-          <span class={`sk-bar h-4 w-3/5 rounded-md ${SK_BOX}`} />
-          <span class={`sk-bar h-4 w-full rounded-md ${SK_BOX}`} />
-          <span class={`sk-bar h-4 w-4/5 rounded-md ${SK_BOX}`} />
-          <span class={`sk-bar h-4 w-2/5 rounded-md ${SK_BOX}`} />
-        </div>
+      <SheetPulse />
+    </div>
+  )
+}
+
+/** The pulsing body on its own. A screen that already paints its own ✕ can cover a second wait
+ *  with it - the detail does this while the listing list is still being fetched, so that wait
+ *  continues the placeholder the chunk arrived on instead of dropping to a line of text.
+ */
+export function SheetPulse() {
+  return (
+    <div class="sk-pulse">
+      <div class={`sk-bar ${ART_PLACEHOLDER} ${SK_BOX}`} />
+      <div class="mt-5 flex flex-col gap-2.5">
+        <span class={`sk-bar h-4 w-3/5 rounded-md ${SK_BOX}`} />
+        <span class={`sk-bar h-4 w-full rounded-md ${SK_BOX}`} />
+        <span class={`sk-bar h-4 w-4/5 rounded-md ${SK_BOX}`} />
+        <span class={`sk-bar h-4 w-2/5 rounded-md ${SK_BOX}`} />
       </div>
     </div>
   )

@@ -9,8 +9,8 @@ import { loadRelated, related, relatedLoaded } from '../../stores/relatedStore'
 import { relatedOnlyUnlocked, setRelatedOnlyUnlocked } from '../../stores/displayStore'
 import { MIN_RELATED, relatedIds, resolveRelated } from '../../model/related'
 import {
-  DETAIL_PAD_X, RELATED_BAR_GAP, RELATED_BAR_H, RELATED_BAR_MIN_THUMB, RELATED_BAR_W,
-  RELATED_CARD_GAP, RELATED_CARD_TARGET, RELATED_PER_VIEW_MAX, relatedCardWidth,
+  BOX, RELATED_BAR_GAP, RELATED_BAR_H, RELATED_BAR_MIN_THUMB, RELATED_BAR_W,
+  RELATED_CARD_GAP, RELATED_CARD_TARGET, RELATED_PER_VIEW_MAX, type Shape, relatedCardWidth,
   relatedPerView, relatedStripHeight, THUMB_ASPECT,
 } from '../../draw/layout'
 import { scrollThumb, type Thumb } from '../../draw/scrollbar'
@@ -25,7 +25,7 @@ import { relatedSkeleton } from '../ui/skeletonView'
 // on a card and the 只看未锁定 switch both read this, so they cannot disagree.
 const isTaken = (l: AdoptListing) => isAdopted(l) || isLocked(l)
 
-export function RelatedRow(props: { item: AdoptListing }) {
+export function RelatedRow(props: { item: AdoptListing; shape: Shape }) {
   const navigate = useNavigate()
   const adoptId = () => props.item.adoptId
 
@@ -59,7 +59,7 @@ export function RelatedRow(props: { item: AdoptListing }) {
           <h2 class="text-base font-semibold">{tr('related.title')}</h2>
           <Show when={!loading()}><UnlockedOnlySwitch /></Show>
         </div>
-        <RelatedStrip items={items()} loading={loading()} onOpen={open} />
+        <RelatedStrip items={items()} loading={loading()} shape={props.shape} onOpen={open} />
       </section>
     </Show>
   )
@@ -92,6 +92,7 @@ const COAST_IDLE_MS = 120
 function RelatedStrip(props: {
   items: readonly AdoptListing[]
   loading?: boolean
+  shape: Shape
   onOpen: (id: number) => void
 }) {
   // Full-bleed container: -mx cancels the detail body's side padding, so its width is the
@@ -99,6 +100,8 @@ function RelatedStrip(props: {
   // the scroller when measuring.
   let root!: HTMLDivElement
   let scroller!: HTMLDivElement
+
+  const bleed = () => BOX[props.shape].stripBleed
 
   const [thumb, setThumb] = createSignal<Thumb | null>(null)
   const [cardW, setCardW] = createSignal(RELATED_CARD_TARGET)
@@ -111,7 +114,7 @@ function RelatedStrip(props: {
     if (!el) return
     // Width first: Solid writes styles synchronously, so the widths that scrollThumb reads
     // below reflect the new card size.
-    const avail = el.clientWidth - DETAIL_PAD_X * 2
+    const avail = el.clientWidth - bleed() * 2
     setCardW(relatedCardWidth(avail, relatedPerView(avail)))
     setThumb(el === scroller ? scrollThumb(el, RELATED_BAR_W, RELATED_BAR_MIN_THUMB) : null)
   }
@@ -165,7 +168,7 @@ function RelatedStrip(props: {
     <div
       ref={root}
       class="mt-2.5"
-      style={{ 'margin-left': `${-DETAIL_PAD_X}px`, 'margin-right': `${-DETAIL_PAD_X}px` }}
+      style={{ 'margin-left': `${-bleed()}px`, 'margin-right': `${-bleed()}px` }}
     >
       <Show
         when={props.items.length > 0 && !props.loading}
@@ -189,7 +192,7 @@ function RelatedStrip(props: {
               aria-label={tr('related.loading')}
               style={{ height: `${relatedStripHeight(cardW())}px` }}
             >
-              <RelatedSkeleton width={cardW()} />
+              <RelatedSkeleton width={cardW()} padLeft={bleed()} />
             </div>
           </Show>
         }
@@ -202,16 +205,16 @@ function RelatedStrip(props: {
           onScroll={measure}
           class="overflow-x-auto no-scrollbar snap-x snap-mandatory"
           style={{
-            'padding-left': `${DETAIL_PAD_X}px`, 'scroll-padding-left': `${DETAIL_PAD_X}px`,
+            'padding-left': `${bleed()}px`, 'scroll-padding-left': `${bleed()}px`,
           }}
         >
-          {/* The 16px after the last card is padding on the scrolling content. Chromium
-              counts a scroller's own trailing padding as scrollable area and WebKit does
-              not, so padding on the scroller puts the last card against the screen edge.
-              Padding on the content scrolls in both engines. */}
+          {/* The padding after the last card belongs to the scrolling content. Chromium counts a
+              scroller's own trailing padding as scrollable area and WebKit does not, so padding on
+              the scroller puts the last card against the screen edge. On the content it scrolls in
+              both engines. */}
           <div
             class="flex w-max"
-            style={{ gap: `${RELATED_CARD_GAP}px`, 'padding-right': `${DETAIL_PAD_X}px` }}
+            style={{ gap: `${RELATED_CARD_GAP}px`, 'padding-right': `${bleed()}px` }}
           >
             <For each={props.items}>{(l) => <Card listing={l} width={cardW()} onOpen={props.onOpen} />}</For>
           </div>
@@ -243,11 +246,11 @@ function RelatedStrip(props: {
 
 /** The row before the table arrives. The boxes have the sizes a card takes at this width: the
  *  cover at the strip's own aspect, then the 24px caption line, so the cards land in place. */
-function RelatedSkeleton(props: { width: number }) {
+function RelatedSkeleton(props: { width: number; padLeft: number }) {
   return (
     <div
       class="flex overflow-hidden"
-      style={{ gap: `${RELATED_CARD_GAP}px`, 'padding-left': `${DETAIL_PAD_X}px` }}
+      style={{ gap: `${RELATED_CARD_GAP}px`, 'padding-left': `${props.padLeft}px` }}
       aria-hidden="true"
     >
       <For each={Array.from({ length: RELATED_PER_VIEW_MAX })}>

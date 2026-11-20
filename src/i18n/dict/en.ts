@@ -88,7 +88,7 @@ export const en: Dict = {
     adopted: 'Adopted',
     unadopted: 'Not adopted',
     notFound: 'No such listing',
-    goOfficial: 'Visit the official site',
+    goOfficial: 'Official site',
   },
 
   card: {

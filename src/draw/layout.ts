@@ -2,17 +2,17 @@
 // related row inside the detail sheet. Components read these instead of re-deriving them,
 // so one edit here moves the whole screen.
 
-// The source covers are 921x597. ListingCard draws them at this ratio, and the waterfall
-// estimates a row's height from it before any image loads.
+// The source covers are 921x597. ListingCard draws them at this ratio, and the waterfall sizes a row
+// from it without waiting for any image.
 export const THUMB_ASPECT = 921 / 597
 
-// Everything under a cover: price line, name line, tag line. A card is
-// width / THUMB_ASPECT + this. Measured at four card widths (191, 236.8, 278.66, 326) and
-// each gave 81.63 to 81.64, so the number does not move with width.
-// Change anything at the bottom of a card and re-measure, or the row pitch and the card
-// gap stop matching: this is (real card height - width * 597 / 921). Measured with a price
-// shown. The price row has min-h-5, so a card with no price is the same height.
-export const CARD_EXTRA_HEIGHT = 81.63
+// Everything a card draws around its cover: the frame, the artist row, the text block. None of it
+// depends on width, so one number serves every column count.
+const CARD_FRAME = 1 + 6 + 28.5 + 56 + 6 + 1 // CARD_BASE borders and p-1.5, CARD_ARTIST, CARD_BODY
+
+// The row math divides the card's own width by THUMB_ASPECT, while the cover is drawn 26px narrower -
+// both borders, both card paddings, both cover paddings - so that much picture never appears.
+export const CARD_EXTRA_HEIGHT = CARD_FRAME - 26 / THUMB_ASPECT
 
 // ---- waterfall ----
 // Padding around the grid, the gap between cards, the narrowest card the grid accepts,
@@ -51,9 +51,8 @@ export function waterfallRowHeight(cardWidth: number): number {
 }
 
 /**
- * The rows that a placeholder list draws: every row that starts above the fold, so the last one
- * may show only its top. The real list ends the same way at the bottom edge, so no empty band is
- * left above the fold.
+ * The rows a placeholder list draws: every row that starts above the fold, so the last one may show
+ * only its top. The real list ends the same way, leaving no empty band above the fold.
  */
 export function skeletonRows(viewportHeight: number, topPad: number, rowHeight: number): number {
   return Math.max(1, Math.ceil((viewportHeight - topPad) / rowHeight))
@@ -69,22 +68,107 @@ export function indexOfRow(row: number, cols: number, count: number): number {
   return Math.min(row * cols, count - 1)
 }
 
-// ---- detail sheet ----
-// Horizontal padding of the sheet body. The related row bleeds out by this amount and
-// back in again, so Detail and that row share one number.
+// ---- detail ----
+// Horizontal padding of the sheet body. The related row bleeds out by this amount and back in again,
+// so Detail and that row share one number.
 export const DETAIL_PAD_X = 16
 
-// The strip under the info table. Card width follows the width available to the strip, so
-// a view holds a whole number of cards: the target is 194px, which is what two cards get
-// on a phone once the gaps are paid, and a wider strip fits 3 or 4, so a 430px sheet shows
-// 2 and a 760px sheet shows 4. One fixed width cannot do both.
+// Tailwind's sm breakpoint: the width at which the card's classes start standing in from the edges
+// and stop growing, and the width at which a screen has room for two columns.
+const SM = 640
+
+// The panel's two columns, as one literal: Tailwind reads these numbers off the source, and a string
+// assembled at runtime never reaches the stylesheet, leaving the table an implicit column as wide as
+// it likes. The table gets half the room, capped at 420 so its lines stay readable, and never less
+// than 260 - 24 of card padding, a 60px label column, a 12 gap, 164 of values.
+export const PANEL_GRID =
+  'grid grid-cols-[minmax(0,1fr)_minmax(260px,min(50%,420px))] grid-rows-[minmax(0,1fr)] gap-6'
+
+// The widest a panel gets. Past this the table's lines stretch past comfortable reading, and the
+// list behind needs air.
+export const SPREAD_MAX_W = 1080
+
+/** The detail's two shapes: a sheet is the phone's one-column card slid up from the bottom, a panel
+ *  is the two-column view a landscape screen gets instead. */
+export type Shape = 'sheet' | 'panel'
+
+export function shapeAt(viewportW: number, viewportH: number): Shape {
+  return viewportW >= SM && viewportW >= viewportH ? 'panel' : 'sheet'
+}
+
+/** The gap a panel leaves at every edge: it is what makes a panel read as a card on the page instead
+ *  of a takeover, so it grows with the height there is to spare. None under 480 - a band that thin is
+ *  not something a finger or a cursor aims at - then 12, 24, and 48 from 900 up.
+ */
+export function sheetInset(viewportH: number): number {
+  if (viewportH < 480) return 0
+  if (viewportH < 700) return 12
+  return viewportH < 900 ? 24 : 48
+}
+
+export type CardBox = { w: number; h: number }
+
+/** The box the card takes, the way its classes draw it: the window, standing 24 in from every edge
+ *  from SM up (sm:px-6, sm:py-6) and never wider than 760 (sm:max-w-190). A panel swaps that gap for
+ *  sheetInset and that width for SPREAD_MAX_W.
+ */
+export function sheetCardBox(viewportW: number, viewportH: number): CardBox {
+  const panel = shapeAt(viewportW, viewportH) === 'panel'
+  const edge = panel ? sheetInset(viewportH) : viewportW >= SM ? 24 : 0
+  return { w: Math.min(viewportW - 2 * edge, panel ? SPREAD_MAX_W : 760), h: viewportH - 2 * edge }
+}
+
+/** The detail's box model, one row per shape, so the whole of it is read in one place: who pads the
+ *  body, who pads a column, how the action bar and the related strip meet the edges. */
+export const BOX: Record<Shape, {
+  bodyPad: string
+  colPad: string
+  barPad: string
+  stripBleed: number
+}> = {
+  // The body pads all four sides, so the strip and the bar pay that side padding back to reach the
+  // card's edge.
+  sheet: { bodyPad: 'pt-16 pb-4', colPad: '', barPad: 'px-4', stripBleed: DETAIL_PAD_X },
+  // The body pads the sides only, and both columns carry the same top and bottom, which keeps them
+  // level when the panel opens.
+  panel: { bodyPad: '', colPad: 'pt-16 pb-4', barPad: '', stripBleed: 0 },
+}
+
+// The parts of the first screen that never move. 64 of clearance above the art and 16 under it cost
+// the same in both shapes: pt-16 + pb-4 in a sheet, pt-16 + the column gap in a panel.
+const DETAIL_CHROME = 80
+const DETAIL_STRIP_H = 68 // mt-2 + the 60px thumbs
+const SHEET_BAR_H = 61 // py-3 + a 36px control + the border above it
+
+/** The body's box: a sheet's less its padding, a panel's entire, since a panel pads its columns. */
+export function detailBodyHeight(box: CardBox, shape: Shape): number {
+  return shape === 'panel' ? box.h : box.h - DETAIL_CHROME
+}
+
+// A sheet's art box stops at 1.1 times its own width, so a square picture fills it, and at the room
+// the screen has left once its padding, the thumbs and the bar are paid for, so the table stays on
+// the first screen. Under 120 the art is not worth looking at - the zoom is how you look at one that
+// small.
+const PIC_TALL = 1.1
+const PIC_MIN_H = 120
+
+/** The height the art's box takes: a panel hands over its whole left column, a sheet fits the art to
+ *  the screen and keeps the bar's height outside the scroller. */
+export function detailPictureHeight(box: CardBox, shape: Shape): number {
+  const room = box.h - DETAIL_CHROME - DETAIL_STRIP_H - (shape === 'panel' ? 0 : SHEET_BAR_H)
+  if (shape === 'panel') return Math.max(PIC_MIN_H, room)
+  return Math.min(Math.max(PIC_MIN_H, (box.w - 2 * DETAIL_PAD_X) * PIC_TALL), Math.max(PIC_MIN_H, room))
+}
+
+// The strip under the info table. A card's width follows the width the strip has, so a view holds a
+// whole number of cards: the 194 target is what two cards get on a phone once the gaps are paid,
+// while a wider strip fits 3 or 4. One fixed width cannot do both.
 export const RELATED_CARD_TARGET = 194
 export const RELATED_CARD_GAP = 14
 export const RELATED_PER_VIEW_MIN = 2
 export const RELATED_PER_VIEW_MAX = 4
-// The floor keeps a cover recognizable. Below it (available width under 334) the strip
-// shows one full card and most of the next, and it scrolls. layout.test.ts names the
-// widths where the floor wins and the row overflows a little.
+// Below this a cover stops being recognizable: the strip shows one full card, most of the next, and
+// scrolls. layout.test.ts names the widths where that happens.
 export const RELATED_CARD_MIN = 160
 
 /** How many cards fit: available width over the target, rounded, clamped to 2..4. */
@@ -119,15 +203,10 @@ export function relatedStripHeight(cardWidth: number): number {
   return relatedCardsHeight(cardWidth) + RELATED_BAR_H + RELATED_BAR_GAP
 }
 
-// ---- 顶栏 ----
-// The bar's bottom edge, added up from the class strings `BAR_BANNER`, `BAR_ROW` and `BAR_TABS`.
-// The sum is 110px, and the browser shows 110px on a phone.
-//
-// The list reserves this much space at the top, so the cards start under the bar. Picture mode
-// changes the bar's rows, and the page is at the top by then, so the list keeps this offset either
-// way and the bar covers more or less of the space that is already there.
-//
-// Change a row's height in those three class strings and change this sum too.
+// ---- top bar ----
+// The bar's bottom edge, summed from the class strings `BAR_BANNER`, `BAR_ROW` and `BAR_TABS`, and
+// 110px in the browser. The list reserves this much so the cards start under the bar. Picture mode
+// changes the bar's rows and the page is at the top by then, so the sum holds either way.
 export const BAR_BOTTOM = 12 + 1 + 12 + 32 + 8 + 32 + 12 + 1
 
 

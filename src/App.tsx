@@ -7,7 +7,7 @@ import { Home } from './routes/Home'
 import { Sheet } from './components/sheet/Sheet'
 import { StatsSheet } from './components/stats/StatsSheet'
 import { SheetBodySkeleton } from './components/sheet/SheetSkeleton'
-import { DETAIL_BODY } from './components/ui/boxes'
+import { BOX } from './draw/layout'
 import { DETAIL_PAD_X } from './draw/layout'
 import type { LockFilter } from './model/statistics'
 import { NotificationCenter } from './components/ui/NotificationCenter'
@@ -52,7 +52,7 @@ function Shell() {
         {(dismiss) => (
           <Suspense
             fallback={
-              <SheetBodySkeleton onClose={dismiss} pad={DETAIL_BODY} padX={DETAIL_PAD_X} />
+              <SheetBodySkeleton onClose={dismiss} pad={BOX.sheet.bodyPad} padX={DETAIL_PAD_X} />
             }
           >
             <DetailLazy onClose={dismiss} />

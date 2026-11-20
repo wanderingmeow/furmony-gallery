@@ -15,6 +15,22 @@ const ICONS: Record<EmptyIcon, IconDefinition> = {
 }
 
 /**
+ * The look every empty state has: a faint mark, the reason, and one line under it. The caller owns
+ * the column, because only it knows how much room the message has.
+ */
+export function EmptyNote(props: { icon: IconDefinition; title: string; line?: string }) {
+  return (
+    <>
+      <AntIcon icon={props.icon} size="34px" class="text-faint" />
+      <div class="mt-1 text-base font-medium text-ink">{props.title}</div>
+      <Show when={props.line}>
+        {(line) => <div class="text-sm text-muted">{line()}</div>}
+      </Show>
+    </>
+  )
+}
+
+/**
  * What the list says when it has nothing to show: the reason, and the one thing that fixes it.
  *
  * The box fills the space between the floating toolbar and the controls at the bottom, so the
@@ -36,11 +52,7 @@ export function EmptyState() {
       <Show when={emptyState()}>
         {(s) => (
           <>
-            <AntIcon icon={ICONS[s().icon]} size="34px" class="text-faint" />
-            <div class="mt-1 text-base font-medium text-ink">{s().title}</div>
-            <Show when={s().line}>
-              {(line) => <div class="text-sm text-muted">{line()}</div>}
-            </Show>
+            <EmptyNote icon={ICONS[s().icon]} title={s().title} line={s().line} />
             <Show when={s().action}>
               {(action) => (
                 <button

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   GAP, MIN_CARD, MIN_COLS, RELATED_CARD_GAP, RELATED_CARD_MIN, VIEW_PAD,
-  indexOfRow, relatedCardWidth, relatedCardsHeight, relatedPerView, relatedStripHeight,
-  rowOfIndex, skeletonRows, waterfallCardWidth, waterfallCols, waterfallRowHeight,
+  detailBodyHeight, detailPictureHeight, indexOfRow, relatedCardWidth, relatedCardsHeight,
+  relatedPerView, relatedStripHeight, rowOfIndex, type Shape, shapeAt, sheetCardBox, skeletonRows,
+  waterfallCardWidth, waterfallCols, waterfallRowHeight,
 } from './layout'
 
 // Each grid answers two questions: how many cards fit, and how wide each one is. The
@@ -151,8 +152,8 @@ describe('waterfall column math', () => {
 })
 
 // The placeholder list draws the grid that the real list will use, so it needs the same number of
-// rows that a reader would see filled: every row that starts above the fold. The bar's bottom edge sits at 110px at
-// these widths, and the grid starts VIEW_PAD under it.
+// rows that a reader would see filled: every row that starts above the fold. The cards start
+// VIEW_PAD under the bar's bottom edge, which measures 110px.
 describe('placeholder row math', () => {
   const topPad = 110 + VIEW_PAD
   const rowsAt = (viewportWidth: number, viewportHeight: number) => {
@@ -185,5 +186,60 @@ describe('placeholder row math', () => {
 
   it('draws a row even when the window is shorter than the bar', () => {
     expect(skeletonRows(100, topPad, 208)).toBe(1)
+  })
+})
+
+describe("the detail's shape and box", () => {
+  // A screen splits when it is wide enough for two columns and wider than it is tall: a portrait
+  // screen already has the height one column needs, and a split column would tower over any art.
+  const screens: [string, number, number, Shape][] = [
+    ['a phone held upright', 393, 852, 'sheet'],
+    ['an iPhone SE sideways', 667, 375, 'panel'],
+    ['a phone turned sideways', 852, 393, 'panel'],
+    ['an iPad upright', 834, 1194, 'sheet'],
+    ['an iPad mini sideways', 1133, 744, 'panel'],
+    ['an iPad Pro upright', 1024, 1366, 'sheet'],
+    ['an iPad Pro sideways', 1366, 1024, 'panel'],
+    ['a laptop window', 1280, 800, 'panel'],
+    ['a desktop screen', 1920, 1080, 'panel'],
+    ['a square window', 900, 900, 'panel'],
+    ['one pixel taller than wide', 900, 901, 'sheet'],
+    ['the narrowest screen that splits', 640, 400, 'panel'],
+    ['one pixel narrower', 639, 400, 'sheet'],
+  ]
+
+  it.each(screens)('%s', (_name, w, h, shape) => {
+    expect(shapeAt(w, h)).toBe(shape)
+  })
+
+  it("stops a sheet's art near its own width, and gives a panel the whole column", () => {
+    // A 1:1 picture fills these boxes instead of floating between two side bands.
+    expect(detailPictureHeight(sheetCardBox(393, 852), 'sheet'), 'a phone').toBeCloseTo(397.1)
+    expect(detailPictureHeight(sheetCardBox(744, 1133), 'sheet'), 'an iPad mini upright').toBeCloseTo(730.4)
+    expect(detailPictureHeight(sheetCardBox(1024, 1366), 'sheet'), 'an iPad Pro upright').toBeCloseTo(800.8)
+    expect(detailPictureHeight(sheetCardBox(1133, 744), 'panel'), 'an iPad mini sideways').toBe(548)
+    expect(detailPictureHeight(sheetCardBox(852, 393), 'panel'), 'a phone sideways').toBe(245)
+    expect(detailPictureHeight(sheetCardBox(700, 200), 'panel'), 'below this the zoom is how you look at it').toBe(120)
+  })
+
+  it('caps the art so the table stays on the first screen', () => {
+    // The room a sheet has left once its padding, the thumbs and the bar are paid for.
+    const box = sheetCardBox(393, 500)
+    expect(detailPictureHeight(box, 'sheet')).toBe(box.h - 80 - 68 - 61)
+  })
+
+  it('sizes the card the way its classes draw it', () => {
+    expect(sheetCardBox(393, 852), 'the whole screen below sm').toEqual({ w: 393, h: 852 })
+    expect(sheetCardBox(744, 1133), 'a sheet stands 24 in from sm up').toEqual({ w: 696, h: 1085 })
+    expect(sheetCardBox(1024, 1366), 'and stops at 760 wide').toEqual({ w: 760, h: 1318 })
+    expect(sheetCardBox(852, 393), 'a screen this short keeps no gap').toEqual({ w: 852, h: 393 })
+    expect(sheetCardBox(1133, 744)).toEqual({ w: 1080, h: 696 })
+    expect(sheetCardBox(1366, 1024), 'a tall panel keeps a wider gap').toEqual({ w: 1080, h: 928 })
+  })
+
+  it('gives a panel the whole box, and a sheet the box less its padding', () => {
+    expect(detailBodyHeight(sheetCardBox(1133, 744), 'panel')).toBe(696)
+    expect(detailBodyHeight(sheetCardBox(852, 393), 'panel')).toBe(393)
+    expect(detailBodyHeight(sheetCardBox(393, 852), 'sheet'), 'a sheet keeps its padding').toBe(772)
   })
 })

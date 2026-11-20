@@ -8,23 +8,21 @@ import { listings, isLoading, dataReady } from '../stores/listingsStore'
 import { detailImages } from '../model/domain'
 import type { AdoptListing } from '../model/types'
 import type { DetailEntry } from '../model/detailTrail'
-import { DETAIL_PAD_X } from '../draw/layout'
 import { sizedUrl, stableImageUrl } from '../data/image'
+import { QuestionOutlined } from '@ant-design/icons-svg'
 import { AntIcon } from '../components/ui/AntIcon'
-import { AnimatedHeight } from '../components/ui/AnimatedHeight'
+import { EmptyNote } from '../components/ui/EmptyState'
 import { SheetFab } from '../components/ui/SheetFab'
-import { DETAIL_BODY, SHEET_FAB_ROW, useSheetFooter } from '../components/ui/boxes'
-import { DetailToolbar } from '../components/sheet/DetailToolbar'
-import { Gallery } from '../components/detail/Gallery'
+import { SheetPulse } from '../components/sheet/SheetSkeleton'
+import { SHEET_FAB_ROW } from '../components/ui/boxes'
+import { BOX, DETAIL_PAD_X } from '../draw/layout'
+import { DetailBody } from '../components/detail/DetailBody'
 import { FullScreenZoom } from '../components/detail/FullScreenZoom'
-import { InfoTable } from '../components/detail/InfoTable'
-import { RelatedRow } from '../components/detail/RelatedRow'
 import { scrollSheetToTop } from '../components/sheet/Sheet'
 
 export function Detail(props: { onClose: () => void }) {
   const params = useParams()
   const location = useLocation<DetailEntry>()
-  const footerHost = useSheetFooter()
   // The sheet stays for one slide after the route is gone, and the id goes with it. Without
   // the last listing, that slide would show "未找到该设定".
   let lastSeen: AdoptListing | undefined
@@ -58,6 +56,9 @@ export function Detail(props: { onClose: () => void }) {
     // animated: the new cover should arrive as travel, not as a cut.
     scrollSheetToTop()
   }))
+
+  // The placeholder stands in for the body, so it pads itself the way the sheet's body does.
+  const padX = () => ({ 'padding-left': `${DETAIL_PAD_X}px`, 'padding-right': `${DETAIL_PAD_X}px` })
 
   const goBack = () => history.back()
 
@@ -106,47 +107,31 @@ export function Detail(props: { onClose: () => void }) {
         </Show>
       </div>
 
-      {/* pt-16 keeps the first row clear of the floating buttons */}
-      <div class={`flex-1 min-h-0 ${DETAIL_BODY}`} style={{ 'padding-left': `${DETAIL_PAD_X}px`, 'padding-right': `${DETAIL_PAD_X}px` }}>
-        <Show
-          when={listing()}
-          fallback={
-            <div class="py-20 text-center text-muted">
-              {/* A deep link is not a missing id until the data has had its chance:
-                  loading while the cache read or fetch is still running. */}
-              {(!dataReady() || isLoading()) ? tr('common.loading') : tr('detail.notFound')}
-            </div>
-          }
-        >
-          {(l) => (
-            <>
-              <Gallery
-                images={shown()}
-                index={index}
-                setIndex={setIndex}
-                onOpenFull={() => setFull(true)}
-              />
-              <div class="mt-4">
-                {/* l() is an accessor: read it inline. Copying it into a const freezes
-                    the table on the first listing. */}
-                <AnimatedHeight>
-                  <InfoTable listing={l()} />
-                </AnimatedHeight>
+      <Show
+        when={listing()}
+        fallback={
+          /* A deep link is not a missing id until the data has had its chance, so the wait keeps the
+             placeholder the chunk arrived on. Only a list that has landed and does not hold the id
+             is a missing listing. */
+          !dataReady() || isLoading()
+            ? <div class={`flex-1 min-h-0 ${BOX.sheet.bodyPad}`} style={padX()}><SheetPulse /></div>
+            : (
+              <div class="flex flex-1 flex-col items-center justify-center gap-1.5 px-8 py-10 text-center">
+                <EmptyNote icon={QuestionOutlined} title={tr('detail.notFound')} />
               </div>
-              <RelatedRow item={l()} />
-            </>
-          )}
-        </Show>
-      </div>
-
-      {/* The bar belongs to this screen, so it travels in this chunk. It goes into the box that
-          the shell keeps outside the scroller: a sticky bar inside the scroller covered the full
-          width and hid the Safari scrollbar. */}
-      {footerHost && (
-        <Show when={listing()}>
-          {(l) => <Portal mount={footerHost} useShadow={false}><DetailToolbar item={l()} /></Portal>}
-        </Show>
-      )}
+            )
+        }
+      >
+        {(l) => (
+          <DetailBody
+            listing={l()}
+            images={shown()}
+            index={index}
+            setIndex={setIndex}
+            onOpenFull={() => setFull(true)}
+          />
+        )}
+      </Show>
 
       {/* The zoom goes to the body, so the sheet's overflow and transform cannot clip it */}
       <Show when={full()}>

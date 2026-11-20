@@ -2,6 +2,8 @@ import { createEffect, createMemo, createSignal, on, onCleanup, Show, untrack, t
 import { scrollLock } from '../../draw/scrollLock'
 import { EASE, prefersReducedMotion, SHEET_MOVE_MS, ease } from '../../draw/anim'
 import { MAX_SAMPLES, flingVelocity, shouldDismiss, type Sample } from '../../draw/fling'
+import { sheetInset, shapeAt, SPREAD_MAX_W } from '../../draw/layout'
+import { watchViewport } from '../ui/viewport'
 import { SheetFooterSlot } from '../ui/boxes'
 
 // The sheet that Detail and Stats share. It slides up from the bottom, the backdrop behind
@@ -13,10 +15,13 @@ import { SheetFooterSlot } from '../ui/boxes'
 // The slide runs 300ms, the length it was tuned to first. Scrolling the content back and
 // changing the height of the table run beside it, and those two share SHEET_MOVE_MS.
 const SLIDE_MS = 300
+// A sheet that sits in from every edge has no bottom to come up from, so it fades in and grows a
+// little instead. Shorter than the slide: a fade reads as slower than a move of the same length.
+const FADE_MS = 180
 
-// Wait for the slide to finish before the route changes. Moving earlier makes the sheet
-// disappear before it reaches the bottom of the screen.
-const DISMISS_WAIT_MS = SLIDE_MS + 80
+// Wait for the arrival to finish before the route changes. Moving earlier makes the sheet
+// disappear before it reaches the bottom of the screen, or before it has faded out.
+const SETTLE_MS = (ms: number): number => ms + 80
 
 // How far down the sheet has to travel before the top corners are fully round, as a
 // fraction of the sheet's height. About 100px on a phone: the corners finish rounding long
@@ -26,26 +31,22 @@ const CORNER_TRAVEL = 0.12
 // Marks the sheet's own scroll container, so the functions below can find it from outside
 // the component.
 const SCROLLER = '[data-sheet-scroll]'
+// The right column of a panel, which scrolls on its own so the picture stays where it is while the
+// table and the related row move.
+export const COL_SCROLLER = '[data-sheet-col-scroll]'
 
 let scrollRaf = 0
 let stopYielding: (() => void) | null = null
 
-/**
- * Scroll the sheet's content back to the top after the content changes in place, which is
- * what tapping a related listing does. Without this, the new listing opens at the depth where
- * you left the last one. That listing sits at the bottom of the sheet, so the change looks
- * like nothing happened.
- *
- * Call this after the new content is in place. Setting scrollTop to 0 before the navigation
- * stops the animation, and the browser can leave scrollTop stuck at the height of the old
- * content.
- *
- * We drive the scroll by hand instead of using behavior:'smooth', because that lets each
- * browser choose its own duration, and then the scroll and the CSS transition on the sheet
- * do not finish together.
+/** Scroll the sheet's content back to the top after the content changes in place, which is what
+ *  tapping a related listing does: the new listing sits at the bottom of the sheet, so without this
+ *  the change looks like nothing happened. Call it once the new content is in place - before that,
+ *  the browser can leave scrollTop stuck at the height of the old content. The scroll is driven by
+ *  hand rather than behavior:'smooth', so it ends together with the sheet's own transition.
  */
 export function scrollSheetToTop(): void {
-  const el = document.querySelector<HTMLElement>(SCROLLER)
+  const el =
+    document.querySelector<HTMLElement>(COL_SCROLLER) ?? document.querySelector<HTMLElement>(SCROLLER)
   if (!el) return
   cancelAnimationFrame(scrollRaf)
   stopYielding?.()
@@ -88,8 +89,8 @@ export function scrollSheetToTop(): void {
 export function Sheet(props: {
   open: () => boolean
   onDismiss: () => void
-  // The header sits outside the scroller, so nothing scrolls over it. The foot box does too: a
-  // sticky bar inside the scroller covered the full width and hid the Safari scrollbar.
+  // The header and the foot box sit outside the scroller, so nothing scrolls over them and a bar
+  // never covers the scrollbar.
   header?: (dismiss: () => void) => JSX.Element
   children: (dismiss: () => void) => JSX.Element
 }) {
@@ -98,6 +99,11 @@ export function Sheet(props: {
   // the sheet plays its opening animation again. This memo stops that, because its value
   // only changes when the boolean does.
   const open = createMemo(() => props.open())
+  // A landscape screen shows this as a panel in from every edge; see shapeAt.
+  const { viewportW, viewportH } = watchViewport()
+  const panel = () => shapeAt(viewportW(), viewportH()) === 'panel'
+  const inset = () => sheetInset(viewportH())
+  const moveMs = () => (panel() ? FADE_MS : SLIDE_MS)
   // The box that a screen's bottom bar travels into. Appending the node on every open moves it
   // back into the sheet, and the bar inside it moves with it.
   const footerHost = document.createElement('div')
@@ -114,11 +120,15 @@ export function Sheet(props: {
   // counts how many sheets hold the lock, so each open pairs with one release.
   createEffect(on(open, (shown) => {
     if (!shown) return
-    // A getter rather than a fixed element: the content can mount later than the lock does
-    // (StatsLazy loads on demand), so we look up the scroller when the touch arrives.
+    // The content can mount later than the lock does (StatsLazy loads on demand), so the scroller is
+    // looked up when the touch arrives. The innermost one: in a panel the finger is on the right
+    // column.
     const release = scrollLock.acquire({
       document,
-      getScrollable: () => sheetEl?.querySelector(SCROLLER) ?? null,
+      getScrollable: () =>
+        sheetEl?.querySelector<HTMLElement>(COL_SCROLLER) ??
+        sheetEl?.querySelector<HTMLElement>(SCROLLER) ??
+        null,
     })
     onCleanup(release)
   }))
@@ -143,7 +153,7 @@ export function Sheet(props: {
     setClosing(true)
     setPos(1)
     clearTimeout(exitTimer)
-    exitTimer = setTimeout(settle, DISMISS_WAIT_MS)
+    exitTimer = setTimeout(settle, SETTLE_MS(moveMs()))
   }
   onCleanup(() => clearTimeout(exitTimer))
 
@@ -186,14 +196,26 @@ export function Sheet(props: {
   const pull = () => (dragging() || closing() ? Math.min(1, pos() / CORNER_TRAVEL) : 0)
 
   // The drag listeners sit on the sheet's own scroller, not on the full-screen layer, so a
-  // drag on the backdrop never closes the sheet.
-  function setScroller(el: HTMLDivElement | null) {
-    if (!el) return
-    el.addEventListener('touchstart', onStart, { passive: true })
-    el.addEventListener('touchmove', onMove, { passive: false }) // needs preventDefault
-    el.addEventListener('touchend', onEnd, { passive: true })
-    el.addEventListener('touchcancel', onCancel, { passive: true })
-  }
+  // drag on the backdrop never closes the sheet. A panel that sits in from every edge is not
+  // dismissed by a drag at all: nothing below it is off the screen. Both the element and the
+  // arrangement can change - the sheet is mounted again on each open, and a phone can be turned -
+  // so this runs on either.
+  const [scroller, setScroller] = createSignal<HTMLDivElement | null>(null)
+  createEffect(
+    on([scroller, panel], ([el, isPanel]) => {
+      if (!el || isPanel) return
+      el.addEventListener('touchstart', onStart, { passive: true })
+      el.addEventListener('touchmove', onMove, { passive: false }) // needs preventDefault
+      el.addEventListener('touchend', onEnd, { passive: true })
+      el.addEventListener('touchcancel', onCancel, { passive: true })
+      onCleanup(() => {
+        el.removeEventListener('touchstart', onStart)
+        el.removeEventListener('touchmove', onMove)
+        el.removeEventListener('touchend', onEnd)
+        el.removeEventListener('touchcancel', onCancel)
+      })
+    }),
+  )
 
   function onStart(e: TouchEvent) {
     startY = e.touches[0].clientY
@@ -235,15 +257,30 @@ export function Sheet(props: {
     <Show when={shown()}>
       <div class="fixed inset-0 z-[60]">
         <div
+          data-sheet-backdrop=""
           class={`absolute inset-0 bg-black/30 backdrop-blur-md ${closing() ? 'overlay-fade-out' : 'overlay-fade-in'}`}
+          // Only a mouse gets this. A finger cannot see where the panel ends behind its own pad,
+          // and on the shortest screens there is no gap to aim at.
+          onPointerUp={(e) => {
+            if (panel() && e.pointerType !== 'touch') dismiss()
+          }}
         />
         <div
           ref={(el) => { sheetEl = el }}
           class="absolute inset-0 flex items-center justify-center sm:px-6 sm:py-6"
-          style={{
-            transform: `translateY(${pos() * 100}%)`,
-            transition: dragging() ? 'none' : `transform ${SLIDE_MS}ms ${EASE}`,
-          }}
+          style={
+            panel()
+              ? {
+                  padding: `${inset()}px`,
+                  opacity: `${1 - pos()}`,
+                  transform: `scale(${1 - 0.03 * pos()})`,
+                  transition: `opacity ${FADE_MS}ms ${EASE}, transform ${FADE_MS}ms ${EASE}`,
+                }
+              : {
+                  transform: `translateY(${pos() * 100}%)`,
+                  transition: dragging() ? 'none' : `transform ${SLIDE_MS}ms ${EASE}`,
+                }
+          }
         >
           <div
             class="sheet-card relative w-full h-full bg-canvas overflow-hidden sm:max-w-190 sm:h-[calc(100vh-3rem)] sm:shadow-2xl flex flex-col"
@@ -252,6 +289,9 @@ export function Sheet(props: {
               // The finger sets the radius, so nothing may lag behind it. After a release the
               // radius eases along with the slide.
               transition: dragging() ? 'none' : `border-radius ${SLIDE_MS}ms ${EASE}`,
+              ...(panel() ? { 'max-width': `${SPREAD_MAX_W}px`, height: '100%' } : null),
+              // With no gap there is no edge to round: the corners would only show the backdrop.
+              ...(inset() === 0 ? { 'border-radius': '0px' } : null),
             }}
           >
             <SheetFooterSlot.Provider value={footerHost}>

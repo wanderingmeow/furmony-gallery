@@ -5,7 +5,15 @@ import { ART_PLACEHOLDER, DETAIL_THUMB, DETAIL_THUMB_ROW, SK_FILL } from '../ui/
 import { SkelImg } from '../ui/SkelImg'
 
 export function Gallery(props: {
-  images: string[]; index: () => number; setIndex: (i: number) => void; onOpenFull: () => void
+  images: string[]
+  index: () => number
+  setIndex: (i: number) => void
+  onOpenFull: () => void
+  /** The tallest picture this may take. Detail passes what the screen leaves; DEFAULT_MAX_H is the
+   *  ceiling for a caller that does not. */
+  maxH?: number
+  /** The exact box the picture fills, centered in it. Wins over maxH. */
+  fillH?: number
 }) {
   const count = props.images.length
   const current = () => props.images[Math.min(props.index(), count - 1)]
@@ -23,18 +31,18 @@ export function Gallery(props: {
   // the displayed picture fades in when it loads
   const [mainLoaded, setMainLoaded] = createSignal(readyNow)
 
-  // The picture animates its own height. A wrapper around it can only reveal or clip, and it
-  // clips: the wrapper reaches the target height before the picture does. Growing with the height
-  // is the effect a switch is meant to have.
-  // When hPx is 0, the layout decides the height.
-  const MAX_H = 400 // Tailwind max-h-100
+  // The ceiling a caller may raise or lower with maxH.
+  const DEFAULT_MAX_H = 400
+  const cap = () => props.maxH ?? DEFAULT_MAX_H
+  const fill = () => props.fillH
+  // The height the picture animates to. 0 leaves it to the layout.
   const [hPx, setHPx] = createSignal(0)
   let wrapperEl!: HTMLDivElement
   let picEl!: HTMLImageElement
   let skeletonH = 0
   const fit = (pic: { naturalWidth: number; naturalHeight: number }): number => {
     const w = wrapperEl ? wrapperEl.clientWidth : 0
-    return w > 0 && pic.naturalHeight > 0 ? Math.min(w / (pic.naturalWidth / pic.naturalHeight), MAX_H) : 0
+    return w > 0 && pic.naturalHeight > 0 ? Math.min(w / (pic.naturalWidth / pic.naturalHeight), cap()) : 0
   }
 
   let cancelPending: (() => void) | null = null
@@ -76,7 +84,7 @@ export function Gallery(props: {
     void job.ready.then((pic) => {
       // A newer switch may have taken over while this download was running.
       if (cancelPending !== job.cancel || current() !== target) return
-      // the height the incoming picture needs: full width, contained, capped at MAX_H
+      // the height the incoming picture needs: full width, contained, capped by maxH
       targetH = fit(pic)
       setReady(true)
       cancelPending = null
@@ -109,22 +117,45 @@ export function Gallery(props: {
   // without a jump. From then on hPx drives it, and 0 means the layout decides.
   const picHeight = () => (hPx() ? `${hPx()}px` : skeletonH ? `${skeletonH}px` : 'auto')
 
+  // A panel hands over an exact box to fill; otherwise the picture's own height animates, and cap()
+  // keeps it from running past the first screen. That height sits on the picture, not on a wrapper:
+  // a wrapper could only reveal or clip, and a clip shows the wrapper reaching the target before the
+  // picture does.
+  const wrapperBox = () => (fill() ? { height: `${fill()}px` } : undefined)
+  const picBox = () =>
+    fill() ? { height: '100%' } : { height: picHeight(), 'max-height': `${cap()}px` }
+
+  // hPx holds pixels that one width produced, so a new width has to redo it: a phone turned back
+  // upright would otherwise keep the height the picture fitted at sideways.
+  let sizes: ResizeObserver | undefined
+  const watchWidth = (el: HTMLDivElement) => {
+    wrapperEl = el
+    if (typeof ResizeObserver === 'undefined') return
+    sizes ??= new ResizeObserver(() => {
+      if (!settled || fill() || !picEl) return
+      const h = fit(picEl)
+      if (h > 0) setHPx(h)
+    })
+    sizes.observe(el)
+  }
+  onCleanup(() => sizes?.disconnect())
+
   return (
     <Switch fallback={<div class={`bg-surface-2 ${ART_PLACEHOLDER}`} />}>
       <Match when={loading()}>
-        <GallerySkeleton thumbs={props.images.length} onHeight={(px) => (skeletonH = px)} />
+        <GallerySkeleton thumbs={props.images.length} maxH={cap()} fillH={fill()} onHeight={(px) => (skeletonH = px)} />
       </Match>
       <Match when={count > 0}>
         <div>
-          <div class="relative" ref={wrapperEl}>
+          <div class="relative" ref={watchWidth} style={wrapperBox()}>
             <Show when={displayed()}>
               <img
                 src={displayed()}
                 alt=""
                 ref={picEl}
-                class="w-full max-h-100 object-contain rounded-xl bg-surface"
+                class="w-full object-contain rounded-xl bg-surface"
                 style={{
-                  height: picHeight(),
+                  ...picBox(),
                   transition: `height 220ms ${EASE}, opacity 300ms`,
                   opacity: mainLoaded() ? 1 : 0,
                 }}
@@ -175,18 +206,19 @@ export function Gallery(props: {
   )
 }
 
-/**
- * The space the gallery takes while the first picture loads. At that point the app already knows
- * how many pictures there are, so the thumbnail strip can sit here too. The height goes back out
- * through onHeight, and the first picture starts at that height, so the two states line up
- * without a jump.
- */
-function GallerySkeleton(props: { thumbs: number; onHeight: (px: number) => void }) {
+/** The space the gallery takes while the first picture loads. The list already says how many
+ *  pictures there are, so the thumbnail strip sits here too, and the height goes back out through
+ *  onHeight so the first picture starts at it. */
+function GallerySkeleton(props: { thumbs: number; maxH: number; fillH?: number; onHeight: (px: number) => void }) {
   let bar!: HTMLDivElement
   onMount(() => props.onHeight(bar.offsetHeight))
   return (
     <div>
-      <div ref={bar} class={`${SK_FILL} ${ART_PLACEHOLDER}`} />
+      <div
+        ref={bar}
+        class={`${SK_FILL} ${ART_PLACEHOLDER}`}
+        style={props.fillH ? { height: `${props.fillH}px` } : { 'max-height': `${props.maxH}px` }}
+      />
       <Show when={props.thumbs > 0}>
         <div class={DETAIL_THUMB_ROW}>
           <For each={Array.from({ length: props.thumbs })}>

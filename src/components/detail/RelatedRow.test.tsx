@@ -41,7 +41,7 @@ let host: HTMLDivElement
 function mount(): void {
   host = document.createElement('div')
   document.body.appendChild(host)
-  dispose = render(() => <RelatedRow item={first} />, host)
+  dispose = render(() => <RelatedRow item={first} shape="sheet" />, host)
 }
 
 const card = (id: number) => host.querySelector<HTMLElement>(`button[aria-label^="看 #${id} "]`)

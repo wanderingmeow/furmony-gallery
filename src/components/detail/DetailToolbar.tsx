@@ -1,5 +1,6 @@
 import { tr } from '../../i18n'
 import { Show } from 'solid-js'
+import { BOX, type Shape } from '../../draw/layout'
 import type { AdoptListing } from '../../model/types'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
 import { isWishlisted, toggleWishlist } from '../../stores/wishlistStore'
@@ -32,9 +33,9 @@ const PLATFORM_META: Record<PlatformKey, ChipMeta> = {
   },
 }
 
-// Social chips (rounded-square icon buttons) for a locked listing's owner. Reactive on
-// `socials()` — starts empty and rehydrates when the runtime fetch resolves, so it never
-// blocks the sheet. Opens each platform URL in a new tab; no URL → chip omitted.
+// Social chips (rounded-square icon buttons) for a locked listing's owner. `socials()` starts empty
+// and fills in when the runtime fetch resolves, so the chips never block the sheet. Each one opens
+// its platform URL in a new tab, and a platform with no URL gets no chip.
 function SocialChips(props: { item: AdoptListing }) {
   const chips = () => {
     const p = socials().get(props.item.adoptId)?.platforms
@@ -70,12 +71,12 @@ function SocialChips(props: { item: AdoptListing }) {
   )
 }
 
-// Sticky bottom toolbar for the detail sheet: 收藏 toggle (works for locked listings too) +
-// social chips (locked only) + 前往官网.
-export function DetailToolbar(props: { item: AdoptListing }) {
+// The bar at the foot of the detail: 收藏 toggle (works for locked listings too) + social chips
+// (locked only) + 前往官网.
+export function DetailToolbar(props: { item: AdoptListing; shape: Shape }) {
   const wishlisted = () => isWishlisted(props.item.adoptId)
   return (
-    <div class="border-t border-border bg-canvas px-4 py-3">
+    <div class={`border-t border-border bg-canvas py-3 ${BOX[props.shape].barPad}`}>
       <div class="flex items-center gap-4">
         <button
           // relative: the switch that buzzes spreads over the nearest positioned box, which has to

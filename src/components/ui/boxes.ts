@@ -1,10 +1,7 @@
 import { createContext, useContext } from 'solid-js'
 
-/**
- * The boxes that a skeleton shares with the screen that it stands in for, so the two cannot drift
- * apart. Behavior stays with the component that needs it: `group`, and the pointer-events that
- * allow a bar to receive touches, are written there.
- */
+/** The boxes a skeleton shares with the screen it stands in for, so the two cannot drift apart.
+ *  Behavior stays with the component that needs it. */
 
 /** The fill that stands in for a picture while it loads. SkelImg uses it, and so does the gallery
  *  skeleton. */
@@ -26,16 +23,13 @@ export const TABS_ROW = 'flex items-center gap-1.5'
 
 export const SHEET_FAB_ROW = 'absolute top-4 left-4 z-20 flex items-center gap-2'
 
-/** The sheet's vertical padding. The skeleton and the real sheet share it, so the body does not
- *  shift when the data lands. */
-export const DETAIL_BODY = 'pt-16 pb-4'
 /** The art block, the same height wherever it appears: the sheet skeleton, the gallery skeleton,
  *  and the box that stands in for a listing with no art. */
 export const ART_PLACEHOLDER = 'h-72 w-full rounded-xl'
 
-/** The strip of thumbnails under the gallery. GallerySkeleton draws the same strip while the
- *  first picture loads, because the list already says how many pictures there are. A strip that
- *  arrives later would push the table below it down. */
+/** The strip of thumbnails under the gallery. GallerySkeleton draws the same strip while the first
+ *  picture loads, because the list already says how many pictures there are; a strip that arrived
+ *  later would push the table down. */
 export const DETAIL_THUMB_ROW = 'flex gap-1.5 justify-center mt-2'
 export const DETAIL_THUMB = 'w-15 h-15 shrink-0 rounded-md'
 
@@ -45,11 +39,10 @@ export const SHEET_HEADER_ROW = 'flex items-center gap-4 p-4 bg-canvas'
 export const SHEET_FAB_BOX = 'w-11 h-11'
 export const SHEET_TITLE = 'text-lg font-semibold text-ink'
 
-/**
- * The box at the foot of a sheet, empty until a screen claims it. A screen claims it with a
- * Portal, so its bottom bar travels in the same file as the rest of that screen. The sheet
- * creates the box before any child renders, so a screen reads the box once, when the screen is
- * created: there is nothing to wait for. Outside a sheet there is no box at all.
+/** The box at a sheet's foot, empty until a screen claims it with a Portal, so that screen's bottom
+ *  bar is written in the same file as the rest of it. The sheet creates the box before any child
+ *  renders, so a screen reads it once at creation and has nothing to wait for. Outside a sheet there
+ *  is no box.
  */
 export const SheetFooterSlot = createContext<HTMLElement | undefined>(undefined)
 export const useSheetFooter = () => useContext(SheetFooterSlot)
