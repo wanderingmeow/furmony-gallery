@@ -1,0 +1,41 @@
+/* The two boxes that haptics.ts writes: a label that reaches the control's tap target, and the
+   switch inside it that the finger lands on. */
+
+/* `--hit` is the control's tap target, a band that reaches past the control's own box. A tap outside
+   that band reaches the control and gives no buzz.
+
+   The z-index is for a control with a `::after` hit area. That pseudo-element paints on top of the
+   real children, so the label would sit under it and take nothing: the control would flip with no
+   buzz.
+
+   `touch-action` and `cursor` come from the control, so a drag behaves the same on both sides of the
+   label, and a pointer on a Mac shows the same cursor. */
+.haptic-hit {
+  position: absolute;
+  inset: var(--hit, 0);
+  z-index: 1;
+  touch-action: inherit;
+  cursor: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A disabled control gets no buzz. */
+[disabled] > .haptic-hit {
+  pointer-events: none;
+}
+
+/* The switch fills the label, so the finger lands on the switch. A drag turns the switch that the
+   press started on. `opacity: 0` hides the switch and keeps it in the hit test. `visibility: hidden`
+   would take it out of the hit test, and a drag would find the label instead. */
+.haptic-switch {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  touch-action: inherit;
+  opacity: 0;
+  cursor: inherit;
+  -webkit-tap-highlight-color: transparent;
+}

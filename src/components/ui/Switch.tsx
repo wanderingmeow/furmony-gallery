@@ -1,11 +1,16 @@
-// src/components/ui/Switch.tsx - the iOS switch, for the settings that are simply on or off.
+// src/components/ui/Switch.tsx - the iOS switch, for settings that are on or off.
 //
-// The switch in the iOS settings app is 51×31. That size is for a full-height row, and in a
-// panel this dense it is larger than the text next to it. The switch below is the same design at
-// a smaller size, with the same gap on every side.
+// The iOS settings switch is 51×31, a size for a full-height row: too big for a panel this dense.
+// This is the same design smaller, with the same gap on every side.
 //
 // The off track uses a theme token, so it changes in dark mode. The green is written out because
 // iOS uses the same green in both themes.
+//
+// A drag across the track works the way it does on iOS: the knob rides with the pointer, and a
+// release past the middle of the track decides the value.
+import { createSignal, onCleanup } from 'solid-js'
+import { followPointer } from '../../draw/trackPointer'
+import { useHaptic } from './useHaptic'
 
 const TRACK_W = 40
 const TRACK_H = 24
@@ -13,16 +18,22 @@ const KNOB = 20
 const BORDER = 1
 /** The gap between the knob and the track edge, measured inside the border. */
 const INSET = 1
-// The knob starts inside the border, so the space it can travel in is 2px narrower than the
-// track. The first version here used the full 40px, and the knob ended up flush against the
-// right edge.
 const TRAVEL = TRACK_W - BORDER * 2 - KNOB - INSET * 2
+// A press that has not moved this far is a tap: the click that follows makes the change.
+const SLOP = 4
+// The growth that the price slider's thumb gets under a held finger, so every held control looks
+// the same.
+const SCALE = 1.18
 
-// The track is 24px tall and the tap target minimum is 44px, so +10px above and below make up
-// the difference. To the right, the row's own padding gives 6px, and that is all this area can
-// use: widening it on both sides made the panel's scroll container wider than the panel, and the
-// panel got a horizontal scrollbar.
-const HIT_AREA = "after:absolute after:inset-y-[-10px] after:left-0 after:right-[-6px] after:content-['']"
+// 24px of track against a 44px tap target is +10px above and below. To the right the row gives 6px
+// of padding: past that the panel's scroll container grows wider than the panel, and the panel gets
+// a horizontal scrollbar. One value feeds the tap target and the buzz.
+const HIT = '-10px -6px -10px 0'
+const HIT_AREA = `after:absolute after:[inset:var(--hit)] after:content-['']`
+
+// The shadow is the iOS knob's: a soft drop and a tight edge under it.
+const KNOB_LOOK = `absolute rounded-full bg-white motion-reduce:transition-none
+                   shadow-[0_2px_5px_rgba(0,0,0,0.15),0_1px_1px_rgba(0,0,0,0.16)]`
 
 export function Switch(props: {
   on: boolean
@@ -30,6 +41,65 @@ export function Switch(props: {
   label: string
   disabled?: boolean
 }) {
+  // How far the pointer has travelled since the press, in px, or null while nothing is held.
+  const [drag, setDrag] = createSignal<number | null>(null)
+  const [held, setHeld] = createSignal(false)
+  let stopFollow: (() => void) | null = null
+  // The release runs this: iOS may have turned its switch without the page hearing a change.
+  let syncHaptic = (): void => {}
+  const rest = () => (props.on ? TRAVEL : 0)
+  const knob = () => {
+    const d = drag()
+    if (d === null) return rest()
+    return Math.min(Math.max(rest() + d, 0), TRAVEL)
+  }
+  // The scale comes after the travel, so the knob grows from where it stands. A scale before the
+  // travel would stretch the distance it slides.
+  const knobAt = () => `translateX(${knob()}px)${held() ? ` scale(${SCALE})` : ''}`
+  // The green follows the knob, so a drag past the middle of the track shows the color that the
+  // switch is about to take.
+  const lit = () => knob() > TRAVEL / 2
+
+  let startX = 0
+  let moved = false
+  // Releasing a drag sends a click, which would flip the switch a second time, so the first one is
+  // ignored. A new press clears the flag.
+  let swallow = false
+
+  const moveTo = (x: number) => {
+    const dx = x - startX
+    if (Math.abs(dx) > SLOP) moved = true
+    setDrag(dx)
+  }
+
+  const release = () => {
+    const wanted = lit()
+    stopFollow = null
+    setDrag(null)
+    setHeld(false)
+    if (moved) {
+      swallow = true
+      if (wanted !== props.on) props.onChange(wanted)
+    }
+    syncHaptic()
+  }
+
+  const press = (event: PointerEvent) => {
+    if (props.disabled) return
+    startX = event.clientX
+    moved = false
+    swallow = false
+    setHeld(true)
+    // A second finger takes the drag from the first, so two fingers do not pull at one knob.
+    stopFollow?.()
+    stopFollow = followPointer(event.pointerId, moveTo, () => {
+      stopFollow = null
+      release()
+    })
+  }
+
+  onCleanup(() => stopFollow?.())
+
   return (
     <button
       type="button"
@@ -38,27 +108,38 @@ export function Switch(props: {
       aria-label={props.label}
       title={props.label}
       disabled={props.disabled}
-      class={`relative shrink-0 rounded-full border transition-colors duration-200
+      ref={(el) => {
+        syncHaptic = useHaptic(el, () => props.on)
+      }}
+      // pan-y: a vertical drag goes to the panel's scroll.
+      class={`relative shrink-0 rounded-full border transition-colors duration-200 touch-pan-y
               motion-reduce:transition-none ${HIT_AREA}`}
-      style={{ width: `${TRACK_W}px`, height: `${TRACK_H}px` }}
+      style={{ width: `${TRACK_W}px`, height: `${TRACK_H}px`, '--hit': HIT }}
       classList={{
-        'bg-accent border-accent': props.on && !props.disabled,
-        'bg-surface-2 border-border': !props.on || !!props.disabled,
+        'bg-accent border-accent': lit() && !props.disabled,
+        'bg-surface-2 border-border': !lit() || !!props.disabled,
         'opacity-45 cursor-not-allowed': !!props.disabled,
       }}
-      // The attribute stops a pointer; the guard stops a click that code sends.
-      onClick={() => { if (!props.disabled) props.onChange(!props.on) }}
+      onPointerDown={press}
+      // A disabled control blocks pointer events. The guard catches a click that code sends.
+      onClick={() => {
+        if (swallow) {
+          swallow = false
+          return
+        }
+        if (!props.disabled) props.onChange(!props.on)
+      }}
     >
       <span
-        class="absolute rounded-full bg-white transition-transform duration-200
-               shadow-[0_2px_5px_rgba(0,0,0,0.15),0_1px_1px_rgba(0,0,0,0.16)]
-               motion-reduce:transition-none"
+        // While the knob is held it follows the pointer, so no transition may sit between them. On
+        // release it eases back through the rule below.
+        class={`${KNOB_LOOK} ${held() ? 'transition-none' : 'transition-transform duration-200'}`}
         style={{
           top: `${INSET}px`,
           left: `${INSET}px`,
           width: `${KNOB}px`,
           height: `${KNOB}px`,
-          transform: props.on ? `translateX(${TRAVEL}px)` : 'translateX(0)',
+          transform: knobAt(),
         }}
       />
     </button>

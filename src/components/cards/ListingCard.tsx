@@ -11,6 +11,7 @@ import { priceMode } from '../../stores/displayStore'
 import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
 import { LockedIcon } from '../ui/LockedIcon'
 import { SkelText } from '../ui/SkelText'
+import { useHaptic } from '../ui/useHaptic'
 import { WishlistHeart } from '../ui/WishlistHeart'
 import {
   CARD_ARTIST, CARD_BASE, CARD_BODY, CARD_COVER, CARD_FOOT, CARD_NAME,
@@ -109,7 +110,11 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
             {/* The button is a flex box: an inline box is as tall as the font's ascent plus
                 descent (19.3px at this size), and the glyph sits about 0.6px low inside it. */}
             <button
-              class={`flex text-lg leading-none ${wishlisted() ? 'text-red-500' : 'text-ink'}`}
+              // relative: the switch that buzzes spreads over the nearest positioned box, which has
+              // to be this button.
+              ref={(el) => useHaptic(el, wishlisted)}
+              class="relative flex touch-manipulation text-lg leading-none"
+              classList={{ 'text-red-500': wishlisted(), 'text-ink': !wishlisted() }}
               onClick={onHeart}
               aria-label={tr('card.wish')}
             >

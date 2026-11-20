@@ -2,9 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createSignal, type JSX } from 'solid-js'
 import { render } from 'solid-js/web'
 import type { AdoptListing } from '../../model/types'
+import { withSwitch } from '../../testSetup'
 import { ListingCard } from './ListingCard'
 
-const { listing } = vi.hoisted(() => ({
+const { listing, taps } = vi.hoisted(() => ({
   listing: {
     adoptId: 42,
     adoptName: '天冬',
@@ -13,11 +14,12 @@ const { listing } = vi.hoisted(() => ({
     totalPrice: 27800,
     adoptPicture: 'https://bucket.cos.ap-guangzhou.myqcloud.com/cover-42.png',
   } as AdoptListing,
+  taps: { count: 0 },
 }))
 
 vi.mock('../../stores/wishlistStore', () => ({
   isWishlisted: () => false,
-  toggleWishlist: () => {},
+  toggleWishlist: () => { taps.count += 1 },
 }))
 vi.mock('../../stores/displayStore', () => ({
   priceMode: () => 'once',
@@ -48,6 +50,8 @@ afterEach(() => {
   dispose?.()
   host?.remove()
   dispose = undefined
+  taps.count = 0
+  withSwitch(false)
 })
 
 describe('ListingCard picture', () => {
@@ -71,5 +75,24 @@ describe('ListingCard picture', () => {
     mount(() => <ListingCard listing={listing} width={240} />)
     await frame()
     expect(picture().getAttribute('src')).toContain('cover-42.png')
+  })
+})
+
+describe('ListingCard heart', () => {
+  const heart = () => host.querySelector('.tap-heart')!.closest('button')!
+
+  it('the heart carries a switch, and a tap on it reaches the button', () => {
+    withSwitch(true)
+    mount(() => <ListingCard listing={listing} width={240} />)
+    const buzz = heart().querySelector<HTMLInputElement>('.haptic-switch')
+    expect(buzz, 'a tap on the heart should buzz').toBeTruthy()
+    buzz!.click()
+    expect(taps.count, 'the switch lies under the tap, not in front of it').toBe(1)
+  })
+
+  it('the heart carries no switch where the engine has none', () => {
+    withSwitch(false)
+    mount(() => <ListingCard listing={listing} width={240} />)
+    expect(host.querySelector('.haptic-switch')).toBeNull()
   })
 })

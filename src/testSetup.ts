@@ -32,3 +32,22 @@ if (typeof (globalThis as any).localStorage === 'undefined') {
     get length() { return keys.length },
   }
 }
+
+/** Give the browser Safari's `switch` attribute, or take it away. That attribute is what gives a
+ *  browser its buzz, so this decides whether a browser buzzes. The user agent is set, so a test can
+ *  look like a phone or a desktop. */
+export function withSwitch(on = true): void {
+  Object.defineProperty(navigator, 'userAgent', {
+    value: on
+      ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15'
+      : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15',
+    configurable: true,
+  })
+  Object.defineProperty(navigator, 'platform', {
+    value: on ? 'iPhone' : 'MacIntel', configurable: true,
+  })
+  Object.defineProperty(navigator, 'maxTouchPoints', { value: on ? 5 : 0, configurable: true })
+  const prop = { value: false, configurable: true }
+  if (on) Object.defineProperty(window.HTMLInputElement.prototype, 'switch', prop)
+  else Reflect.deleteProperty(window.HTMLInputElement.prototype, 'switch')
+}

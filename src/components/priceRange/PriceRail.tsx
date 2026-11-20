@@ -7,7 +7,7 @@ import { formatPrice } from '../../model/domain'
 import {
   edgeOf, railShare, stepAt, stepIndex, type PriceEnd, type PriceRange,
 } from '../../model/priceRange'
-import { holdPointer } from '../../draw/holdPointer'
+import { holdPointer } from '../../draw/trackPointer'
 import './PriceRail.css'
 
 export function PriceRail(props: {
