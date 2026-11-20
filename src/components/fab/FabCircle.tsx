@@ -22,7 +22,7 @@ export function FabCircle(props: {
   const accent = () => (typeof props.accent === 'function' ? props.accent() : props.accent === true)
   return (
     <button
-      class={`fab-circle relative cursor-pointer w-12 h-12 rounded-full flex items-center justify-center text-xl border${
+      class={`fab-circle press-fab relative cursor-pointer w-12 h-12 rounded-full flex items-center justify-center text-xl border${
         props.glow ? ' fab-glow' : ''}${props.class ? ` ${props.class}` : ''}`}
       classList={{
         'bg-accent text-white border-accent-ink/40': accent(),

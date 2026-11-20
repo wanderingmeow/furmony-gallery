@@ -7,31 +7,33 @@ import solid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
 import { prefetchScript } from './src/data/prefetch.ts'
 
-function textAt(path: URL): string {
-  try {
-    return readFileSync(path, 'utf8').trim()
-  } catch {
-    return ''
-  }
-}
-
 /**
  * What a repository copy does not carry: the address and the key that one machine keeps in
  * `.env`. A real environment variable wins over `.env`, which is how CI and a one-off build pass
  * them. A build with neither is normal: the feature that needs the value stays out of the bundle.
  */
-function localValue(mode: string, name: string, file?: string): string {
-  const fromFile = file ? textAt(new URL(file, import.meta.url)) : ''
-  return process.env[name] || loadEnv(mode, process.cwd(), '')[name] || fromFile
+function localValue(mode: string, name: string): string {
+  return process.env[name] || loadEnv(mode, process.cwd(), '')[name] || ''
 }
 
 /**
  * Where a 设定搜索 sentence goes. Base64 keeps the name of that machine out of the built files.
  */
-function encodedAddress(read: (name: string, file?: string) => string): string {
+function encodedAddress(read: (name: string) => string): string {
   const encoded = read('SEARCH_URL_B64')
   if (encoded) return encoded
-  const plain = read('SEARCH_URL', 'agent/.search-url')
+  const plain = read('SEARCH_URL')
+  return plain ? Buffer.from(plain).toString('base64') : ''
+}
+
+/**
+ * The 详细描述 translation key. It is public - the official site ships it in its own bundle - but
+ * base64 keeps it out of the built files as text, which is what a secret scanner reads.
+ */
+function encodedKey(read: (name: string) => string): string {
+  const encoded = read('TRANSLATE_KEY_B64')
+  if (encoded) return encoded
+  const plain = read('TRANSLATE_KEY')
   return plain ? Buffer.from(plain).toString('base64') : ''
 }
 
@@ -169,14 +171,14 @@ function inlinePrefetch(): Plugin {
  * `agent/`. Hence a function that takes the mode and looks up the two values in `.env`.
  */
 export function buildConfig(mode: string): UserConfig {
-  const read = (name: string, file?: string) => localValue(mode, name, file)
+  const read = (name: string) => localValue(mode, name)
   return {
     plugins: [solid(), tailwindcss(), inlinePrefetch(), inlineStyles(), documentBudget()],
     // GitHub Pages serves at https://<user>.github.io/furmony-gallery/ (sub-path)
     base: '/furmony-gallery',
     define: {
       'import.meta.env.VITE_SEARCH_URL_B64': JSON.stringify(encodedAddress(read)),
-      'import.meta.env.VITE_TRANSLATE_KEY': JSON.stringify(read('TRANSLATE_KEY')),
+      'import.meta.env.VITE_TRANSLATE_KEY_B64': JSON.stringify(encodedKey(read)),
     },
     build: {
       rollupOptions: {

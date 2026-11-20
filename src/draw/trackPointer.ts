@@ -10,13 +10,13 @@
 function track(
   target: EventTarget,
   mine: (event: PointerEvent) => boolean,
-  onMove: (clientX: number) => void,
+  onMove: (clientX: number, clientY: number) => void,
   onStop: () => void,
 ): () => void {
   const pointer = (run: (event: PointerEvent) => void): EventListener =>
     (event) => run(event as PointerEvent)
   const onPointerMove = pointer((event) => {
-    if (mine(event)) onMove(event.clientX)
+    if (mine(event)) onMove(event.clientX, event.clientY)
   })
   const onRelease = pointer((event) => {
     if (!mine(event)) return
@@ -35,25 +35,25 @@ function track(
 }
 
 /** Capture `pointerId` on `el`, so every move and the release come to `el` after the finger walks
- *  off. Capture stops the browser from hit-testing what is under the finger, so a switch below it
- *  gets no gesture. */
+ *  off. Capture takes the gesture away from the browser's own hit test, so nothing under the finger
+ *  gets it - not a buzz label either. */
 export function holdPointer(
   el: HTMLElement,
   pointerId: number,
-  onMove: (clientX: number) => void,
+  onMove: (clientX: number, clientY: number) => void,
   onStop: () => void,
 ): void {
   el.setPointerCapture?.(pointerId)
   track(el, () => true, onMove, onStop)
 }
 
-/** Follow `pointerId` on the document, and leave the browser in charge of the gesture. An iOS switch
- *  under the finger turns for a drag that the browser hit-tests (draw/haptics.ts). These listeners
- *  outlive the control that started them, so a control that goes away mid-drag has to call the
- *  returned function. */
+/** Follow `pointerId` on the document, and leave the browser in charge of the gesture: the buzz
+ *  Safari gives needs the browser's own hit test (draw/haptics.ts), so a control that buzzes cannot
+ *  capture. These listeners outlive the control that started them, so a control that goes away
+ *  mid-drag has to call the returned function. */
 export function followPointer(
   pointerId: number,
-  onMove: (clientX: number) => void,
+  onMove: (clientX: number, clientY: number) => void,
   onStop: () => void,
 ): () => void {
   return track(document, (event) => event.pointerId === pointerId, onMove, onStop)

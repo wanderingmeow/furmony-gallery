@@ -7,22 +7,22 @@ import type { AdoptListing } from '../../model/types'
 import { listings } from '../../stores/listingsStore'
 import { loadRelated, related, relatedLoaded } from '../../stores/relatedStore'
 import { relatedOnlyUnlocked, setRelatedOnlyUnlocked } from '../../stores/displayStore'
-import { MIN_RELATED, relatedIds, resolveRelated } from '../../model/related'
+import { relatedIds, resolveRelated } from '../../model/related'
 import {
-  BOX, RELATED_BAR_GAP, RELATED_BAR_H, RELATED_BAR_MIN_THUMB, RELATED_BAR_W,
+  BOX, RELATED_BAR_GAP, RELATED_BAR_H, RELATED_BAR_H_HELD, RELATED_BAR_HIT_X, RELATED_BAR_HIT_Y,
+  RELATED_BAR_MIN_THUMB, RELATED_BAR_W,
   RELATED_CARD_GAP, RELATED_CARD_TARGET, RELATED_PER_VIEW_MAX, type Shape, relatedCardWidth,
   relatedPerView, relatedStripHeight, THUMB_ASPECT,
 } from '../../draw/layout'
-import { scrollThumb, type Thumb } from '../../draw/scrollbar'
+import { pointerProgress, scrollThumb, type Thumb } from '../../draw/scrollbar'
 import { isAdopted, isLocked } from '../../model/domain'
 import { LockedIcon } from '../ui/LockedIcon'
 import { SkelText } from '../ui/SkelText'
 import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
 import { SK_FILL } from '../ui/boxes'
 import { relatedSkeleton } from '../ui/skeletonView'
+import './RelatedRow.css'
 
-// An adopted piece is also unbuyable: adopting means it was locked first. The lock badge
-// on a card and the 只看未锁定 switch both read this, so they cannot disagree.
 const isTaken = (l: AdoptListing) => isAdopted(l) || isLocked(l)
 
 export function RelatedRow(props: { item: AdoptListing; shape: Shape }) {
@@ -31,33 +31,32 @@ export function RelatedRow(props: { item: AdoptListing; shape: Shape }) {
 
   createEffect(on(adoptId, (id) => { if (id) void loadRelated() }))
 
-  const neighbors = createMemo(() => resolveRelated(relatedIds(related(), adoptId()), listings()))
+  const allNeighbors = createMemo(() => resolveRelated(relatedIds(related(), adoptId()), listings()))
   const items = createMemo(() =>
-    relatedOnlyUnlocked() ? neighbors().filter((l) => !isTaken(l)) : neighbors(),
+    relatedOnlyUnlocked() ? allNeighbors().filter((l) => !isTaken(l)) : allNeighbors(),
   )
 
-  // Counted before the switch filters: hiding the block while the switch is on would hide
-  // the switch too, and nobody could turn it back off.
-  const hasEnoughNeighbors = () => neighbors().length >= MIN_RELATED
-
-  // A related tap goes one level deeper, so it stays in browser history: back walks
-  // C → B → A → the grid. model/detailTrail explains the marker in the state.
+  // A related tap goes one level deeper, so the push stays in history: back walks C → B → A → the
+  // grid, and the page does not jump to the top on the way. model/detailTrail.ts covers the marker.
   const open = (id: number) =>
     navigate(detailPath(id), { scroll: false, state: { fromDetail: adoptId() } })
 
-  // The table loads after the sheet is open, so the block holds its space until it does;
-  // the switch waits for the same reason - it changes a row that is not on screen yet.
-  // ?skeleton=related keeps this true after the table lands, so you can look at the row.
+  // The table lands after the sheet is open, so the block holds its room until then: a section that
+  // arrives mid-read shoves the sheet taller. The switch waits for the same reason - it changes a row
+  // that is not on screen yet.
   const loading = () => !relatedLoaded() || relatedSkeleton()
 
   return (
-    <Show when={hasEnoughNeighbors() || loading()}>
+    <Show when={allNeighbors().length > 0 || loading()}>
       <section class="mt-4" aria-label={tr('related.title')}>
-        {/* min-h matches the switch's h-8: without it the heading is 8px shorter while the
-            table loads, and the row below moves by that much when the switch appears. */}
-        <div class="flex min-h-8 items-center gap-2">
+        <div class="flex items-center gap-2">
           <h2 class="text-base font-semibold">{tr('related.title')}</h2>
-          <Show when={!loading()}><UnlockedOnlySwitch /></Show>
+          <Show
+            when={!loading()}
+            fallback={<span class="ml-auto h-8" aria-hidden="true" />}
+          >
+            <UnlockedOnlySwitch />
+          </Show>
         </div>
         <RelatedStrip items={items()} loading={loading()} shape={props.shape} onOpen={open} />
       </section>
@@ -100,10 +99,10 @@ function RelatedStrip(props: {
   // the scroller when measuring.
   let root!: HTMLDivElement
   let scroller!: HTMLDivElement
+  let content!: HTMLDivElement
 
   const bleed = () => BOX[props.shape].stripBleed
 
-  const [thumb, setThumb] = createSignal<Thumb | null>(null)
   const [cardW, setCardW] = createSignal(RELATED_CARD_TARGET)
 
   // An empty row has no scroller, and a node out of the document measures 0 wide.
@@ -112,39 +111,35 @@ function RelatedStrip(props: {
   const measure = () => {
     const el = widthSource()
     if (!el) return
-    // Width first: Solid writes styles synchronously, so the widths that scrollThumb reads
-    // below reflect the new card size.
     const avail = el.clientWidth - bleed() * 2
     setCardW(relatedCardWidth(avail, relatedPerView(avail)))
-    setThumb(el === scroller ? scrollThumb(el, RELATED_BAR_W, RELATED_BAR_MIN_THUMB) : null)
   }
 
-  // Hopping between related pieces stays on one route, so the row keeps its scroll offset.
-  // Clearing it once is not enough: scroll anchoring undoes the write in the same frame
-  // (measured 710 → 426), and a coasting flick writes another offset after ours. That leaves
-  // the row past the end of the shorter list, which Safari paints blank. So the code scrolls
-  // the row back on every scroll event, until the events stop (COAST_IDLE_MS) or the reader
-  // touches the row.
+  // Hopping between related pieces stays on one route, so the row keeps its scroll offset. One
+  // write is not enough: scroll anchoring undoes it in the same frame, and a coasting flick
+  // writes another offset after ours, which leaves the row past the end of the shorter list -
+  // Safari paints that blank. So every scroll event writes 0 again until the events stop
+  // (COAST_IDLE_MS) or the reader touches the row.
   const rewind = () => {
-    function atStart() {
+    function writeStart() {
       if (!scroller?.isConnected) return
       scroller.scrollTo({ left: 0, behavior: 'instant' })
       measure()
     }
     let idle = 0
     function stop() {
-      scroller.removeEventListener('scroll', pressing)
+      scroller.removeEventListener('scroll', keepRewinding)
       scroller.removeEventListener('touchstart', stop)
       clearTimeout(idle)
     }
-    function pressing() {
-      atStart()
+    function keepRewinding() {
+      writeStart()
       clearTimeout(idle)
       idle = setTimeout(stop, COAST_IDLE_MS)
     }
-    atStart()
-    const raf = requestAnimationFrame(atStart)
-    scroller.addEventListener('scroll', pressing)
+    writeStart()
+    const raf = requestAnimationFrame(writeStart)
+    scroller.addEventListener('scroll', keepRewinding)
     scroller.addEventListener('touchstart', stop, { passive: true })
     idle = setTimeout(stop, COAST_IDLE_MS)
     onCleanup(stop)
@@ -167,15 +162,12 @@ function RelatedStrip(props: {
   return (
     <div
       ref={root}
-      class="mt-2.5"
+      class="no-pick mt-2.5"
       style={{ 'margin-left': `${-bleed()}px`, 'margin-right': `${-bleed()}px` }}
     >
       <Show
         when={props.items.length > 0 && !props.loading}
         fallback={
-          // Both empty states take the height a full strip takes, measured the same way as
-          // the cards, so the sheet does not move when the skeleton leaves or when the filter
-          // empties the row.
           <Show
             when={props.loading}
             fallback={
@@ -199,9 +191,8 @@ function RelatedStrip(props: {
       >
         {/* Safari paints this kind of horizontal scroller as a composited layer above the
             overlay scrollbar, so the row covers that column of the vertical one. Firefox
-            draws scrollbars over content and shows nothing wrong. Left as is. */}
-        {/* Only the x axis: a drag that runs out at the end of the row should not shove the sheet
-            sideways, and a vertical drag over the row still scrolls the sheet. */}
+            draws scrollbars over content and shows nothing wrong. */}
+        {/* Only the x axis: a vertical drag over the row still scrolls the sheet. */}
         <div
           ref={scroller}
           onScroll={measure}
@@ -215,32 +206,126 @@ function RelatedStrip(props: {
               the scroller puts the last card against the screen edge. On the content it scrolls in
               both engines. */}
           <div
+            ref={content}
             class="flex w-max"
             style={{ gap: `${RELATED_CARD_GAP}px`, 'padding-right': `${bleed()}px` }}
           >
             <For each={props.items}>{(l) => <Card listing={l} width={cardW()} onOpen={props.onOpen} />}</For>
           </div>
         </div>
-        {/* The row has no scrollbar. This bar shows how much of the list is off screen and
-            where the reader is in it. Both colors are the ones the back-to-top ring uses,
-            and both flip with the theme. The space stays in the layout when the thumb is 0px
-            wide, so the sheet's height does not change. */}
+        <RelatedBar scroller={() => scroller} content={() => content} />
+      </Show>
+    </div>
+  )
+}
+
+/** The bar under the cards. The row hides its scrollbar, so this is the only sign of it: how much
+ *  of the list is off screen, where the reader is in it, and a handle for the same scroll.
+ *
+ *  `scroller` is the box that scrolls. `content` is the box whose width is the whole list: a
+ *  ResizeObserver reports an element's own box, so watching the scroller alone misses a card resize
+ *  that changes only how far the content reaches. */
+function RelatedBar(props: {
+  scroller: () => HTMLElement | undefined
+  content: () => HTMLElement | undefined
+}) {
+  // The 120px box the thumb rides in, and the area that takes the pointer. The area reaches past
+  // the box, so the maths reads the box.
+  let track!: HTMLDivElement
+  let grabArea!: HTMLDivElement
+  const [thumb, setThumb] = createSignal<Thumb | null>(null)
+  const [held, setHeld] = createSignal(false)
+
+  const measure = () => {
+    const el = props.scroller()
+    setThumb(el?.isConnected ? scrollThumb(el, RELATED_BAR_W, RELATED_BAR_MIN_THUMB) : null)
+  }
+
+  // Two ways the picture changes: the reader moves along the row, and the row changes size. The
+  // cards are sized by the strip, so a resize lands here one layout later than it is decided.
+  onMount(() => {
+    const scroller = props.scroller()
+    if (!scroller) return
+    measure()
+    scroller.addEventListener('scroll', measure, { passive: true })
+    const ro = new ResizeObserver(measure)
+    ro.observe(scroller)
+    const content = props.content()
+    if (content) ro.observe(content)
+    onCleanup(() => {
+      scroller.removeEventListener('scroll', measure)
+      ro.disconnect()
+    })
+  })
+
+  // Grabbing the bar makes it the reader's handle: the thumb's center follows the finger, and the
+  // row stops snapping so it does not pull away from under it.
+  const scrubTo = (event: PointerEvent): void => {
+    const scroller = props.scroller()
+    const t = thumb()
+    if (!scroller || !t) return
+    const progress = pointerProgress(
+      event.clientX, track.getBoundingClientRect().left, RELATED_BAR_W, t,
+    )
+    scroller.scrollTo({
+      left: progress * (scroller.scrollWidth - scroller.clientWidth),
+      behavior: 'instant',
+    })
+  }
+  const grab = (event: PointerEvent) => {
+    // The capture keeps the moves coming while the pointer walks past the bar.
+    grabArea.setPointerCapture?.(event.pointerId)
+    setHeld(true)
+    const scroller = props.scroller()
+    if (scroller) scroller.style.scrollSnapType = 'none'
+    scrubTo(event)
+  }
+  const letGo = (event: PointerEvent) => {
+    grabArea.releasePointerCapture?.(event.pointerId)
+    setHeld(false)
+    const scroller = props.scroller()
+    if (scroller) scroller.style.scrollSnapType = ''
+  }
+
+  return (
+    <div
+      ref={track}
+      class="relative"
+      style={{
+        width: `${RELATED_BAR_W}px`, height: `${RELATED_BAR_H}px`,
+        margin: `${RELATED_BAR_GAP}px auto 0`,
+      }}
+    >
+      {/* The space stays in the layout when the thumb is 0px wide, so the sheet's height does not
+          change: the paint is centered in that box and grows inside it, and the grab area reaches
+          past the box without taking room. */}
+      <div
+        class="bar-paint absolute inset-x-0 top-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-border"
+        aria-hidden="true"
+        data-held={held()}
+        style={{ height: `${held() ? RELATED_BAR_H_HELD : RELATED_BAR_H}px` }}
+      >
         <div
-          class="rounded-full bg-border"
-          aria-hidden="true"
+          class="h-full rounded-full bg-accent"
           style={{
-            width: `${RELATED_BAR_W}px`, height: `${RELATED_BAR_H}px`,
-            margin: `${RELATED_BAR_GAP}px auto 0`,
+            width: `${thumb()?.width ?? 0}px`,
+            transform: `translateX(${thumb()?.offset ?? 0}px)`,
           }}
-        >
-          <div
-            class="h-full rounded-full bg-accent"
-            style={{
-              width: `${thumb()?.width ?? 0}px`,
-              transform: `translateX(${thumb()?.offset ?? 0}px)`,
-            }}
-          />
-        </div>
+        />
+      </div>
+      <Show when={thumb()}>
+        <div
+          ref={grabArea}
+          class="absolute touch-none"
+          style={{
+            top: `${-RELATED_BAR_HIT_Y}px`, bottom: `${-RELATED_BAR_HIT_Y}px`,
+            left: `${-RELATED_BAR_HIT_X}px`, right: `${-RELATED_BAR_HIT_X}px`,
+          }}
+          onPointerDown={grab}
+          onPointerMove={(e) => held() && scrubTo(e)}
+          onPointerUp={letGo}
+          onPointerCancel={letGo}
+        />
       </Show>
     </div>
   )
@@ -275,8 +360,7 @@ function Card(props: { listing: AdoptListing; width: number; onOpen: (id: number
   const locked = isTaken(l)
   const [loaded, setLoaded] = createSignal(false)
 
-  // The src is set one frame later, like ListingCard: a row of covers would otherwise start
-  // a dozen decodes while the sheet is sliding in.
+  // The src waits a frame, like ListingCard: the covers decode after the sheet has slid in.
   let imgRef!: HTMLImageElement
   let raf = 0
   onMount(() => {
@@ -287,43 +371,45 @@ function Card(props: { listing: AdoptListing; width: number; onOpen: (id: number
   return (
     <button
       type="button"
-      class="shrink-0 snap-start text-left"
+      class="press-host shrink-0 snap-start text-left"
       style={{ width: `${props.width}px` }}
       onClick={() => props.onOpen(l.adoptId)}
       aria-label={tr('related.open', l.adoptId, wordsPending() ? tr('common.listing') : listingName(l) ?? tr('common.listing'))}
     >
-      <div class="relative card-img w-full rounded-lg bg-surface-2 overflow-hidden">
-        {/* Legacy WebKit draws the layer that an opacity animation creates with square
-            corners, and the corners become round again once the animation ends. So the fade runs
-            on a box that has the corner and the clip of its own. */}
-        <div
-          class="w-full h-full rounded-lg overflow-hidden transition-opacity duration-300"
-          classList={{ 'opacity-0': !loaded() }}
-        >
-          <img
-            ref={imgRef}
-            alt={wordsPending() ? tr('common.listing') : listingName(l) ?? tr('common.listing')}
-            decoding="async"
-            class="w-full h-full object-cover rounded-lg"
-            onLoad={() => setLoaded(true)}
-            onError={(e) => { setLoaded(true); onImageError(e) }}
-          />
+      {/* The button is the press and the snap point at once, so only the box inside it scales. */}
+      <div class="press-face">
+        <div class="relative card-img w-full rounded-lg bg-surface-2 overflow-hidden">
+          {/* Legacy WebKit draws the layer that an opacity animation creates with square
+              corners, and the corners become round again once the animation ends. So the fade runs
+              on a box that has the corner and the clip of its own. */}
+          <div
+            class="w-full h-full rounded-lg overflow-hidden transition-opacity duration-300"
+            classList={{ 'opacity-0': !loaded() }}
+          >
+            <img
+              ref={imgRef}
+              alt={wordsPending() ? tr('common.listing') : listingName(l) ?? tr('common.listing')}
+              decoding="async"
+              class="w-full h-full object-cover rounded-lg"
+              onLoad={() => setLoaded(true)}
+              onError={(e) => { setLoaded(true); onImageError(e) }}
+            />
+          </div>
         </div>
-      </div>
-      {/* No artist line: the pool mixes anonymous and named work, so that line would sit
-          empty on half the cards. The ID is what lets you recognize a piece you have seen.
-          The 2px of side padding matches the gap that the main card leaves between cover and
-          text. */}
-      <div class="px-0.5 pt-1 flex items-baseline gap-1">
-        <span class="text-sm truncate">
-          {wordsPending() ? <SkelText class="h-3.5 w-14" /> : listingName(l) ?? tr('common.unknown')}
-        </span>
-        <span class="text-xs text-faint shrink-0">#{l.adoptId}</span>
-        <Show when={locked}>
-          {/* The row aligns to the baseline so the 14px name and the 12px ID line up, but
-              an icon has no baseline and would sit high. */}
-          <LockedIcon class="ml-auto shrink-0 self-center" size="12px" />
-        </Show>
+        {/* No artist line: half the pool is anonymous work, and the ID is how a piece you have
+            seen comes back. The caption keeps its own small inset: these cards are a fraction of the
+            main card's width. The top padding is inside RELATED_CAPTION_H in draw/layout.ts, so
+            changing it changes the strip's height. */}
+        <div class="px-0.5 pt-1 flex items-baseline gap-1">
+          <span class="text-sm truncate">
+            {wordsPending() ? <SkelText class="h-3.5 w-14" /> : listingName(l) ?? tr('common.unknown')}
+          </span>
+          <span class="text-xs text-faint shrink-0">#{l.adoptId}</span>
+          <Show when={locked}>
+            {/* An icon has no baseline: the row aligns to the baseline, so this one centers. */}
+            <LockedIcon class="ml-auto shrink-0 self-center" size="12px" />
+          </Show>
+        </div>
       </div>
     </button>
   )

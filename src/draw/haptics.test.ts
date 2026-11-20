@@ -38,16 +38,28 @@ describe('the buzz label', () => {
     expect(input.tabIndex).toBe(-1)
   })
 
-  // The switch lies under the finger, so a click on it is the tap on the control it sits in. That
-  // click must arrive once: the control uses it to decide that it was tapped.
-  it('the click on the switch reaches the control once', () => {
+  // The reader's tap lands on the label, and the label turns the switch. The control sees the tap
+  // once, and the switch is the one that turned.
+  it('a tap on the label reaches the control once and turns the switch', () => {
     withSwitch(true)
     const host = document.createElement('button')
     const taps = vi.fn()
     host.addEventListener('click', taps)
-    hapticTap(host)
-    host.querySelector<HTMLInputElement>('.haptic-switch')!.click()
+    const buzz = hapticTap(host)!
+    host.querySelector<HTMLElement>('.haptic-hit')!.click()
     expect(taps).toHaveBeenCalledTimes(1)
+    expect(buzz.checked, 'the label turned the switch, and that is the buzz').toBe(true)
+  })
+
+  // The label forwards its tap to the switch. That forwarded click is the same tap, so it stops at
+  // the switch: the control must not see it a second time.
+  it('turning the switch does not reach the control', () => {
+    withSwitch(true)
+    const host = document.createElement('button')
+    const taps = vi.fn()
+    host.addEventListener('click', taps)
+    hapticTap(host)!.click()
+    expect(taps, 'the forwarded click stops at the switch').toHaveBeenCalledTimes(0)
   })
 
   it('returns the switch, and the same one on a second call', () => {

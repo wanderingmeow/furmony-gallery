@@ -71,7 +71,7 @@ describe('related row column math', () => {
 
   // This checks the sum. Whether the empty strip uses it is a browser check.
   it('adds the bar and its gap to the cards', () => {
-    expect(relatedStripHeight(192)).toBeCloseTo(159.45, 1)
+    expect(relatedStripHeight(192)).toBeCloseTo(165.45, 1)
   })
 
   it('keeps the waterfall floor above the related row floor', () => {
@@ -215,16 +215,24 @@ describe("the detail's shape and box", () => {
   it("stops a sheet's art near its own width, and gives a panel the whole column", () => {
     // A 1:1 picture fills these boxes instead of floating between two side bands.
     expect(detailPictureHeight(sheetCardBox(393, 852), 'sheet'), 'a phone').toBeCloseTo(397.1)
-    expect(detailPictureHeight(sheetCardBox(744, 1133), 'sheet'), 'an iPad mini upright').toBeCloseTo(730.4)
-    expect(detailPictureHeight(sheetCardBox(1024, 1366), 'sheet'), 'an iPad Pro upright').toBeCloseTo(800.8)
     expect(detailPictureHeight(sheetCardBox(1133, 744), 'panel'), 'an iPad mini sideways').toBe(548)
     expect(detailPictureHeight(sheetCardBox(852, 393), 'panel'), 'a phone sideways').toBe(245)
     expect(detailPictureHeight(sheetCardBox(700, 200), 'panel'), 'below this the zoom is how you look at it').toBe(120)
   })
 
+  it("holds a sheet's art to half its card", () => {
+    // A tablet upright has room for a cover that fills the card, and a reader who has to scroll past
+    // it to reach the table.
+    expect(detailPictureHeight(sheetCardBox(744, 1133), 'sheet'), 'an iPad mini upright').toBeCloseTo(542.5)
+    expect(detailPictureHeight(sheetCardBox(1024, 1366), 'sheet'), 'an iPad Pro upright').toBeCloseTo(659)
+    // A panel is two columns: the art's column is what it is, and the table stands beside it.
+    expect(detailPictureHeight(sheetCardBox(1366, 1024), 'panel'), "a panel's own column").toBe(780)
+  })
+
   it('caps the art so the table stays on the first screen', () => {
-    // The room a sheet has left once its padding, the thumbs and the bar are paid for.
-    const box = sheetCardBox(393, 500)
+    // The room a sheet has left once its padding, the thumbs and the bar are paid for. A card this
+    // short is under the cover's own ceiling, so the room is what decides.
+    const box = sheetCardBox(393, 400)
     expect(detailPictureHeight(box, 'sheet')).toBe(box.h - 80 - 68 - 61)
   })
 

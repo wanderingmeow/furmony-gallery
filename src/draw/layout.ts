@@ -183,12 +183,17 @@ export function detailBodyHeight(box: CardBox, shape: Shape): number {
 const PIC_TALL = 1.1
 const PIC_MIN_H = 120
 
+/** Half the card: what the art is allowed to hold in a sheet. */
+const PIC_CAP = 0.5
+
 /** The height the art's box takes: a panel hands over its whole left column, a sheet fits the art to
- *  the screen and keeps the bar's height outside the scroller. */
+ *  its card, keeps the bar's height outside the scroller, and stops at `PIC_CAP` of the card. A
+ *  sheet is one column, so a taller cover leaves the table below the fold entirely. */
 export function detailPictureHeight(box: CardBox, shape: Shape): number {
   const room = box.h - DETAIL_CHROME - DETAIL_STRIP_H - (shape === 'panel' ? 0 : SHEET_BAR_H)
   if (shape === 'panel') return Math.max(PIC_MIN_H, room)
-  return Math.min(Math.max(PIC_MIN_H, (box.w - 2 * DETAIL_PAD_X) * PIC_TALL), Math.max(PIC_MIN_H, room))
+  const fitted = Math.min(Math.max(PIC_MIN_H, (box.w - 2 * DETAIL_PAD_X) * PIC_TALL), Math.max(PIC_MIN_H, room))
+  return Math.min(fitted, box.h * PIC_CAP)
 }
 
 // The strip under the info table. A card's width follows the width the strip has, so a view holds a
@@ -224,9 +229,15 @@ export function relatedCardsHeight(cardWidth: number): number {
 // sections, so the track stays short.
 export const RELATED_BAR_W = 120
 export const RELATED_BAR_H = 3
-export const RELATED_BAR_GAP = 8
+export const RELATED_BAR_GAP = 14
 // Below this the thumb is hard to see.
 export const RELATED_BAR_MIN_THUMB = 24
+// A bar that is being held is easier to keep hold of, so it runs thicker. The paint sits centered
+// inside the reserved box, so the sheet's height does not follow it.
+export const RELATED_BAR_H_HELD = 6
+// The area a finger can grab around the track. It is painted outside the box, so it costs no room.
+export const RELATED_BAR_HIT_X = 12
+export const RELATED_BAR_HIT_Y = 8
 
 /** The empty states take this much room, so the sheet's height is the same whether the
  *  strip is empty or full. */

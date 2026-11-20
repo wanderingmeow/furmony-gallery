@@ -346,7 +346,7 @@ function CardSlot(props: {
         width: `${props.cardWidth()}px`,
       }}
     >
-      <button class="text-left" onClick={() => props.onOpen(props.listing.adoptId)}>
+      <button class="press-host text-left" onClick={() => props.onOpen(props.listing.adoptId)}>
         <ListingCard listing={props.listing} width={props.cardWidth()} hold={props.hold} />
       </button>
     </div>

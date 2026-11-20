@@ -7,8 +7,9 @@ import { RelatedRow } from './RelatedRow'
 
 // vi.mock factories run while this file's imports resolve, so the values they hand over come
 // from vi.hoisted, which lands above those imports.
-const { navigate, listings, first, neighbors } = vi.hoisted(() => {
+const { navigate, listings, first, neighbors, table } = vi.hoisted(() => {
   const neighbors = [2, 3, 4, 5]
+  const table = { ids: neighbors }
   const listings = [1, ...neighbors].map((id) => ({
     adoptId: id,
     adoptName: `设定 ${id}`,
@@ -17,7 +18,7 @@ const { navigate, listings, first, neighbors } = vi.hoisted(() => {
     adoptPicture: `https://bucket.cos.ap-guangzhou.myqcloud.com/cover-${id}.png`,
     adoptHeadPicture: `https://bucket.cos.ap-guangzhou.myqcloud.com/head-${id}.png`,
   })) as AdoptListing[]
-  return { navigate: vi.fn(), listings, first: listings[0], neighbors }
+  return { navigate: vi.fn(), listings, first: listings[0], neighbors, table }
 })
 
 vi.mock('@solidjs/router', () => ({ useNavigate: () => navigate }))
@@ -26,7 +27,7 @@ vi.mock('../../stores/listingsStore', () => ({
   listings: () => listings,
 }))
 vi.mock('../../stores/relatedStore', () => ({
-  related: () => ({ topN: neighbors.length, neighbors: new Map([[1, neighbors]]) }),
+  related: () => ({ topN: table.ids.length, neighbors: new Map([[1, table.ids]]) }),
   relatedLoaded: () => true,
   loadRelated: () => Promise.resolve(),
 }))
@@ -47,9 +48,25 @@ function mount(): void {
 const card = (id: number) => host.querySelector<HTMLElement>(`button[aria-label^="看 #${id} "]`)
 
 afterEach(() => {
+  table.ids = neighbors
   vi.clearAllMocks()
   dispose?.()
   host.remove()
+})
+
+describe('how many neighbors the row needs', () => {
+  // A piece can genuinely have one neighbor: hiding a single one hides the only way deeper.
+  it('shows the row for a single neighbor', () => {
+    table.ids = [2]
+    mount()
+    expect(card(2)).toBeTruthy()
+  })
+
+  it('hides the row when nothing resolves to a listing', () => {
+    table.ids = [999]
+    mount()
+    expect(host.querySelector('section')).toBeNull()
+  })
 })
 
 describe('tapping a related card', () => {

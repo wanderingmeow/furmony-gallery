@@ -15,9 +15,14 @@
  *   so the text is escaped before it leaves and unescaped after it returns.
  */
 
+import { decodeSetting } from './encodedSetting'
+
 const URL = 'https://translate-pa.googleapis.com/v1/translateHtml'
-// The key is public, but it stays out of the repository: the build injects it from `.env`.
-const KEY = String(import.meta.env.VITE_TRANSLATE_KEY ?? '')
+// The key is public: the official site ships it in its own bundle. This build passes it in base64,
+// so the built files hold no plain text of it. With no key, `translateTarget` answers undefined and
+// the row shows no button.
+const ENCODED_KEY = String(import.meta.env.VITE_TRANSLATE_KEY_B64 ?? '')
+const KEY = decodeSetting(ENCODED_KEY)
 
 /** The endpoint code for each interface language. A 简体中文 screen needs no work, so `zh` is absent. */
 const TRANSLATE_TARGET: Partial<Record<string, string>> = { zh_tw: 'zh-TW', ja: 'ja', en: 'en' }

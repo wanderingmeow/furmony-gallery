@@ -32,6 +32,23 @@ export function scrollThumb(row: Scroller, track: number, min: number): Thumb | 
 }
 
 /**
+ * The other direction: the progress that puts the thumb's middle under `clientX`.
+ *
+ * Measure from the track's own left edge. A grab area that reaches past the track gives the thumb
+ * its left edge under the pointer instead.
+ */
+export function pointerProgress(
+  clientX: number,
+  trackLeft: number,
+  track: number,
+  thumb: Thumb,
+): number {
+  const room = track - thumb.width
+  if (room <= 0) return 0
+  return Math.min(1, Math.max(0, (clientX - trackLeft - thumb.width / 2) / room))
+}
+
+/**
  * The y of the preview chip, at the middle of the scrollbar thumb. No browser reports where it
  * drew its own thumb, so the chip is placed from the same model the related row's bar uses: the
  * page becomes a scroller whose content is one screen plus `scrollRange`, and the track is the

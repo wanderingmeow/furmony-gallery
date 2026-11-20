@@ -1,0 +1,13 @@
+/* RelatedRow.css: the bar under the related cards, which is also the reader's handle. The paint
+   thickens on the grab and eases back when the hand leaves. */
+.bar-paint {
+  transition: height 140ms ease-out;
+}
+.bar-paint[data-held='true'] {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar-paint {
+    transition: none;
+  }
+}

@@ -30,6 +30,21 @@ const POPUP_AIR = 8
 const POPUP_BOX = `fixed z-40 glass rounded-xl shadow-xl border border-black/10
                    clip-no-scroll flex flex-col`
 
+// A row can sit a fraction of a pixel short of its own end, so the last pixel reads as the end.
+const AT_END = 1
+
+/** Whether a wheel over `from` moves something inside `box` that way. The nearest box that can
+ *  scroll answers for the pointer: the panel behind it does not get a turn. */
+function scrollTakes(box: HTMLElement, from: EventTarget | null, delta: number): boolean {
+  const start = from instanceof Element ? from : from instanceof Node ? from.parentElement : null
+  for (let el = start; el && box.contains(el); el = el.parentElement) {
+    const room = el.scrollHeight - el.clientHeight
+    if (room <= 0) continue
+    return delta < 0 ? el.scrollTop > 0 : el.scrollTop < room - AT_END
+  }
+  return false
+}
+
 export function FabMenu(props: {
   label: string
   icon: IconDefinition | (() => IconDefinition)
@@ -68,8 +83,9 @@ export function FabMenu(props: {
     })
   }))
 
-  // The capture phase, because a card's own click calls stopPropagation and a tap on anything else
-  // would never reach the bubble phase.
+  // While the panel is open it owns the input. The click listener runs in the capture phase, because
+  // a card's own click calls stopPropagation and a tap on anything else would never reach the
+  // bubble phase.
   createEffect(on(open, (shown) => {
     if (!shown) return
     const onClick = (e: MouseEvent) => {
@@ -78,11 +94,18 @@ export function FabMenu(props: {
       setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    // The list behind stays where it is, whether the pointer sits over the glass, over the rest of
+    // the screen, or past either end of the panel's own list.
+    const onWheel = (e: WheelEvent) => {
+      if (!scrollTakes(popup, e.target, e.deltaY)) e.preventDefault()
+    }
     document.addEventListener('click', onClick, true)
     document.addEventListener('keydown', onKey)
+    document.addEventListener('wheel', onWheel, { passive: false, capture: true })
     onCleanup(() => {
       document.removeEventListener('click', onClick, true)
       document.removeEventListener('keydown', onKey)
+      document.removeEventListener('wheel', onWheel, { capture: true })
     })
   }))
 

@@ -50,6 +50,11 @@ const press = (clientX = START_X) => {
 /** Move the held pointer `dx` px from where the press landed. */
 const moveTo = (dx: number) =>
   hit().dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: pressX + dx }))
+/** Move the held pointer `dx` and `dy` px from where the press landed. */
+const moveToXY = (dx: number, dy: number) =>
+  hit().dispatchEvent(
+    new PointerEvent('pointermove', { bubbles: true, clientX: pressX + dx, clientY: dy }),
+  )
 const letGo = () => hit().dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
 const dropped = () => hit().dispatchEvent(new PointerEvent('pointercancel', { bubbles: true }))
 
@@ -103,10 +108,14 @@ describe('Switch', () => {
     expect(knob().style.transform).toBe('translateX(16px) scale(1.18)')
   })
 
-  it('the knob grows while the finger holds it, and returns on release', () => {
+  // A finger that has not leaned either way yet could still become the panel's scroll, so the knob
+  // waits until the switch has taken the drag.
+  it('the knob grows once the switch takes the drag, and returns on release', () => {
     draw()
     press()
-    expect(knob().style.transform).toBe('translateX(0px) scale(1.18)')
+    expect(knob().style.transform, 'a finger alone is not yet a drag').toBe('translateX(0px)')
+    moveTo(6)
+    expect(knob().style.transform).toBe('translateX(6px) scale(1.18)')
     letGo()
     expect(knob().style.transform).toBe('translateX(0px)')
   })
@@ -115,9 +124,24 @@ describe('Switch', () => {
     draw(true)
     // A press near the right edge: the knob is already there, so it must not jump to the finger.
     press(START_X + 14)
-    expect(knob().style.transform).toBe('translateX(16px) scale(1.18)')
     moveTo(-6)
     expect(knob().style.transform).toBe('translateX(10px) scale(1.18)')
+  })
+
+  // iOS hands a drag that leans off the track to the panel's scroll and takes the switch out of it.
+  it('a drag that leans off the track goes to the scroll, knob and all', () => {
+    draw()
+    press()
+    moveToXY(1, 2)
+    expect(knob().style.transform, 'inside the tap\'s drift, the knob still waits').toBe('translateX(0px)')
+    moveToXY(2, 26)
+    expect(knob().style.transform, 'no growth, no travel').toBe('translateX(0px)')
+    letGo()
+    answers.length = 0
+    btn()!.click()
+    expect(answers, 'the click a release sends is refused').toEqual([])
+    btn()!.click()
+    expect(answers, 'a later tap still works').toEqual([true])
   })
 
   it('the first click after a drag is ignored, and the next one works', () => {
@@ -193,25 +217,25 @@ describe('Switch', () => {
     expect(answers).toEqual([true])
   })
 
-  // The switch that buzzes lies under the finger, so iOS writes into it when the reader turns it.
-  // The row shows one value, so the switch is kept in step with it: left off, right on.
-  it('the switch under the finger matches the value the row shows', () => {
+  // The tap lands on the label over the track, and the label turns the switch. The row shows one
+  // value, so the switch is kept in step with it: left off, right on.
+  it('the switch matches the value the row shows', () => {
     withSwitch()
     draw()
     const buzz = () => host.querySelector<HTMLInputElement>('.haptic-switch')!
     expect(buzz().checked).toBe(false)
-    buzz().click()
+    host.querySelector<HTMLElement>('.haptic-hit')!.click()
     expect(answers).toEqual([true])
     expect(buzz().checked, 'the right side, because the row is on now').toBe(true)
   })
 
-  // iOS turned the hidden switch, and the row kept the value it had, so the page has to write that
+  // The label turned the switch, and the row kept the value it had, so the page has to write that
   // value back.
   it('the switch returns when the row keeps the old value', () => {
     withSwitch()
     draw(false, false, true)
     const buzz = host.querySelector<HTMLInputElement>('.haptic-switch')!
-    buzz.click()
+    host.querySelector<HTMLElement>('.haptic-hit')!.click()
     expect(answers).toEqual([true])
     expect(buzz.checked, 'the row kept the old value, so the switch goes back to the left').toBe(false)
   })

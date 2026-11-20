@@ -10,7 +10,7 @@
 // release past the middle of the track decides the value.
 import { createSignal, onCleanup } from 'solid-js'
 import { followPointer } from '../../draw/trackPointer'
-import { useHaptic } from './useHaptic'
+import { useHaptic } from '../../hooks/useHaptic'
 
 const TRACK_W = 40
 const TRACK_H = 24
@@ -61,14 +61,36 @@ export function Switch(props: {
   const lit = () => knob() > TRAVEL / 2
 
   let startX = 0
+  let startY = 0
+  // Whose gesture this turned out to be. The switch takes a drag along the track; a drag that
+  // leans off it belongs to the panel's scroll, and `touch-pan-y` hands it over at the same angle
+  // this picks, so the knob and the scroll never disagree.
+  let axis: 'x' | 'y' | null = null
   let moved = false
   // Releasing a drag sends a click, which would flip the switch a second time, so the first one is
   // ignored. A new press clears the flag.
   let swallow = false
 
-  const moveTo = (x: number) => {
+  const moveTo = (x: number, y: number): void => {
     const dx = x - startX
-    if (Math.abs(dx) > SLOP) moved = true
+    const dy = y - startY
+    if (axis === null) {
+      // Whose gesture this is stays unknown until the press has left the tap's drift, and the knob
+      // waits on that: a drag the scroll takes never grows.
+      if (Math.hypot(dx, dy) <= SLOP) return
+      axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+    }
+    if (axis === 'y') {
+      // The scroll has it now: following stops, and the click a release sends is refused, so a drag
+      // that leaned off the track cannot turn the switch.
+      stopFollow?.()
+      stopFollow = null
+      swallow = true
+      setHeld(false)
+      return
+    }
+    setHeld(true)
+    moved = true
     setDrag(dx)
   }
 
@@ -87,9 +109,10 @@ export function Switch(props: {
   const press = (event: PointerEvent) => {
     if (props.disabled) return
     startX = event.clientX
+    startY = event.clientY
+    axis = null
     moved = false
     swallow = false
-    setHeld(true)
     // A second finger takes the drag from the first, so two fingers do not pull at one knob.
     stopFollow?.()
     stopFollow = followPointer(event.pointerId, moveTo, () => {

@@ -1,0 +1,66 @@
+/* WishlistHeart.css: the burst that follows a save, and the band that makes an 18px glyph easy to
+   hit. */
+
+/* The heart's bounce: only transform and opacity move, so the compositor carries it while the grid
+   is busy. The dip is the tap's feedback, so it runs first and the way back is slower. */
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  16% { transform: scale(0.7); }
+  82%, 100% { transform: scale(1); }
+}
+@keyframes heart-ripple {
+  from { transform: scale(0.3); opacity: 0.85; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+/* A line turns to its own angle first, so the translateY that follows runs outward along it. The
+   run starts 0.5em out, clear of the glyph's edge. */
+@keyframes heart-spark {
+  0% { transform: translate(-50%, -50%) rotate(var(--theta)) translateY(-0.5em) scaleY(0); opacity: 1; }
+  45% { transform: translate(-50%, -50%) rotate(var(--theta)) translateY(-1.15em) scaleY(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(var(--theta)) translateY(-1.6em) scaleY(0); opacity: 0; }
+}
+.heart-pop {
+  animation: heart-pop 0.46s cubic-bezier(0.7, 0, 0.3, 1);
+}
+.heart-burst {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.heart-ripple {
+  width: 1em;
+  height: 1em;
+  border-radius: 9999px;
+  border: 0.14em solid var(--color-red-500);
+  animation: heart-ripple 0.5s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+}
+.heart-spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.1em;
+  height: 0.34em;
+  border-radius: 0.05em;
+  animation: heart-spark 0.6s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .heart-pop {
+    animation: none;
+  }
+  .heart-burst {
+    display: none;
+  }
+}
+
+/* The heart's glyph is 18px, which a thumb misses. `--hit` is the band that a tap still counts as,
+   and the button carries the value: the band's own box (`.tap-heart`'s ::after) and the buzz label
+   both read it from there. */
+.heart-hit { --hit: -10px -15px -8px -10px; }
+
+.tap-heart::after {
+  content: '';
+  position: absolute;
+  inset: var(--hit);
+}

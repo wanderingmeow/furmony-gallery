@@ -14,12 +14,15 @@ const { listing, taps } = vi.hoisted(() => ({
     totalPrice: 27800,
     adoptPicture: 'https://bucket.cos.ap-guangzhou.myqcloud.com/cover-42.png',
   } as AdoptListing,
-  taps: { count: 0 },
+  taps: { count: 0, saved: false },
 }))
 
 vi.mock('../../stores/wishlistStore', () => ({
-  isWishlisted: () => false,
-  toggleWishlist: () => { taps.count += 1 },
+  isWishlisted: () => taps.saved,
+  toggleWishlist: () => {
+    taps.count += 1
+    taps.saved = !taps.saved
+  },
 }))
 vi.mock('../../stores/displayStore', () => ({
   priceMode: () => 'once',
@@ -51,6 +54,7 @@ afterEach(() => {
   host?.remove()
   dispose = undefined
   taps.count = 0
+  taps.saved = false
   withSwitch(false)
 })
 
@@ -81,13 +85,19 @@ describe('ListingCard picture', () => {
 describe('ListingCard heart', () => {
   const heart = () => host.querySelector('.tap-heart')!.closest('button')!
 
-  it('the heart carries a switch, and a tap on it reaches the button', () => {
+  // The tap lands on the label over the heart's band, and that tap both reaches the heart and turns
+  // the switch that buzzes.
+  it('the heart carries a switch, and a tap on it buzzes once', () => {
     withSwitch(true)
     mount(() => <ListingCard listing={listing} width={240} />)
     const buzz = heart().querySelector<HTMLInputElement>('.haptic-switch')
     expect(buzz, 'a tap on the heart should buzz').toBeTruthy()
-    buzz!.click()
-    expect(taps.count, 'the switch lies under the tap, not in front of it').toBe(1)
+    // The buzz is the switch turning, so that is what is counted here.
+    let turns = 0
+    buzz!.addEventListener('change', () => (turns += 1))
+    heart().querySelector<HTMLElement>('.haptic-hit')!.click()
+    expect(taps.count, 'the heart saw one tap').toBe(1)
+    expect(turns, 'the label turned the switch, and that is the buzz').toBe(1)
   })
 
   it('the heart carries no switch where the engine has none', () => {

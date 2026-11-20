@@ -1,8 +1,8 @@
-// These tests cover when the burst plays: on the way into the wishlist, and not on the way out,
-// not on a mount that is already saved, and not in a copy that nobody pressed.
+// These tests cover when the burst plays: one rise of `savedHere` is one burst, and nothing else
+// moves it - not a mount that is already saved, not a save made elsewhere, not an unsave.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from 'solid-js/web'
 import { createSignal, type JSX } from 'solid-js'
+import { render } from 'solid-js/web'
 import { WishlistHeart } from './WishlistHeart'
 
 let disposeApp: () => void
@@ -15,12 +15,6 @@ function mount(view: () => JSX.Element): void {
 }
 
 const sparks = () => host.querySelectorAll('.heart-spark')
-
-// The copy whose button was pressed is the one that plays, so a test that expects a burst presses
-// first.
-const press = () => {
-  host.querySelector('span')?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }))
-}
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -36,16 +30,17 @@ afterEach(() => {
 
 describe('WishlistHeart', () => {
   it('shows a filled heart and no burst for a listing already saved', () => {
-    mount(() => <WishlistHeart on />)
+    mount(() => <WishlistHeart on savedHere={0} />)
     expect(sparks()).toHaveLength(0)
     expect(host.querySelector('.heart-pop')).toBeNull()
   })
 
-  it('plays when the listing enters the wishlist, then leaves the tree', () => {
+  it('plays on a save, then leaves the tree', () => {
     const [saved, setSaved] = createSignal(false)
-    mount(() => <WishlistHeart on={saved()} />)
-    press()
+    const [savedHere, setSavedHere] = createSignal(0)
+    mount(() => <WishlistHeart on={saved()} savedHere={savedHere()} />)
     setSaved(true)
+    setSavedHere(1)
     expect(sparks()).toHaveLength(6)
     expect(host.querySelector('.heart-pop')).not.toBeNull()
     vi.advanceTimersByTime(620)
@@ -53,26 +48,33 @@ describe('WishlistHeart', () => {
     expect(host.querySelector('.heart-pop')).toBeNull()
   })
 
+  it('plays again for the next save', () => {
+    const [savedHere, setSavedHere] = createSignal(0)
+    mount(() => <WishlistHeart on savedHere={savedHere()} />)
+    setSavedHere(1)
+    vi.advanceTimersByTime(620)
+    setSavedHere(2)
+    expect(sparks()).toHaveLength(6)
+  })
+
   it('stays quiet when the listing leaves the wishlist', () => {
     const [saved, setSaved] = createSignal(true)
-    mount(() => <WishlistHeart on={saved()} />)
-    press()
+    mount(() => <WishlistHeart on={saved()} savedHere={1} />)
     setSaved(false)
     expect(sparks()).toHaveLength(0)
   })
 
   it('stays quiet when the listing is saved somewhere else', () => {
     const [saved, setSaved] = createSignal(false)
-    mount(() => <WishlistHeart on={saved()} />)
+    mount(() => <WishlistHeart on={saved()} savedHere={0} />)
     setSaved(true)
     expect(sparks()).toHaveLength(0)
   })
 
   it('sizes the burst by the heart, not by the row around it', () => {
-    const [saved, setSaved] = createSignal(false)
-    mount(() => <WishlistHeart on={saved()} size={18} />)
-    press()
-    setSaved(true)
+    const [savedHere, setSavedHere] = createSignal(0)
+    mount(() => <WishlistHeart on={false} savedHere={savedHere()} size={18} />)
+    setSavedHere(1)
     expect(host.querySelector('.heart-burst')?.getAttribute('style')).toContain('font-size: 18px')
   })
 })

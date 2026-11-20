@@ -1,9 +1,10 @@
 // Tests for the scrollbar maths (scrollbar.ts). No DOM, no reactivity.
 import { describe, expect, it } from 'vitest'
-import { previewTop, scrollThumb } from './scrollbar'
+import { pointerProgress, previewTop, scrollThumb } from './scrollbar'
 
 // 1000px of content in a 400px window, so the row can scroll 600px, on a 200px track.
 // scrollThumb has no default floor, so these tests pass 24.
+const TRACK_LEFT = 1000
 const at = (scrollLeft: number, track = 200, min = 24) =>
   scrollThumb({ scrollLeft, scrollWidth: 1000, clientWidth: 400 }, track, min)
 
@@ -42,6 +43,30 @@ describe('scrollThumb', () => {
     // clamp is wrong, so comparing them proves nothing.
     expect(at(5000)).toEqual({ width: 80, offset: 120 })
     expect(at(-50)).toEqual({ width: 80, offset: 0 })
+  })
+})
+
+describe('pointerProgress', () => {
+  // The two directions have to agree, or the thumb jumps out from under the hand that grabs it.
+  it('agrees with scrollThumb about where a grab lands', () => {
+    for (const scrollLeft of [0, 150, 300, 600]) {
+      const thumb = at(scrollLeft)
+      expect(thumb, 'the row scrolls, so there is a thumb').not.toBeNull()
+      const t = thumb!
+      const clientX = TRACK_LEFT + t.offset + t.width / 2
+      const progress = pointerProgress(clientX, TRACK_LEFT, 200, t)
+      expect(progress * 600, `a grab at the middle of the thumb at ${scrollLeft}px`).toBeCloseTo(scrollLeft, 5)
+    }
+  })
+
+  it('keeps a pointer outside the track at either end', () => {
+    const thumb = { width: 80, offset: 0 }
+    expect(pointerProgress(TRACK_LEFT - 12, TRACK_LEFT, 200, thumb)).toBe(0)
+    expect(pointerProgress(TRACK_LEFT + 212, TRACK_LEFT, 200, thumb)).toBe(1)
+  })
+
+  it('has nowhere to go when the thumb is the whole track', () => {
+    expect(pointerProgress(TRACK_LEFT + 100, TRACK_LEFT, 200, { width: 200, offset: 0 })).toBe(0)
   })
 })
 

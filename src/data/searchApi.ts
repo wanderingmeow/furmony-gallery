@@ -1,20 +1,13 @@
 // src/data/searchApi.ts - the enhanced search calls: one for a sentence, one for a picture.
 // Failures resolve to null rather than throwing, so the local search keeps working alone.
 import { worthAsking } from '../model/queryRoute'
+import { decodeSetting } from './encodedSetting'
 
-// Set at build time. Missing means the feature is off, not broken.
+// Set at build time. With no address, `searchConfigured` is false and the panel leaves the feature
+// out.
 const ENCODED = String(import.meta.env.VITE_SEARCH_URL_B64 ?? '')
 
-function decode(value: string): string {
-  try {
-    // A truncated or mistyped value must mean "not configured", not a broken fetch.
-    return atob(value.trim())
-  } catch {
-    return ''
-  }
-}
-
-export const SEARCH_ENDPOINT = decode(ENCODED).replace(/\/+$/, '')
+export const SEARCH_ENDPOINT = decodeSetting(ENCODED).replace(/\/+$/, '')
 
 // The two paths, written down once: the build is handed the sentence one.
 const PATH = { text: '/search', image: '/search-image' } as const

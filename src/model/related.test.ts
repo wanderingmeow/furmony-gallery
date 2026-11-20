@@ -2,7 +2,7 @@
 // All ids below are FAKE.
 import { describe, expect, it } from 'vitest'
 import type { AdoptListing } from './types'
-import { EMPTY_TABLE, MIN_RELATED, parseRelated, relatedIds, resolveRelated } from './related'
+import { EMPTY_TABLE, parseRelated, relatedIds, resolveRelated } from './related'
 
 function fake(adoptId: number, paintersId = 11): AdoptListing {
   return { adoptId, paintersId, productId: 0 }
@@ -62,8 +62,7 @@ describe('resolveRelated', () => {
     expect(resolveRelated([1, 2], [])).toEqual([])
   })
 
-  it('hides the strip below the threshold but shows it at it', () => {
-    expect(resolveRelated([10, 11, 12], listings).length).toBeGreaterThanOrEqual(MIN_RELATED)
-    expect(resolveRelated([10, 99, 98], listings).length).toBeLessThan(MIN_RELATED)
+  it('keeps the ids that name a live listing and drops the rest', () => {
+    expect(resolveRelated([10, 99, 98], listings).map((l) => l.adoptId)).toEqual([10])
   })
 })

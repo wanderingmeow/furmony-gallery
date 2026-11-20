@@ -3,14 +3,13 @@ import { Show } from 'solid-js'
 import { BOX, type Shape } from '../../draw/layout'
 import type { AdoptListing } from '../../model/types'
 import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
-import { isWishlisted, toggleWishlist } from '../../stores/wishlistStore'
+import { isWishlisted } from '../../stores/wishlistStore'
 import { socials } from '../../stores/socialsStore'
 import { XOutlined, BilibiliOutlined, TikTokOutlined, LinkOutlined, ExportOutlined } from '@ant-design/icons-svg'
 import { isLocked } from '../../model/domain'
 import { PLATFORM_ORDER, buildUrl, displayValue, type PlatformKey } from '../../data/socials'
 import { AntIcon } from '../ui/AntIcon'
-import { useHaptic } from '../ui/useHaptic'
-import { WishlistHeart } from '../ui/WishlistHeart'
+import { WishlistButton } from '../ui/WishlistButton'
 import { XiaohongshuIcon } from '../ui/XiaohongshuIcon'
 
 // platform brand meta for the chips: rounded-square icon + brand color + label (outlined
@@ -59,10 +58,14 @@ function SocialChips(props: { item: AdoptListing }) {
               rel="noopener noreferrer"
               title={c.value}
               aria-label={c.meta.label()}
-              class="inline-flex items-center justify-center w-9 h-9 rounded-md text-white"
-              style={{ background: c.meta.color }}
+              class="press-host inline-flex"
             >
-              {Custom ? <Custom size={18} /> : <AntIcon icon={c.meta.icon} size={18} />}
+              <span
+                class="press-face inline-flex items-center justify-center w-9 h-9 rounded-lg text-white"
+                style={{ background: c.meta.color }}
+              >
+                {Custom ? <Custom size={18} /> : <AntIcon icon={c.meta.icon} size={18} />}
+              </span>
             </a>
           )
         })}
@@ -77,25 +80,20 @@ export function DetailToolbar(props: { item: AdoptListing; shape: Shape }) {
   const wishlisted = () => isWishlisted(props.item.adoptId)
   return (
     <div class={`border-t border-border bg-canvas pt-3 ${BOX[props.shape].barPad}`}>
-      <div class="flex items-center gap-4">
-        <button
-          // relative: the switch that buzzes spreads over the nearest positioned box, which has to
-          // be this button.
-          ref={(el) => useHaptic(el, wishlisted)}
-          class="relative flex touch-manipulation items-center gap-1.5 h-9 px-3 rounded-lg text-sm"
-          classList={{
+      <div class="no-pick flex items-center gap-4">
+        <WishlistButton
+          item={props.item}
+          size={18}
+          heartClass={wishlisted() ? 'text-red-500' : 'text-muted'}
+          class="press-host"
+          faceClass="gap-1.5 h-9 px-3 rounded-lg text-sm"
+          faceList={{
             'bg-red-500/15 text-red-600 dark:bg-red-500/25': wishlisted(),
             'bg-surface text-ink': !wishlisted(),
           }}
-          onClick={() => toggleWishlist(props.item)}
         >
-          <WishlistHeart
-            on={wishlisted()}
-            size={18}
-            class={wishlisted() ? 'text-red-500' : 'text-muted'}
-          />
           <span>{wishlisted() ? tr('card.wished') : tr('card.wish')}</span>
-        </button>
+        </WishlistButton>
         <Show when={isLocked(props.item)}>
           <SocialChips item={props.item} />
         </Show>
@@ -104,10 +102,12 @@ export function DetailToolbar(props: { item: AdoptListing; shape: Shape }) {
           href={`https://www.furmony.com/product/detail?id=${props.item.adoptId}&type=LYWT`}
           target="_blank"
           rel="noopener noreferrer"
-          class="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-accent text-white text-sm font-semibold"
+          class="press-host"
         >
-          {tr('detail.goOfficial')}
-          <AntIcon icon={ExportOutlined} size={14} />
+          <span class="press-face flex items-center gap-1.5 h-9 px-4 rounded-lg bg-accent text-white text-sm font-semibold">
+            {tr('detail.goOfficial')}
+            <AntIcon icon={ExportOutlined} size={14} />
+          </span>
         </a>
       </div>
     </div>

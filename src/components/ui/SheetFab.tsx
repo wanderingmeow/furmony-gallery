@@ -12,7 +12,7 @@ import { SHEET_FAB_BOX } from './boxes'
 export function SheetFab(props: { label: string; onClick: () => void; children: JSX.Element }) {
   return (
     <button
-      class={`${SHEET_FAB_BOX} touch-none rounded-full glass sheet-fab flex items-center justify-center border border-border`}
+      class={`${SHEET_FAB_BOX} press-fab touch-none rounded-full glass sheet-fab flex items-center justify-center border border-border`}
       onClick={props.onClick}
       aria-label={props.label}
       title={props.label}

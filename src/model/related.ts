@@ -17,8 +17,6 @@ export interface RelatedTable {
 /** Before the first fetch lands, and after a malformed one. */
 export const EMPTY_TABLE: RelatedTable = { topN: 0, neighbors: new Map() }
 
-/** Below this many live neighbors the strip looks broken rather than empty, so we hide it. */
-export const MIN_RELATED = 3
 
 /** Parse `public/related.json`. Anything malformed degrades to an empty table → no strip. */
 export function parseRelated(data: unknown): RelatedTable {

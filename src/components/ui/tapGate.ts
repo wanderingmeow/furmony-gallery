@@ -21,8 +21,8 @@ export type TapPointer = {
 /** How long a press still counts as a tap. Past it the reader is holding, not tapping. */
 const TAP_MS = 400
 
-/** How far a finger may drift while it is down. A pan moves the picture by more than this. */
-const TAP_SLOP = 10
+/** How far a finger may drift while it is down. A pan moves by more than this. */
+export const TAP_SLOP = 10
 
 /** The browser sends a click for a tap after the release. On Android WebView the gap was 5 ms.
  *  This window leaves room for engines that send the click later. */
