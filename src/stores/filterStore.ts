@@ -59,6 +59,10 @@ export function setSelectedRaces(v: Set<string>): void {
   batch(() => { setSelectedRacesSignal(v); persistFilters(); notify('races') })
 }
 export function setSearchText(v: string): void {
+  // The same query is not a change, so it does not reset the list's scroll. Closing the box writes
+  // the empty string whether or not there was a query, and an empty box that reports a change would
+  // throw the reader back to the top of a list that stayed the same.
+  if (searchText() === v) return
   batch(() => { setSearchTextSignal(v); persistFilters(); notify('search') })
 }
 // The owner-account switch. `socialFilterOn` in the derived store decides whether it may run.
