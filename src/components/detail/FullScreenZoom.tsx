@@ -6,12 +6,17 @@ import { onImageError, preloadImage } from '../../data/image'
 import { AntIcon } from '../ui/AntIcon'
 import { watchTaps } from '../ui/tapGate'
 
-/** The three controls over the picture share one look: the circle appears when the pointer
- *  arrives and brightens under the finger. Tailwind v4 gives a button the default cursor, so
- *  `ENABLED` sets the hand. `DISABLED` is the flat look for a control at its zoom limit. */
+/** The three controls over the picture share one look. Tailwind gives a button the default cursor,
+ *  so `ENABLED` names the hand and `DISABLED` the flat look of a control at its zoom limit. */
 const CONTROL = 'flex items-center justify-center text-white transition-colors backdrop-blur-lg'
 const ENABLED = 'cursor-pointer bg-black/40 hover:bg-white/15 active:bg-white/25'
 const DISABLED = 'bg-black/20 text-white/40 cursor-not-allowed'
+
+/** Paint `show` once `pic` has pixels to paint. A layer with none is transparent, so an engine
+ *  without `decode` shows the picture underneath for a frame or two rather than a blank box. */
+function revealWhenDecoded(pic: HTMLImageElement, show: () => void): void {
+  pic.decode?.().then(show, () => {}) ?? show()
+}
 
 export function FullScreenZoom(props: {
   imageUrl: string; fullUrl: string; count: number; index: () => number; onClose: () => void
@@ -25,31 +30,18 @@ export function FullScreenZoom(props: {
   const atMax = () => scale() >= MAX_SCALE - 0.01
   const atMin = () => scale() <= MIN_SCALE + 0.01
 
-  /**
-   * The whole picture is downloaded in the background, then put over the one on screen.
-   *
-   * The swap is instant, and a sudden change in sharpness is fine: the view must not move.
-   * Panzoom drives the wrapper that holds both layers, so a reader who has panned or zoomed to 3x
-   * sees the new pixels land on the old ones. Both layers are the same box with the same aspect
-   * ratio, because shrinking a picture keeps its shape. The new layer goes on top and the first
-   * keeps its own src, so when the whole picture never arrives the resized one stays.
-   */
+  // The full picture, laid over the thumbnail once it is ready to paint. The thumbnail keeps its
+  // own src, so a whole picture that never arrives costs nothing.
   const [sharp, setSharp] = createSignal(false)
 
+  // Panzoom drives the wrapper that holds both layers, so a reader panned to 3x sees the new pixels
+  // land on the old ones: the swap moves nothing.
   createEffect(on([() => props.fullUrl, () => props.imageUrl], ([url, thumb]) => {
     setSharp(false)
     if (!url || url === thumb) return
     const job = preloadImage(url)
     onCleanup(job.cancel)
-    void job.ready.then((pic) => {
-      const show = () => setSharp(true)
-      // Decoding a whole picture can take long enough for the reader to see it. Waiting for the
-      // decode here moves that wait into the gap between frames; not waiting leaves it in the swap
-      // frame, and that frame stutters. Skipping the wait is safe: a layer with no pixels yet is
-      // transparent, and the resized picture sits underneath, so a browser without decode shows the
-      // sharp picture a frame or two later.
-      pic.decode?.().then(show, () => {}) ?? show()
-    })
+    void job.ready.then((pic) => revealWhenDecoded(pic, () => setSharp(true)))
   }))
 
   createEffect(on(() => props.imageUrl, (url) => {
@@ -78,7 +70,7 @@ export function FullScreenZoom(props: {
     })
   }))
 
-  // One tap on the picture closes the viewer. The buttons are outside the stage, so anything
+    // One tap on the picture closes the viewer. The controls stand outside the stage, so anything
   // inside it is the picture.
   onCleanup(watchTaps({
     owns: (target) => target === container || stage.contains(target as Node),
@@ -114,9 +106,9 @@ export function FullScreenZoom(props: {
         </Show>
       </div>
 
-      {/* close */}
       <button
-        class={`${CONTROL} ${ENABLED} absolute top-4 left-4 w-11 h-11 rounded-full`}
+        class={`${CONTROL} ${ENABLED} absolute w-11 h-11 rounded-full
+        top-[calc(1rem+var(--safe-top))] left-[calc(1rem+var(--safe-left))]`}
         onClick={props.onClose}
         aria-label={tr('zoom.close')}
         title={tr('zoom.close')}
@@ -124,8 +116,8 @@ export function FullScreenZoom(props: {
         <AntIcon icon={CloseOutlined} size={22} />
       </button>
 
-      {/* zoom controls — bottom-right; blackened when the zoom limit is reached */}
-      <div class="absolute bottom-6 right-6 flex flex-col gap-2">
+      <div class="absolute flex flex-col gap-2 bottom-[calc(1.5rem+var(--safe-bottom))]
+        right-[calc(1.5rem+var(--safe-right))]">
         <button
           class={`${CONTROL} w-9 h-9 rounded ${atMax() ? DISABLED : ENABLED}`}
           disabled={atMax()}
@@ -146,9 +138,9 @@ export function FullScreenZoom(props: {
         </button>
       </div>
 
-      {/* page indicator — centered */}
       <Show when={props.count > 1}>
-        <span class="pointer-events-none backdrop-blur-lg absolute bottom-6 left-1/2 -translate-x-1/2 px-2 py-1 rounded bg-black/50 text-white text-xs">
+        <span class="pointer-events-none backdrop-blur-lg absolute left-1/2 -translate-x-1/2 px-2 py-1
+          rounded bg-black/50 text-white text-xs bottom-[calc(1.5rem+var(--safe-bottom))]">
           {props.index() + 1} / {props.count}
         </span>
       </Show>

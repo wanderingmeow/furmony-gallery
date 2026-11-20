@@ -32,11 +32,11 @@ export function DetailBody(props: {
   setIndex: (i: number) => void
   onOpenFull: () => void
 }) {
-  const { viewportW, viewportH } = watchViewport()
+  const { viewportW, viewportH, safe } = watchViewport()
   const shape = (): Shape => shapeAt(viewportW(), viewportH())
   const panel = () => shape() === 'panel'
   const box = () => BOX[shape()]
-  const cardBox = () => sheetCardBox(viewportW(), viewportH())
+  const cardBox = () => sheetCardBox(viewportW(), viewportH(), safe())
   const picMaxH = () => detailPictureHeight(cardBox(), shape())
   const footerHost = useSheetFooter()
 

@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, on, onCleanup, Show, untrack, t
 import { scrollLock } from '../../draw/scrollLock'
 import { EASE, prefersReducedMotion, SHEET_MOVE_MS, ease } from '../../draw/anim'
 import { MAX_SAMPLES, flingVelocity, shouldDismiss, type Sample } from '../../draw/fling'
-import { sheetInset, shapeAt, SPREAD_MAX_W } from '../../draw/layout'
+import { CARD_BAND_PAD, cardGap, SCROLL_BAND_PAD, shapeAt, SPREAD_MAX_W } from '../../draw/layout'
 import { watchViewport } from '../ui/viewport'
 import { SheetFooterSlot } from '../ui/boxes'
 
@@ -101,8 +101,9 @@ export function Sheet(props: {
   const open = createMemo(() => props.open())
   // A landscape screen shows this as a panel in from every edge; see shapeAt.
   const { viewportW, viewportH } = watchViewport()
+  const insets = () => `${cardGap(viewportW(), viewportH())}px`
   const panel = () => shapeAt(viewportW(), viewportH()) === 'panel'
-  const inset = () => sheetInset(viewportH())
+  const inset = () => cardGap(viewportW(), viewportH())
   const moveMs = () => (panel() ? FADE_MS : SLIDE_MS)
   // The box that a screen's bottom bar travels into. Appending the node on every open moves it
   // back into the sheet, and the bar inside it moves with it.
@@ -271,7 +272,7 @@ export function Sheet(props: {
           style={
             panel()
               ? {
-                  padding: `${inset()}px`,
+                  padding: insets(),
                   opacity: `${1 - pos()}`,
                   transform: `scale(${1 - 0.03 * pos()})`,
                   transition: `opacity ${FADE_MS}ms ${EASE}, transform ${FADE_MS}ms ${EASE}`,
@@ -283,7 +284,8 @@ export function Sheet(props: {
           }
         >
           <div
-            class="sheet-card relative w-full h-full bg-canvas clip-no-scroll sm:max-w-190 sm:h-[calc(100vh-3rem)] sm:shadow-2xl flex flex-col"
+            class={`sheet-card relative w-full h-full bg-canvas clip-no-scroll flex flex-col
+              ${CARD_BAND_PAD} sm:max-w-190 sm:h-[calc(100vh-3rem)] sm:shadow-2xl`}
             style={{
               '--sheet-pull': `${pull()}`,
               // The finger sets the radius, so nothing may lag behind it. After a release the
@@ -307,7 +309,7 @@ export function Sheet(props: {
                 // rewrites scrollTop to follow them. On Safari it also undoes the scroll
                 // position we write ourselves.
                 style={{ 'overflow-anchor': 'none' }}
-                class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+                class={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden ${SCROLL_BAND_PAD}`}
               >
                 {props.children(dismiss)}
               </div>

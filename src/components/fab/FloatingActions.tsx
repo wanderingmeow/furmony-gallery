@@ -43,7 +43,8 @@ export function FloatingActions(props: { scrollTop: () => number; onTop: () => v
   })
 
   return (
-    <div class="fixed bottom-4 right-4 z-10 flex flex-col items-center gap-2">
+    <div class="fixed z-10 flex flex-col items-center gap-2
+      bottom-[calc(1rem+var(--safe-bottom))] right-[calc(1rem+var(--safe-right))]">
       <Show when={show()}>
         <FabCircle
           class="float-progress"

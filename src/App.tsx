@@ -61,7 +61,8 @@ function Shell() {
       </Sheet>
       {/* One column for both, so the notification center and the banner stack instead of
           overlapping. */}
-      <div class="fixed top-3 right-4 z-50 flex flex-col items-end gap-2">
+      <div class="fixed z-50 flex flex-col items-end gap-2 top-[calc(0.75rem+var(--safe-top))]
+        right-[calc(1rem+var(--safe-right))]">
         <NotificationCenter />
           <Show when={loadError()}>
             {(error) => (

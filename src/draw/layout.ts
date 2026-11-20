@@ -108,14 +108,38 @@ export function sheetInset(viewportH: number): number {
 
 export type CardBox = { w: number; h: number }
 
-/** The box the card takes, the way its classes draw it: the window, standing 24 in from every edge
- *  from SM up (sm:px-6, sm:py-6) and never wider than 760 (sm:max-w-190). A panel swaps that gap for
- *  sheetInset and that width for SPREAD_MAX_W.
+/** The bands at the sides of the screen, as the padding that keeps a card's content out of them. The
+ *  card paints these itself; the bottom band belongs to the scroller below. */
+export const CARD_BAND_PAD = 'pl-[var(--safe-left)] pr-[var(--safe-right)]'
+
+/** The band at the bottom of the screen, as the padding of whatever scrolls: content runs on to the
+ *  edge, and this is what lets the last row be scrolled clear of it. */
+export const SCROLL_BAND_PAD = 'pb-[var(--safe-bottom)] scroll-pb-[var(--safe-bottom)]'
+
+/** The bands the screen itself takes at its four edges, in px. */
+export type Insets = { top: number; right: number; bottom: number; left: number }
+
+const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 }
+
+/** The gap the card keeps at every edge of the window. The page behind it shows through here, which
+ *  is what makes a panel read as a card on the page rather than a takeover, so it grows with the
+ *  height there is to spare.
  */
-export function sheetCardBox(viewportW: number, viewportH: number): CardBox {
+export function cardGap(viewportW: number, viewportH: number): number {
+  if (shapeAt(viewportW, viewportH) !== 'panel') return viewportW >= SM ? 24 : 0
+  return sheetInset(viewportH)
+}
+
+/** The room the card has left for its own content: the window less `cardGap`, less the bands it pads
+ *  away, never wider than 760 in a sheet or SPREAD_MAX_W in a panel.
+ */
+export function sheetCardBox(viewportW: number, viewportH: number, safe: Insets = NO_INSETS): CardBox {
   const panel = shapeAt(viewportW, viewportH) === 'panel'
-  const edge = panel ? sheetInset(viewportH) : viewportW >= SM ? 24 : 0
-  return { w: Math.min(viewportW - 2 * edge, panel ? SPREAD_MAX_W : 760), h: viewportH - 2 * edge }
+  const gap = cardGap(viewportW, viewportH)
+  return {
+    w: Math.min(viewportW - 2 * gap - safe.left - safe.right, panel ? SPREAD_MAX_W : 760),
+    h: viewportH - 2 * gap - safe.bottom,
+  }
 }
 
 /** The detail's box model, one row per shape, so the whole of it is read in one place: who pads the
@@ -123,15 +147,22 @@ export function sheetCardBox(viewportW: number, viewportH: number): CardBox {
 export const BOX: Record<Shape, {
   bodyPad: string
   colPad: string
+  /** A sheet's bar stands outside the scroller, so it keeps the bottom band itself. */
   barPad: string
   stripBleed: number
 }> = {
   // The body pads all four sides, so the strip and the bar pay that side padding back to reach the
   // card's edge.
-  sheet: { bodyPad: 'pt-16 pb-4', colPad: '', barPad: 'px-4', stripBleed: DETAIL_PAD_X },
+  sheet: {
+    bodyPad: 'pt-16 pb-4', colPad: '', stripBleed: DETAIL_PAD_X,
+    barPad: 'px-4 pb-[max(0.75rem,var(--safe-bottom))]',
+  },
   // The body pads the sides only, and both columns carry the same top and bottom, which keeps them
   // level when the panel opens.
-  panel: { bodyPad: '', colPad: 'pt-16 pb-4', barPad: '', stripBleed: 0 },
+  panel: {
+    bodyPad: '', colPad: 'pt-16 pb-4', stripBleed: 0,
+    barPad: 'pb-3',
+  },
 }
 
 // The parts of the first screen that never move. 64 of clearance above the art and 16 under it cost

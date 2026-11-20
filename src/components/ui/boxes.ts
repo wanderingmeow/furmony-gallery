@@ -15,13 +15,15 @@ export const CARD_NAME = 'flex items-center gap-1.5'
 export const CARD_FOOT = 'flex min-h-5 items-center gap-1.5'
 
 export const BAR_BANNER = `glass relative z-40 px-3 py-3 rounded-xl border border-black/10
-  shadow-sm dark:shadow-md mx-4 mt-3`
+  shadow-sm dark:shadow-md ml-[calc(1rem+var(--safe-left))]
+  mr-[calc(1rem+var(--safe-right))] mt-[calc(0.75rem+var(--safe-top))]`
 export const BAR_ROW = 'flex items-center gap-2'
 export const BAR_TABS = 'mt-2'
 export const SORT_BTN = 'h-8 rounded-lg'
 export const TABS_ROW = 'flex items-center gap-1.5'
 
-export const SHEET_FAB_ROW = 'absolute top-4 left-4 z-20 flex items-center gap-2'
+export const SHEET_FAB_ROW = `absolute z-20 flex items-center gap-2
+  top-[calc(1rem+var(--safe-top))] left-[calc(1rem+var(--safe-left))]`
 
 /** The art block, the same height wherever it appears: the sheet skeleton, the gallery skeleton,
  *  and the box that stands in for a listing with no art. */
@@ -35,7 +37,8 @@ export const DETAIL_THUMB = 'w-15 h-15 shrink-0 rounded-md'
 
 // StatsHeader, SheetFab, and SheetSkeleton share these, so the skeleton cannot land a few pixels
 // away from where the real header arrives.
-export const SHEET_HEADER_ROW = 'flex items-center gap-4 p-4 bg-canvas'
+export const SHEET_HEADER_ROW = `flex items-center gap-4 px-4 pb-4 bg-canvas
+  pt-[calc(1rem+var(--safe-top))]`
 export const SHEET_FAB_BOX = 'w-11 h-11'
 export const SHEET_TITLE = 'text-lg font-semibold text-ink'
 

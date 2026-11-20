@@ -76,7 +76,7 @@ function SocialChips(props: { item: AdoptListing }) {
 export function DetailToolbar(props: { item: AdoptListing; shape: Shape }) {
   const wishlisted = () => isWishlisted(props.item.adoptId)
   return (
-    <div class={`border-t border-border bg-canvas py-3 ${BOX[props.shape].barPad}`}>
+    <div class={`border-t border-border bg-canvas pt-3 ${BOX[props.shape].barPad}`}>
       <div class="flex items-center gap-4">
         <button
           // relative: the switch that buzzes spreads over the nearest positioned box, which has to

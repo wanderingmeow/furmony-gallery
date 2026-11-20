@@ -8,11 +8,15 @@ import { Waterfall } from '../components/cards/Waterfall'
 import { WaterfallSkeleton } from '../components/cards/WaterfallSkeleton'
 import { skeletonForced, skeletonOverlay } from '../components/ui/skeletonView'
 import { BAR_BOTTOM } from '../draw/layout'
+import { watchViewport } from '../components/ui/viewport'
 
 export function Home() {
   const navigate = useNavigate()
 
-  const topOffset = () => BAR_BOTTOM
+  const { safe } = watchViewport()
+  // The bar stands down from the band at the top of the screen, and the list reserves the
+  // same room it has moved by.
+  const topOffset = () => BAR_BOTTOM + safe().top
 
   // Opening a card adds one history entry, so the back button pops it. Filters and scroll state
   // live in the store, so the URL carries nothing and the history stack stays short.

@@ -11,10 +11,10 @@ import { watchViewport } from '../ui/viewport'
  * placeholders stood and the page does not jump.
  */
 export function WaterfallSkeleton(props: { topOffset: () => number }) {
-  const { viewportW, viewportH } = watchViewport()
+  const { viewportH, frameW } = watchViewport()
 
-  const cols = createMemo(() => waterfallCols(viewportW()))
-  const cardWidth = createMemo(() => waterfallCardWidth(viewportW(), cols()))
+  const cols = createMemo(() => waterfallCols(frameW()))
+  const cardWidth = createMemo(() => waterfallCardWidth(frameW(), cols()))
   const rowHeight = createMemo(() => waterfallRowHeight(cardWidth()))
   const topPad = createMemo(() => props.topOffset() + VIEW_PAD)
   const rows = createMemo(() => skeletonRows(viewportH(), topPad(), rowHeight()))
@@ -27,8 +27,8 @@ export function WaterfallSkeleton(props: { topOffset: () => number }) {
       style={{
         height: `${Math.min(topPad() + rows() * rowHeight() + VIEW_PAD, viewportH())}px`,
         'padding-top': `${topPad()}px`,
-        'padding-right': `${VIEW_PAD}px`,
-        'padding-left': `${VIEW_PAD}px`,
+        'padding-right': `calc(${VIEW_PAD}px + var(--safe-right))`,
+        'padding-left': `calc(${VIEW_PAD}px + var(--safe-left))`,
       }}
     >
       <div

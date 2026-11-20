@@ -25,12 +25,12 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   // The list scrolls the document (html/body), not an inner div: tapping the iOS status bar
   // and pressing Home on a desktop both act on the document's main scrollable. So these signals
   // follow the window.
-  const { viewportW, viewportH } = watchViewport()
+  const { viewportH, frameW } = watchViewport()
   const [scrollTop, setScrollTop] = createSignal(window.scrollY)
 
   const items = filteredListings
-  const cols = createMemo(() => waterfallCols(viewportW()))
-  const cardWidth = createMemo(() => waterfallCardWidth(viewportW(), cols()))
+  const cols = createMemo(() => waterfallCols(frameW()))
+  const cardWidth = createMemo(() => waterfallCardWidth(frameW(), cols()))
   const rowHeight = createMemo(() => waterfallRowHeight(cardWidth()))
   const rowCount = createMemo(() => Math.ceil(items().length / cols()))
   // The toolbar floats above the content, so the top reserves its height plus the card
@@ -117,7 +117,8 @@ export function Waterfall(props: { onOpen: (id: number) => void; topOffset: () =
   return (
     <>
       {/* Normal document flow, for the reason stated above. */}
-      <div class="relative w-full" style={{ height: `${contentHeight()}px`, 'padding-top': `${topPad()}px`, 'padding-right': `${VIEW_PAD}px`, 'padding-left': `${VIEW_PAD}px` }}>
+      <div class="relative w-full" style={{ height: `${contentHeight()}px`, 'padding-top': `${topPad()}px`, 'padding-right': `calc(${VIEW_PAD}px + var(--safe-right))`,
+        'padding-left': `calc(${VIEW_PAD}px + var(--safe-left))` }}>
         <div
           class="virtual-content"
           style={{
