@@ -187,8 +187,6 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
               color={RACE_GREEN}
               showTicks={false}
               showAllLabels
-              rotate={45}
-              axisSize={48}
               onHover={setRaceHover}
             />
           </Show>

@@ -5,7 +5,7 @@
 import { tr } from '../i18n'
 import type { AdoptListing } from './types'
 import {
-  colorDisplay, colorNames, displayPrice, isLocked, publishDate, raceDisplay,
+  colorDisplay, colorNames, countedRaceDisplay, displayPrice, isLocked, publishDate,
 } from './domain'
 
 export type LockFilter = 'all' | 'locked' | 'unlocked'
@@ -136,7 +136,7 @@ export function colorCounts(listings: AdoptListing[]): StatEntry[] {
 export function raceCounts(listings: AdoptListing[]): StatEntry[] {
   const counts = new Map<string, number>()
   for (const l of listings) {
-    const name = raceDisplay(l) ?? tr('stats.mysteryRace')
+    const name = countedRaceDisplay(l)
     counts.set(name, (counts.get(name) ?? 0) + 1)
   }
   return toSortedEntries(counts)

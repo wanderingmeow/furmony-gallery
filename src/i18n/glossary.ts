@@ -61,6 +61,30 @@ export const COLORS: Record<string, Term> = {
   青: { zh: '青', zh_tw: '青', ja: '水色', en: 'Cyan' },
 }
 
+/** The order the 颜色 block lists colors in: around the wheel from red, then the neutrals, so the
+ *  neighbor of the color a reader is hunting sits beside it. */
+export const COLOR_ORDER = ['红', '粉', '橙', '棕', '褐', '黄', '绿', '青', '蓝', '紫', '灰', '黑', '白']
+
+/** The order the 物种 block lists species in: packs that read as neighbors - the dog family, the cat
+ *  family, the other mammals, the small ones and the wild things, then dragons and myth. */
+export const RACE_ORDER = [
+  '狼', '犬', '狗', '狐狸', '龙犬',
+  '猫', '虎', '狮', '豹',
+  '熊', '兔', '鹿', '羊', '蝙蝠',
+  '鸟', '蛇', '鱼', '昆虫', '植物',
+  '龙', '东方龙', '神兽', '神话', '神', '神秘生物', '兵器',
+]
+
+/** Put words in one of those two orders. A name neither list has, such as a species the API starts
+ *  sending before we have a word for it, goes to the end of the block. */
+export const inOrder = (order: readonly string[]) => (a: string, b: string): number => {
+  const rank = (w: string) => {
+    const i = order.indexOf(w)
+    return i < 0 ? order.length : i
+  }
+  return rank(a) - rank(b) || a.localeCompare(b)
+}
+
 /** The word for a term in the language on screen. A word we do not have stays as the API wrote it. */
 export function termLabel(term: Term | undefined, asWritten: string): string {
   if (!term) return asWritten
@@ -82,6 +106,12 @@ for (const id of Object.keys(RACES)) RACE_ID_BY_NAME[RACES[Number(id)].zh] = Num
 
 export const raceLabelByName = (asWritten: string): string =>
   termLabel(RACES[raceIdOfName(asWritten) ?? -1], asWritten)
+
+/** The species a listing with no `raceId` is counted as: 神秘生物. The chart bars and the 物种 filter
+ *  both hand those rows to this species, although their cards show no species tag. */
+export const MYSTERY_RACE_ID = 26
+export const MYSTERY_RACE_NAME = RACES[MYSTERY_RACE_ID].zh
+export const mysteryRaceLabel = (): string => RACES[MYSTERY_RACE_ID][locale()]
 
 const owns = (table: Record<string, unknown>, name: string): boolean =>
   Object.prototype.hasOwnProperty.call(table, name)

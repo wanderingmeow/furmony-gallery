@@ -1,5 +1,6 @@
 // Vitest setup: provide IndexedDB (fake-indexeddb) + a guaranteed global localStorage.
 import 'fake-indexeddb/auto'
+import { beforeEach, vi } from 'vitest'
 
 // The suite quotes the app in 简体中文, the language the dictionaries are written in. 重置 hands the
 // language back to whatever the browser asked for, so this file has to give the browser one, and
@@ -16,6 +17,14 @@ setLocale('zh')
 export function settled(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
+
+const offTheNetwork = () =>
+  vi.stubGlobal('fetch', (url: unknown) =>
+    Promise.reject(new Error(`a test asked the network for ${String(url)}`)))
+
+// A request still standing when a test ends shows up as a happy-dom abort error, so no test is left
+// one. Re-installed each time because a test that restores its own stub clears this one too.
+beforeEach(offTheNetwork)
 
 // happy-dom only exposes localStorage when run with --localstorage-file; provide a
 // simple in-memory shim so the cache layer's localStorage migration is testable.

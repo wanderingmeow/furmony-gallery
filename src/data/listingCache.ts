@@ -1,7 +1,7 @@
 // src/data/listingCache.ts - the IndexedDB cache for listings.
 //
 // The `listings` store holds one row per adoptId, plus two records: `order` with the adoptIds in
-// display order, which is the order the API sent, and `lang` with the code the shelf was asked in.
+// display order, which is the order the API sent, and `lang` with the code the API was asked in.
 //
 // Opening the database and running transactions lives in idb.ts. Fetching from the API lives
 // in api.ts.
@@ -40,7 +40,7 @@ export async function readCache(): Promise<Cache | null> {
 /**
  * The saved rows, when they were answered in `lang`.
  *
- * The shelf writes names and descriptions in the language the request asked for, so a cache kept in
+ * The API writes names and descriptions in the language the request asked for, so a cache kept in
  * another language holds the wrong words. A cache that carries no language is treated the same way,
  * and the next save fills it in.
  */
@@ -81,10 +81,10 @@ function fingerprint(value: unknown): string {
   return value === undefined ? 'null' : JSON.stringify(value)
 }
 
-/** The fields the shelf answers in the language the request asked for. */
+/** The fields the API answers in the language the request asked for. */
 const TRANSLATED = ['adoptName', 'detailDescription']
 
-/** The row as the shelf would answer it in any language: the picture, the money, the sizes. Two
+/** The row as the API would answer it in any language: the picture, the money, the sizes. Two
  *  rows that share this hold everything a card draws besides words. */
 function untranslated(row: AdoptListing): AdoptListing {
   const rest: Record<string, unknown> = { ...row }
@@ -101,14 +101,19 @@ function untranslated(row: AdoptListing): AdoptListing {
 /**
  * Put the new rows in display order, and reuse an old row object whenever the new row holds the
  * same picture, the same money and the same sizes. A card is rebuilt when its row object changes,
- * and a rebuilt card reloads its picture, so this function copies the words the shelf translated
+ * and a rebuilt card reloads its picture, so this function copies the words the load translated
  * into the old object and keeps the object itself.
+ *
+ * `stillCurrent` gates every write below: a load the page no longer waits on touches neither the
+ * rows on screen nor the saved copy.
  */
 export async function mergeListings(
   old: AdoptListing[],
   newRows: AdoptListing[],
   lang: string,
+  stillCurrent: () => boolean = () => true,
 ): Promise<{ updated: AdoptListing[]; changed: boolean }> {
+  if (!stillCurrent()) return { updated: old, changed: false }
   const shape = (l: AdoptListing): string => fingerprint(untranslated(l))
   const byId = new Map(old.map((l) => [l.adoptId, { row: l, print: fingerprint(l), shape: shape(l) }]))
   let wordsMoved = false

@@ -301,11 +301,11 @@ function ResetRow() {
   )
 }
 
-// The panel the corner button opens. It does the scrolling and owns the padding, so the blocks run
-// to the glass edge and `FabMenu` only has to draw the box.
+// The panel the corner button opens. It owns the padding and the scrolling, so the blocks run to the
+// glass edge and `FabMenu` only has to draw the box.
 export function FilterPanel() {
   return (
-    <div class="no-pick min-h-0 overflow-y-auto p-2">
+    <div class="no-pick min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
       <SortBlock />
       <Section
         title={tr('filter.colors')}

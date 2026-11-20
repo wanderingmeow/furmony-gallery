@@ -53,8 +53,22 @@ describe('compute - color & race filters', () => {
     expect(ids(compute({ rows, tab: 'all', sort: 'timeAsc', colors: new Set(['红']), races: EMPTY, query: '', wishlist: EMPTY_MAP }))).toEqual([1])
   })
 
-  it('race filter matches harmonyRace.raceName', () => {
+  it('race filter matches the species the listing belongs to', () => {
     expect(ids(compute({ rows, tab: 'all', sort: 'timeAsc', colors: EMPTY, races: new Set(['龙']), query: '', wishlist: EMPTY_MAP }))).toEqual([4])
+  })
+
+  it("race filter matches the id's species when the joined name disagrees", () => {
+    const stale = [listing(1, { raceId: 7, harmonyRace: { raceName: '神秘生物' } })]
+    expect(ids(compute({ rows: stale, tab: 'all', sort: 'timeAsc', colors: EMPTY, races: new Set(['犬']), query: '', wishlist: EMPTY_MAP }))).toEqual([1])
+  })
+
+  it('picking 神秘生物 also brings the listings nobody filed', () => {
+    const rows = [
+      listing(1, { raceId: 26 }),
+      listing(2, {}),
+      listing(3, { raceId: 2 }),
+    ]
+    expect(ids(compute({ rows, tab: 'all', sort: 'timeAsc', colors: EMPTY, races: new Set(['神秘生物']), query: '', wishlist: EMPTY_MAP }))).toEqual([1, 2])
   })
 
   it('empty color/race sets keep everything', () => {

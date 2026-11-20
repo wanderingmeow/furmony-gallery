@@ -25,11 +25,10 @@ const ON_EDGE: JSX.CSSProperties = {
 const POPUP_GAP = 8
 const POPUP_AIR = 8
 
-/** The box is the chrome and the height the screen allows, and nothing else. The panel inside owns
- *  the padding and the scrolling, so the content reaches the glass edge, and `overflow-hidden` is
- *  what keeps the rounded corner cutting what scrolls into it. */
+/** The box is the chrome and the height the screen allows. The panel inside owns the padding and
+ *  the scrolling, so the content reaches the glass edge. */
 const POPUP_BOX = `fixed z-40 glass rounded-xl shadow-xl border border-black/10
-                   overflow-hidden flex flex-col`
+                   clip-no-scroll flex flex-col`
 
 export function FabMenu(props: {
   label: string

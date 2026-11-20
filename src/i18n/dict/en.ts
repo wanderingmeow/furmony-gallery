@@ -95,6 +95,10 @@ export const en: Dict = {
     wish: 'Like',
     wished: 'Liked',
     locked: 'Locked',
+    /** Shorter than the words on the detail page, because a card leaves the price row barely 150px
+     *  wide and the tags are meant to have some of it. */
+    downPayment: 'Down',
+    monthly: 'Monthly',
   },
 
   toolbar: {
@@ -163,7 +167,6 @@ export const en: Dict = {
     monthCount: 'New listings per month',
     axisCount: 'Count',
     axisAvg: 'Average',
-    mysteryRace: 'Unknown species',
     count: (n: number) => countOf(n, 'listing'),
     times: (n: number) => countOf(n, 'time', 'times'),
     totalTimes: (n: number) => `${countOf(n, 'appearance')} in total`,
@@ -177,7 +180,7 @@ export const en: Dict = {
 
   empty: {
     fetchFailedTitle: 'The listings did not load',
-    fetchFailedAction: 'Several attempts, and the shelf still has not answered',
+    fetchFailedAction: 'Several attempts, and nothing came back',
     noSocialTitle: 'No listing with an owner account',
     noWishTitle: 'Nothing saved yet',
     pictureFailedTitle: 'No results',
@@ -215,10 +218,9 @@ export const en: Dict = {
   },
 
   money: {
-    /** The shelf's numbers are plain 人民币 integers, with no currency field on the wire, so each
-     *  language writes the money its own readers expect. The official site writes RMB too, in
-     *  its own English dictionary, and never the ¥ sign. */
-    amount: (n: number) => `RMB ${n.toLocaleString('en-US')}`,
+    /** English groups the digits by thousands and takes the ¥ 简体中文 already uses, which leaves
+     *  room on a card for the tags beside the price. */
+    amount: (n: number) => `¥${n.toLocaleString('en-US')}`,
   },
 
   brand: {
@@ -232,7 +234,7 @@ export const en: Dict = {
     loadTitle: 'Did not load',
     loadLine: 'The connection failed. Check your network settings.',
     reloadTitle: 'The refresh failed',
-    reloadLine: 'This is the last answer from the shelf.',
+    reloadLine: 'The page still shows the previous content.',
 
   },
 }

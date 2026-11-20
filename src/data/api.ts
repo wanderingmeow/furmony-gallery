@@ -18,15 +18,20 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 // Dev/tests read saved copies from agent/*.json instead of the live site. Kept at this
 // bottom layer so retrying and merging behave the same in dev as in production; the bundler
 // strips the whole branch (and the copies) from release builds.
-async function fetchPage(endpoint: Endpoint, pageSize?: number, pageNum = 1): Promise<AdoptListResponse> {
+async function fetchPage(
+  endpoint: Endpoint,
+  lang: string,
+  pageSize?: number,
+  pageNum = 1,
+  signal?: AbortSignal,
+): Promise<AdoptListResponse> {
   const url = pageUrl(endpoint, pageSize, pageNum)
 
   if (import.meta.env.DEV) {
     // The archive is kept once per language the API can answer in, so a language switch has
     // something to land on with no network in the way. The file picked is the language this
-    // request would have asked for. Chinese is the plain name, and the tests read that name too.
+    // request was asked in. Chinese is the plain name, and the tests read that name too.
     const base = endpoint === 'primary' ? 'listings_sample' : 'series_sample'
-    const lang = apiLanguage()
     const mockPath = `../../agent/${base}${lang === 'zh' ? '' : `.${lang}`}.json`
     const mockFiles = import.meta.glob<{ default: any }>([
       '../../agent/listings_sample.json',
@@ -35,10 +40,14 @@ async function fetchPage(endpoint: Endpoint, pageSize?: number, pageNum = 1): Pr
       '../../agent/series_sample.*.json',
     ])
     const loadMock = (mockFiles as Record<string, (() => Promise<{ default: unknown }>) | undefined>)[mockPath]
-    if (loadMock) return (await loadMock()).default as AdoptListResponse
+    if (loadMock) {
+      // A copy: the imported JSON is one object shared by every request, and a merge writes new
+      // words into the rows it holds.
+      return structuredClone((await loadMock()).default) as AdoptListResponse
+    }
   }
 
-  const res = await fetch(url, listRequestInit(apiLanguage()))
+  const res = await fetch(url, { ...listRequestInit(lang), signal })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data: AdoptListResponse = await res.json()
   if (data.code !== 200) throw new Error(`API code ${data.code}`)
@@ -72,29 +81,36 @@ export function missingPages(total: number, pageSize = LIST_PAGE_SIZE): number[]
 }
 
 // The API sends only 10 rows unless the request sets pageSize, so every request states its size.
-async function fetchList(endpoint: Endpoint): Promise<AdoptListing[]> {
+// `lang` runs through a whole load: pages the reader scrolls side by side have to be in one language.
+async function fetchList(endpoint: Endpoint, lang: string, signal?: AbortSignal): Promise<AdoptListing[]> {
   // The document can start this request before the app exists, so the answer can already be in
   // flight here.
   const started = (await takePrefetched(listKey(endpoint))) as AdoptListResponse | null | undefined
   const first =
     started?.code === 200 && Array.isArray(started.rows)
       ? started
-      : await fetchPage(endpoint, LIST_PAGE_SIZE)
+      : await fetchPage(endpoint, lang, LIST_PAGE_SIZE, 1, signal)
   const pages = [first]
   for (const pageNum of missingPages(first.total)) {
-    pages.push(await fetchPage(endpoint, LIST_PAGE_SIZE, pageNum))
+    pages.push(await fetchPage(endpoint, lang, LIST_PAGE_SIZE, pageNum, signal))
   }
   return pages.flatMap((page) => page.rows).map(sortColorsAndPictures)
 }
 
-export async function withRetry<T>(attempts: number, load: () => Promise<T>): Promise<T> {
+export async function withRetry<T>(
+  attempts: number,
+  load: (signal?: AbortSignal) => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
   let lastErr: unknown
   for (let i = 0; i < attempts; i++) {
     if (i > 0) await sleep(RETRY_WAIT_MS[Math.min(i - 1, RETRY_WAIT_MS.length - 1)])
     try {
-      return await load()
+      return await load(signal)
     } catch (e) {
       lastErr = e
+      // Retrying an aborted request only fails the same way again.
+      if (signal?.aborted) throw e
     }
   }
   throw lastErr
@@ -109,11 +125,15 @@ function addDebutRows(mainRows: AdoptListing[], debutRows: AdoptListing[]): Adop
 // A failing debut list is swallowed: a few rows aren't worth breaking the page for. Throwing
 // when the main list fails is deliberate - loadData() keeps the cached copy, so
 // saveListings() (clear + rewrite) never sees a half-complete list.
-export async function fetchAllListings(attempts = ATTEMPTS_PER_LIST): Promise<AdoptListing[]> {
-  const seriesPromise = withRetry(attempts, () => fetchList('series')).catch((e) => {
+export async function fetchAllListings(
+  attempts = ATTEMPTS_PER_LIST,
+  signal?: AbortSignal,
+  lang = apiLanguage(),
+): Promise<AdoptListing[]> {
+  const seriesPromise = withRetry(attempts, (s) => fetchList('series', lang, s), signal).catch((e) => {
     console.warn('[api] new-works list failed; skipped for this merge', e)
     return [] as AdoptListing[]
   })
-  const mainRows = await withRetry(attempts, () => fetchList('primary'))
+  const mainRows = await withRetry(attempts, (s) => fetchList('primary', lang, s), signal)
   return addDebutRows(mainRows, await seriesPromise)
 }

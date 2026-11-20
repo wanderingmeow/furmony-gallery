@@ -200,10 +200,12 @@ function RelatedStrip(props: {
         {/* Safari paints this kind of horizontal scroller as a composited layer above the
             overlay scrollbar, so the row covers that column of the vertical one. Firefox
             draws scrollbars over content and shows nothing wrong. Left as is. */}
+        {/* Only the x axis: a drag that runs out at the end of the row should not shove the sheet
+            sideways, and a vertical drag over the row still scrolls the sheet. */}
         <div
           ref={scroller}
           onScroll={measure}
-          class="overflow-x-auto no-scrollbar snap-x snap-mandatory"
+          class="overflow-x-auto no-scrollbar snap-x snap-mandatory overscroll-x-contain"
           style={{
             'padding-left': `${bleed()}px`, 'scroll-padding-left': `${bleed()}px`,
           }}

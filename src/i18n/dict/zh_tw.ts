@@ -1,5 +1,5 @@
-// 繁體中文. Mostly the 简体中文 dictionary in traditional characters, with the wording a reader on
-// the traditional shelf expects. The key tree is the one in `zh.ts`.
+// 繁體中文. Mostly the 简体中文 dictionary in traditional characters, with the wording its own
+// readers expect. The key tree is the one in `zh.ts`.
 import type { Dict } from './shape'
 
 export const zh_tw: Dict = {
@@ -85,6 +85,8 @@ export const zh_tw: Dict = {
     wish: '收藏',
     wished: '已收藏',
     locked: '已鎖定',
+    downPayment: '首付',
+    monthly: '月付',
   },
 
   toolbar: {
@@ -153,7 +155,6 @@ export const zh_tw: Dict = {
     monthCount: '每月新增設定個數',
     axisCount: '數量',
     axisAvg: '均價',
-    mysteryRace: '神秘生物',
     count: (n: number) => `${n} 個`,
     times: (n: number) => `${n} 次`,
     totalTimes: (n: number) => `共 ${n} 次出現`,
@@ -161,7 +162,7 @@ export const zh_tw: Dict = {
     months: (n: number) => `共 ${n} 個月`,
     avgMedian: (avg: string, median: string) => `均值 ${avg} | 中位 ${median}`,
     band: (low: string, high: string, count: number) => `${low}-${high}: ${count} 個`,
-    /** The axis had room for a two-digit year, and 24年3月 is how the shelf writes it. */
+    /** The axis fits a short label, so the year keeps two digits: 24年3月 is how Furmony writes it. */
     monthLabel: (year: number, month: number) => `${year % 100}年${month}月`,
     noData: '無資料',
   },
@@ -206,8 +207,7 @@ export const zh_tw: Dict = {
   },
 
   money: {
-    /** The shelf's numbers are plain 人民币 integers, with no currency field on the wire, so each
-     *  language writes the money its own readers expect. */
+    /** 繁體中文 puts the word after the number. */
     amount: (n: number) => `${n}元`,
   },
 

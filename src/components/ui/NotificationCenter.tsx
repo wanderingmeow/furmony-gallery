@@ -45,15 +45,13 @@ export function NotificationCenter() {
             </button>
           }
         >
-          {/* The header sits outside the scroller, the way the sheet keeps its bottom bar out. A
-              sticky header lets the scrollbar cross it and lets rows slide under a 70% fill, which
-              reads as bleed-through. */}
-          <div class="glass rounded-xl shadow-lg border border-border w-72 max-h-[70vh] flex flex-col overflow-hidden">
+          {/* The header sits outside the scroller, the way the sheet keeps its bottom bar out. */}
+          <div class="glass rounded-xl shadow-lg border border-border w-72 max-h-[70vh] flex flex-col clip-no-scroll">
             <div class="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0">
               <span class="text-sm font-semibold text-ink">{tr('notify.title')} ({n().length})</span>
               <button class="text-sm text-muted hover:text-ink" onClick={() => setExpanded(false)}>{tr('notify.collapse')}</button>
             </div>
-            <div class="flex-1 min-h-0 overflow-y-auto">
+            <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain">
               <For each={n()}>
                 {(c) => (
                   <div class="flex items-center gap-2 px-3 py-2 border-b border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5">

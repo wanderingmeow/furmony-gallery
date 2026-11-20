@@ -26,36 +26,36 @@ const row = (adoptId: number, painterid: number, painterName: string): AdoptList
   productId: 1,
   harmonyPainterVo: { painterid, painterName },
 })
-const shelfRow = row(2, 77, '某画师')
+const listedRow = row(2, 77, '某画师')
 const selfRow = row(1, SELF_COMMISSION_PAINTER_ID, '自设委托')
 const selfTranslated = row(1, SELF_COMMISSION_PAINTER_ID, 'Self commission')
 
 beforeEach(() => {
   readCache.mockReset().mockResolvedValue(null)
-  fetchAllListings.mockReset().mockResolvedValue([shelfRow])
-  mergeListings.mockReset().mockResolvedValue({ updated: [shelfRow], changed: true })
+  fetchAllListings.mockReset().mockResolvedValue([listedRow])
+  mergeListings.mockReset().mockResolvedValue({ updated: [listedRow], changed: true })
   notifyListingChanges.mockReset()
 })
 
 describe('loadData', () => {
   it('keeps a self-commission piece out of the rows the page gets', async () => {
-    fetchAllListings.mockResolvedValue([selfRow, shelfRow])
-    mergeListings.mockResolvedValue({ updated: [selfRow, shelfRow], changed: true })
+    fetchAllListings.mockResolvedValue([selfRow, listedRow])
+    mergeListings.mockResolvedValue({ updated: [selfRow, listedRow], changed: true })
     await loadData()
     expect(listings().map((l) => l.adoptId)).toEqual([2])
   })
 
-  // The shelf translates painter names, so the words 「自设委托」 only arrive in Chinese. The id
+  // The API translates painter names, so the words 「自设委托」 only arrive in Chinese. The id
   // behind them is what stays put across languages.
   it('drops a self-commission piece whose name came back in another language', async () => {
-    fetchAllListings.mockResolvedValue([selfTranslated, shelfRow])
-    mergeListings.mockResolvedValue({ updated: [selfTranslated, shelfRow], changed: true })
+    fetchAllListings.mockResolvedValue([selfTranslated, listedRow])
+    mergeListings.mockResolvedValue({ updated: [selfTranslated, listedRow], changed: true })
     await loadData()
     expect(listings().map((l) => l.adoptId)).toEqual([2])
   })
 
   it('applies the same rule to a cache that still holds one', async () => {
-    readCache.mockResolvedValue({ rows: [selfRow, shelfRow], lang: 'zh' })
+    readCache.mockResolvedValue({ rows: [selfRow, listedRow], lang: 'zh' })
     mergeListings.mockResolvedValue({ updated: [], changed: false })
     await loadData()
     expect(listings().map((l) => l.adoptId)).toEqual([2])
@@ -64,11 +64,36 @@ describe('loadData', () => {
   // A notification offers a page the reader could open, so a piece they cannot reach stays out of
   // the comparison on both sides.
   it('leaves self-commission pieces out of the change comparison', async () => {
-    readCache.mockResolvedValue({ rows: [shelfRow], lang: 'zh' })
-    fetchAllListings.mockResolvedValue([shelfRow, selfRow])
-    mergeListings.mockResolvedValue({ updated: [shelfRow, selfRow], changed: true })
+    readCache.mockResolvedValue({ rows: [listedRow], lang: 'zh' })
+    fetchAllListings.mockResolvedValue([listedRow, selfRow])
+    mergeListings.mockResolvedValue({ updated: [listedRow, selfRow], changed: true })
     await loadData()
     const call = notifyListingChanges.mock.calls.at(-1)
     expect(call?.[1].map((l: AdoptListing) => l.adoptId)).toEqual([2])
+  })
+
+  // An answer from the language the reader left must not reach the screen.
+  it('lets the newest load have the last word', async () => {
+    const left = [row(2, 77, 'Some artist')]
+    const picked = [row(2, 77, 'ある画家')]
+    let late: (rows: AdoptListing[]) => void = () => {}
+    fetchAllListings
+      .mockImplementationOnce(() => new Promise<AdoptListing[]>((resolve) => { late = resolve }))
+      .mockImplementationOnce(() => Promise.resolve(picked))
+    mergeListings.mockImplementation(
+      (_prev: AdoptListing[], next: AdoptListing[]) => Promise.resolve({ updated: next, changed: true }),
+    )
+
+    const first = loadData()
+    // The first request has to be on its way before the second pick lands.
+    await vi.waitFor(() => expect(fetchAllListings).toHaveBeenCalledTimes(1))
+    await loadData()
+    const names = () => listings().map((l) => l.harmonyPainterVo?.painterName)
+    expect(names()).toEqual(['ある画家'])
+
+    late(left)
+    await first
+    expect(names()).toEqual(['ある画家'])
+    expect(notifyListingChanges).toHaveBeenCalledTimes(1)
   })
 })

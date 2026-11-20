@@ -70,7 +70,7 @@ export const zh = {
     color: '颜色',
     status: '状态',
     deposit: '定金',
-    /** `createTime` on the record: the day the listing was posted. The shelf shows no date of its
+    /** `createTime` on the record: the day the listing was posted. Furmony shows no date of its
      *  own here, so this wording is ours. 创建时间 leaves open whose time it is. */
     created: '上架时间',
     updated: '更新时间',
@@ -92,6 +92,10 @@ export const zh = {
     wish: '收藏',
     wished: '已收藏',
     locked: '已锁定',
+    /** The words a card prints in front of the number: the shortest that still read. The detail
+     *  page has room and asks for `info.downPayment`. */
+    downPayment: '首付',
+    monthly: '月供',
   },
 
   toolbar: {
@@ -161,8 +165,6 @@ export const zh = {
     monthCount: '每月新增设定个数',
     axisCount: '数量',
     axisAvg: '均价',
-    /** A species with no race id falls back to this name. */
-    mysteryRace: '神秘生物',
     count: (n: number) => `${n} 个`,
     times: (n: number) => `${n} 次`,
     totalTimes: (n: number) => `共 ${n} 次出现`,
@@ -171,7 +173,7 @@ export const zh = {
     avgMedian: (avg: string, median: string) => `均值 ${avg} | 中位 ${median}`,
     band: (low: string, high: string, count: number) => `${low}-${high}: ${count} 个`,
     /** 简体中文 writes a month as the last two year digits and the month number. */
-    /** The axis had room for a two-digit year, and 24年3月 is how the shelf writes it. */
+    /** The axis fits a short label, so the year keeps two digits: 24年3月 is how Furmony writes it. */
     monthLabel: (year: number, month: number) => `${year % 100}年${month}月`,
     noData: '无数据',
   },
@@ -216,10 +218,8 @@ export const zh = {
   },
 
   money: {
-    /** The shelf's numbers are plain 人民币 integers, with no currency field on the wire, so each
-     *  language writes the money its own readers expect. 简体中文 keeps the symbol it has always
-     *  shown; 繁體中文 and 日本語 put the word after the number; English names it in front and
-     *  groups the digits by thousands. */
+    /** The wire carries plain 人民币 integers with no currency field, so each dictionary writes the
+     *  money its own readers expect. */
     amount: (n: number) => `¥${n}`,
   },
 

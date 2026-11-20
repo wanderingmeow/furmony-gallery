@@ -20,7 +20,7 @@ import { StatusBadge } from '../ui/StatusBadge'
 const GRID = 'grid grid-cols-[60px_1fr] gap-3'
 
 // 首付 and 月供 share this width, which is what lines their numbers up
-const LABEL = 'w-8 shrink-0'
+const LABEL = 'min-w-8 whitespace-nowrap'
 
 function Row(props: { label: string; children: JSXElement }) {
   return (
@@ -139,28 +139,30 @@ function OncePriceLine(props: { parts: () => OncePrice }) {
 function InstallmentPlan(props: { parts: () => InstallmentPrice }) {
   const p = props.parts
   return (
-    <div class="mb-1.5 flex flex-col gap-0.5">
+    // One grid for both rows, so the label column is as wide as the longest label: `Per month` is
+    // 70px and 月供 is 28px.
+    <div class="mb-1.5 grid grid-cols-[max-content_1fr] items-baseline gap-x-1 gap-y-0.5">
       <Show when={p().down}>{(down) => (
-        <div class="flex items-baseline gap-x-1">
+        <>
           {/* CJK glyphs sit 1~2px lower than digits on the same baseline. The lift is in
               em, so it follows the label's size. */}
           <span class={`${LABEL} text-sm font-medium text-accent-ink relative -top-[0.1em]`}>{tr('info.downPayment')}</span>
           <span class="text-xl font-bold text-accent-ink tabular-nums">{formatPrice(down())}</span>
-        </div>
+        </>
       )}</Show>
-      <div class="flex flex-wrap items-baseline gap-x-2 text-xs text-muted tabular-nums">
-        <Show when={p().main}>{(main) => (
-          <span class="flex items-baseline gap-x-1">
-            <span class={LABEL}>{p().mainLabel}</span>
+      <Show when={p().main}>{(main) => (
+        <>
+          <span class={`${LABEL} text-xs text-muted`}>{p().mainLabel}</span>
+          <span class="flex flex-wrap items-baseline gap-x-2 text-xs text-muted tabular-nums">
             <span>{formatPrice(main())}</span>
+            <Show when={p().note}>{(note) => <span class="text-faint">{note()}</span>}</Show>
+            <Show when={p().total}>{(total) => <span>{tr('info.total', formatPrice(total()))}</span>}</Show>
           </span>
-        )}</Show>
-        <Show when={p().note}>{(note) => <span class="text-faint">{note()}</span>}</Show>
-        <Show when={p().total}>{(total) => <span>{tr('info.total', formatPrice(total()))}</span>}</Show>
-      </div>
+        </>
+      )}</Show>
       {/* A listing with no price has neither, so the rows above would sit empty. */}
       <Show when={!p().down && !p().main}>
-        <span class="text-lg font-bold text-accent-ink tabular-nums">{MISSING_PRICE}</span>
+        <span class="col-span-2 text-lg font-bold text-accent-ink tabular-nums">{MISSING_PRICE}</span>
       </Show>
     </div>
   )

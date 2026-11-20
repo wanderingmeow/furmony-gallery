@@ -3,6 +3,7 @@ import { SolidUplot } from '@dschz/solid-uplot'
 import { cursor } from '@dschz/solid-uplot/plugins'
 import uPlot from 'uplot'
 import type { AlignedData } from 'uplot'
+import { axisRoom, AXIS_FONT, axisWords, tiltFor } from '../../draw/axisLabels'
 
 // Unified chart height (Swift StatisticsView: every chart is 200px)
 export const STAT_CHART_H = 200
@@ -17,8 +18,10 @@ const GRID_STROKE = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'
 // Axis ticks OUTSIDE the plot: same color & width as the grid (they used to be a
 // darker stroke), and shorter (size 4 vs uPlot's default 10).
 const TICKS = { stroke: GRID_STROKE, width: 2, size: 4 }
-// Axis value labels: smaller than uPlot's default 12px.
-const AXIS_FONT = '10px ui-sans-serif, system-ui, sans-serif'
+// The band a flat axis needs: labels (10px) + gap 5 + ticks 4.
+const FLAT_AXIS = 26
+// The room a tilted axis may take from the 200px chart. Words longer than this are cut.
+const BAND = 52
 
 // uPlot has no native bar renderer — use the built-in `paths.bars` factory.
 // align:0 CENTERS each bar on its x tick (xShift = barWid/2), so labels/cursor
@@ -38,11 +41,6 @@ function xScales(): uPlot.Scales {
   }
 }
 
-/** The width of a word in the axis font: a CJK glyph is a full square, a Latin letter about
- *  half of one. 10px is `AXIS_FONT`. */
-const labelWidth = (text: string): number =>
-  [...text].reduce((w, ch) => w + (ch.charCodeAt(0) > 0x2e80 ? 10 : 5.5), 0)
-
 /**
  * A categorical x-axis. `labels` is a getter so the axis picks up new labels on every redraw.
  * The options:
@@ -52,8 +50,6 @@ const labelWidth = (text: string): number =>
  * - showTicks: draw tick marks. The color and species charts leave them out and show labels only.
  * - showGrid: draw uPlot's vertical gridlines. The bar charts leave them out and draw gridlines at
  *   the sides of the bars instead, in the draw hook.
- * - rotate: label rotation in degrees, where 45 runs from the bottom left to the top right.
- * - size: the axis height in px, which needs extra room when the labels are tilted.
  *
  * `incrs: [1]` and a small `space` ask for one tick per bar: uPlot's default `space: 50` picks an
  * increment of 2 or more and skips bars. `values` walks uPlot's `splits`, the bar indices where it
@@ -61,26 +57,18 @@ const labelWidth = (text: string): number =>
  */
 function catAxis(
   labels: () => string[],
-  opts: { maxLabels?: number; showTicks?: boolean; showAllLabels?: boolean; showGrid?: boolean; rotate?: number; size?: number } = {},
+  opts: { maxLabels?: number; showTicks?: boolean; showAllLabels?: boolean; showGrid?: boolean } = {},
 ): uPlot.Axis {
   const maxLabels = opts.showAllLabels ? Infinity : (opts.maxLabels ?? 6)
   const showTicks = opts.showTicks !== false
   const showGrid = opts.showGrid !== false
-  const rotate = opts.rotate ?? 0
-  const baseStride = () => {
+  const cap = () => {
     const len = labels().length
     return len <= maxLabels ? 1 : Math.ceil(len / maxLabels)
   }
-
-  // A tilted label takes its own width times the sine of the tilt away from the next bar. Names
-  // that would overlap by more than a slot thin out to every other one, and the summary above the
-  // chart still shows the hovered bar in full.
-  const tiltedStride = (width: number, splits: number[]): number => {
-    if (rotate === 0 || width <= 0) return 1
-    const slot = width / Math.max(1, splits.length - 1)
-    const need = Math.max(...labels().map(labelWidth)) * Math.sin((rotate * Math.PI) / 180) + 4
-    return need > slot * 2 ? Math.ceil(need / slot) : 1
-  }
+  // uPlot re-reads rotate, size and values on every draw, so all three follow the plot's width.
+  const slot = (self: uPlot) => (self?.width ?? 0) / Math.max(1, labels().length)
+  const deg = (self: uPlot) => tiltFor(labels(), slot(self))
   return {
     stroke: AXIS_STROKE,
     grid: { show: showGrid, stroke: GRID_STROKE },
@@ -88,15 +76,19 @@ function catAxis(
     font: AXIS_FONT,
     space: 2,
     incrs: [1],
-    rotate,
-    size: opts.size ?? 26, // snug - labels (10px) + gap 5 + ticks 4
+    rotate: (self: uPlot) => deg(self),
+    size: (self: uPlot) => {
+      const d = deg(self)
+      return d === 0 ? FLAT_AXIS : axisRoom(labels(), d, BAND)
+    },
     gap: 6, // labels close to the axis
-    // offset 0 keeps the LEFTMOST label (uPlot's default offset keeps the last).
-    values: (self: uPlot, splits: number[], _axisIdx: number, _foundSpace: number, _foundIncr: number) => {
+    values: (self: uPlot, splits: number[]) => {
       const l = labels()
-      const s = Math.max(baseStride(), tiltedStride(self?.width ?? 0, splits))
-      const out = splits.map((v: number) => (s === 1 || v % s === 0) ? (l[v] ?? '') : '')
-      return out
+      const every = cap()
+      const words = splits.map((v: number) => l[v] ?? '')
+      const shown = every === 1 ? words : splits.map((v: number, i: number) => (v % every === 0 ? words[i] : ''))
+      const xs = splits.map((v: number) => self.valToPos(v, 'x'))
+      return axisWords(shown, xs, slot(self), deg(self), BAND)
     },
   }
 }
@@ -267,24 +259,15 @@ function chart(
 // A bar chart: gridlines at the sides of the bars, the count above each bar, every label or an
 // adaptive stride, optional ticks, and optional labels tilted 45°.
 export function StatBarChart(props: {
-  labels: string[]; values: number[]; color: string; maxLabels?: number; showTicks?: boolean; showAllLabels?: boolean; rotate?: number; axisSize?: number; onHover?: (idx: number | null) => void; onReady?: (u: uPlot) => void
+  labels: string[]; values: number[]; color: string; maxLabels?: number; showTicks?: boolean; showAllLabels?: boolean; onHover?: (idx: number | null) => void; onReady?: (u: uPlot) => void
 }) {
   const data = (): AlignedData => [props.labels.map((_, i) => i), props.values]
   const series = (): uPlot.Series[] => [
     {},
     { label: tr('stats.axisCount'), stroke: props.color, fill: props.color, paths: barPaths(), points: { show: false } },
   ]
-  // Words longer than 红 and 龙 need the labels tilted and the track wider, or the color names land
-  // on each other. A tilted word takes its own length times sin(45°) of vertical room, at about
-  // 6px per character in the axis font.
-  const longest = () => props.labels.reduce((m, l) => Math.max(m, l.length), 0)
-  const tilt = () => props.rotate ?? (longest() > 3 && props.labels.length > 6 ? 45 : 0)
-  const track = (): number => {
-    const flat = props.axisSize ?? 26
-    return tilt() === 0 ? flat : Math.min(150, Math.max(flat, Math.round(longest() * 6 * 0.71) + 12))
-  }
   const axes = (): uPlot.Axis[] => [
-    catAxis(() => props.labels, { maxLabels: props.maxLabels, showTicks: props.showTicks, showAllLabels: props.showAllLabels, showGrid: false, rotate: tilt(), size: track() }),
+    catAxis(() => props.labels, { maxLabels: props.maxLabels, showTicks: props.showTicks, showAllLabels: props.showAllLabels, showGrid: false }),
     yAxis(),
   ]
   return chart(data, series, axes, xScales, barChartHooks, (p) => props.onHover?.(p.cursor.idx >= 0 ? p.cursor.idx : null), () => props.onHover?.(null), [cursor()], props.onReady)

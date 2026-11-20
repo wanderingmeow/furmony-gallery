@@ -7,6 +7,8 @@ import { LIST_PAGE_SIZE } from './endpoints'
 
 const fixtures = import.meta.glob('../../agent/*_sample.json')
 const haveFixtures = Object.keys(fixtures).length >= 2
+const twFixtures = import.meta.glob('../../agent/*_sample.zh_tw.json')
+const haveTwFixtures = Object.keys(twFixtures).length >= 2
 
 describe.skipIf(!haveFixtures)('fetchAllListings combines both endpoints', () => {
   it('appends the 新作登场 rows onto the main list with no duplicate ids', async () => {
@@ -19,6 +21,17 @@ describe.skipIf(!haveFixtures)('fetchAllListings combines both endpoints', () =>
     // these three only exist on the 新作登场 endpoint — drop that request or the merge and
     // they silently vanish from the whole app
     for (const debutId of [2831, 2832, 2833]) expect(ids).toContain(debutId)
+  })
+})
+
+describe.skipIf(!haveTwFixtures)('fetchAllListings keeps one language for one load', () => {
+  it('asks both lists in the language the load was given', async () => {
+    const { fetchAllListings } = await import('./api')
+    const rows = await fetchAllListings(1, undefined, 'zh_tw')
+
+    // 2868 only comes from the 新作登场 list, which is the second request of the load
+    expect(rows.find((l) => l.adoptId === 2868)?.harmonyPainterVo?.painterName).toBe('神秘組織')
+    expect(rows.find((l) => l.adoptId === 2867)?.harmonyPainterVo?.painterName).toBe('神秘組織')
   })
 })
 
@@ -91,6 +104,24 @@ describe('withRetry', () => {
     await expect(done).resolves.toBe('ok')
   })
 
+  // A load the reader walked away from has no reason to sit through the waits.
+  it('stops trying once the request is cancelled', async () => {
+    const { withRetry } = await import('./api')
+    const controller = new AbortController()
+    let calls = 0
+    const done = withRetry(
+      3,
+      async () => {
+        calls++
+        controller.abort()
+        throw new Error('aborted')
+      },
+      controller.signal,
+    )
+    await expect(done).rejects.toThrow('aborted')
+    expect(calls).toBe(1)
+  })
+
   it('gives up with the last error', async () => {
     vi.useFakeTimers()
     const { withRetry } = await import('./api')
@@ -108,7 +139,7 @@ describe('withRetry', () => {
   })
 })
 
-// The boundaries below are for a shelf that outgrows one page. They are written in page widths,
+// The boundaries below are for a list that outgrows one page. They are written in page widths,
 // because the row count changes over time.
 describe('missingPages', () => {
   const P = LIST_PAGE_SIZE
@@ -122,7 +153,7 @@ describe('missingPages', () => {
   ]
 
   for (const [total, want] of cases) {
-    it(`leaves ${want.length ? want.join(' and ') : 'no page'} for a shelf of ${total}`, async () => {
+    it(`leaves ${want.length ? want.join(' and ') : 'no page'} for a list of ${total}`, async () => {
       const { missingPages } = await import('./api')
       expect(missingPages(total)).toEqual(want)
     })

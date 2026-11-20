@@ -1,5 +1,6 @@
 // src/stores/listingsStore.ts - listings, loading state, and the load itself.
 import { apiLanguage, requestedLocale, tr } from '../i18n'
+import type { Locale } from '../i18n'
 import { batch, createSignal } from 'solid-js'
 import type { AdoptListing } from '../model/types'
 import { mergeListings, readCache } from '../data/listingCache'
@@ -26,19 +27,36 @@ export const [dataReady, setDataReady] = createSignal(false) // cache or first d
  * store, so no list, chart, count or bar needs a rule for them. The API answer, the cache and the
  * stale-id cleanup still see those rows.
  */
-const onShelf = (rows: AdoptListing[]): AdoptListing[] => rows.filter((l) => !isSelfCommission(l))
+const pageRows = (rows: AdoptListing[]): AdoptListing[] => rows.filter((l) => !isSelfCommission(l))
+
+/**
+ * The load the page waits on; only it may write the screen. Both languages are held here because the
+ * reader can pick another one while the answer is on its way.
+ */
+interface Load {
+  apiLang: string
+  locale: Locale
+  controller: AbortController
+}
+let active: Load | null = null
 
 export async function loadData(): Promise<void> {
-  const lang = apiLanguage()
-  // The language this request is asked in. A second pick while the answer is on its way moves
-  // `requestedLocale`, so the words that land are labelled with the language held here.
-  const asked = requestedLocale()
+  active?.controller.abort()
+  const me: Load = {
+    apiLang: apiLanguage(),
+    locale: requestedLocale(),
+    controller: new AbortController(),
+  }
+  active = me
+  const current = () => active === me
+
   // The saved rows go up first: an IndexedDB read is quick, and a page that waits on the network
   // shows a blank. A cache kept in another language holds the wrong words and never paints, and the
   // rows already on screen stay. The fetch below still merges into them.
   const cache = await readCache()
-  if (cache && cache.lang === lang) {
-    setListings(onShelf(cache.rows))
+  if (!current()) return
+  if (cache && cache.lang === me.apiLang) {
+    setListings(pageRows(cache.rows))
     setDataReady(true)
   }
 
@@ -48,16 +66,18 @@ export async function loadData(): Promise<void> {
 
   let newRows: AdoptListing[]
   try {
-    newRows = await fetchAllListings()
+    newRows = await fetchAllListings(undefined, me.controller.signal, me.apiLang)
   } catch (e) {
+    // A load a newer one replaced, or a request this one cancelled, is not a fetch failure.
+    if (!current()) return
     console.error('[api] fetch failed after retries', e)
     setFetchFailed(true)
     if (listings().length === 0) {
-      // Nothing else to show, so the saved rows go up even when the shelf answered them in
+      // Nothing else to show, so the saved rows go up even when the API answered them in
       // another language: a page of pictures beats an error line.
       const fallback = await readCache()
       if (fallback && fallback.rows.length > 0) {
-        setListings(onShelf(fallback.rows))
+        setListings(pageRows(fallback.rows))
         setDataReady(true)
       } else {
         setLoadError({ title: tr('error.loadTitle'), line: tr('error.loadLine') })
@@ -76,17 +96,18 @@ export async function loadData(): Promise<void> {
 
   // The rows the page holds are the cards the reader is looking at, words aside, so they are what
   // a new answer is merged into. A cold start holds none, and the saved rows stand in.
+  if (!current()) return
   const oldRows = listings().length > 0 ? listings() : (cache?.rows ?? [])
-  const { updated, changed } = await mergeListings(oldRows, newRows, lang)
-
+  const { updated, changed } = await mergeListings(oldRows, newRows, me.apiLang, current)
+  if (!current()) return
   // The words and the rows land in the same turn, which is the moment a name stops waiting.
   batch(() => {
     if (changed) {
-      rememberWords(newRows, asked)
-      setListings(onShelf(updated))
+      rememberWords(newRows, me.locale)
+      setListings(pageRows(updated))
       // The notification diff. On a first visit oldRows is empty, so nothing is announced, and
       // that doubles as the "have we visited before" check: no extra flag is needed.
-      notifyListingChanges(onShelf(oldRows), onShelf(updated))
+      notifyListingChanges(pageRows(oldRows), pageRows(updated))
     }
     setDataReady(true)
   })

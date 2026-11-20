@@ -93,12 +93,21 @@ describe('colorCounts / raceCounts', () => {
     ]
     expect(colorCounts(rows)).toEqual([{ name: '红', count: 2 }, { name: '黑', count: 1 }])
   })
-  it('raceCounts falls back to 神秘生物', () => {
+  it('raceCounts counts a listing nobody filed as 神秘生物', () => {
     const rows = [
       listing({ adoptId: 1, harmonyRace: { raceName: '狼' } }),
-      listing({ adoptId: 2 }),
+      listing({ adoptId: 2, raceId: 26 }),
+      listing({ adoptId: 3 }),
     ]
-    expect(raceCounts(rows)).toEqual([{ name: '狼', count: 1 }, { name: '神秘生物', count: 1 }])
+    expect(raceCounts(rows)).toEqual([{ name: '神秘生物', count: 2 }, { name: '狼', count: 1 }])
+  })
+
+  it('raceCounts counts a stale joined name under the species its id names', () => {
+    const rows = [
+      listing({ adoptId: 1, raceId: 7, harmonyRace: { raceName: '神秘生物' } }),
+      listing({ adoptId: 2, raceId: 26, harmonyRace: { raceName: '神秘生物' } }),
+    ]
+    expect(raceCounts(rows)).toEqual([{ name: '犬', count: 1 }, { name: '神秘生物', count: 1 }])
   })
 })
 

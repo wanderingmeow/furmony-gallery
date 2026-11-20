@@ -7,7 +7,7 @@ import type { AdoptListing } from './types'
 import { stableImageUrl } from '../data/image'
 import { tr } from '../i18n'
 import { listingPainterName } from './translatedText'
-import { colorLabel, raceLabel } from '../i18n/glossary'
+import { colorLabel, mysteryRaceLabel, MYSTERY_RACE_NAME, raceLabel } from '../i18n/glossary'
 
 // Static race-name dictionary (mirrors Swift raceNamesMap)
 const RACE_NAMES: Record<number, string> = {
@@ -19,11 +19,11 @@ const RACE_NAMES: Record<number, string> = {
   27: '神', 28: '鹿',
 }
 
+/** The species a listing belongs to, decided by its `raceId`. The name the API joins in answers only
+ *  for an id we do not have: it still reads 神秘生物 for rows filed under 犬, 猫, 兔, 神兽 or 神. */
 export function raceName(listing: AdoptListing): string | undefined {
-  const fromNested = listing.harmonyRace?.raceName
-  if (fromNested) return fromNested
-  if (listing.raceId != null) return RACE_NAMES[listing.raceId]
-  return undefined
+  const fromId = listing.raceId == null ? undefined : RACE_NAMES[listing.raceId]
+  return fromId ?? listing.harmonyRace?.raceName
 }
 
 export function colorNames(listing: AdoptListing): string[] {
@@ -37,6 +37,14 @@ export const raceDisplay = (listing: AdoptListing): string | undefined => {
   const name = raceName(listing)
   return name === undefined ? undefined : raceLabel(listing.raceId, name)
 }
+
+/** A listing that came with no species is counted as 神秘生物: the chart bars and the 物种 filter
+ *  both hand it to that species, which is why a bar and a pick cover the same listings. Its own card
+ *  shows no tag, so those two read `raceName` and `raceDisplay` instead. */
+export const countedRaceName = (listing: AdoptListing): string =>
+  raceName(listing) ?? MYSTERY_RACE_NAME
+export const countedRaceDisplay = (listing: AdoptListing): string =>
+  raceDisplay(listing) ?? mysteryRaceLabel()
 
 export const colorDisplay = colorLabel
 
@@ -124,7 +132,7 @@ export const MISSING_PRICE = '?'
 
 /** Furmony leaves the price at 0 when a listing has none. Sorting also uses 0, which puts such
  *  a listing at the cheap end. */
-// The shape of a sum of money belongs to the language on screen: ¥40500, 40500元, RMB 40,500.
+// The shape of a sum of money belongs to the language on screen: ¥40500, 40500元, ¥40,500.
 export function formatPrice(n: number): string {
   return n > 0 ? tr('money.amount', Math.round(n)) : MISSING_PRICE
 }
@@ -243,8 +251,8 @@ export function priceParts(listing: AdoptListing, mode: PriceMode): PriceParts |
     const per = monthlyPayment(listing)
     // A listing with no price has neither a deposit nor a monthly amount. The card shows a
     // price slot either way, so this one holds an unlabeled 0.
-    const card: CardPrice = down !== null ? { label: tr('info.downPayment'), value: down }
-      : per !== null ? { label: tr('info.monthly'), value: per } : { label: null, value: 0 }
+    const card: CardPrice = down !== null ? { label: tr('card.downPayment'), value: down }
+      : per !== null ? { label: tr('card.monthly'), value: per } : { label: null, value: 0 }
     return {
       mode,
       down,

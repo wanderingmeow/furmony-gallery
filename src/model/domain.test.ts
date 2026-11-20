@@ -1,8 +1,11 @@
 // Functional tests for the price and publish-day rules in domain.ts. All numbers are FAKE.
 import { describe, expect, it } from 'vitest'
+import { tr } from '../i18n'
+import { setLocale } from '../i18n/locale'
 import type { AdoptListing } from './types'
 import {
-  formatPrice, installmentTotal, monthlyPayment, priceParts, publishDay, publishDayAt, type PriceMode,
+  formatPrice, installmentTotal, monthlyPayment, priceParts, publishDay, publishDayAt,
+  raceDisplay, raceName, type PriceMode,
 } from './domain'
 
 // The fake listing: 30000 across 12 periods (allcost), a 6000 deposit (earnest), and
@@ -136,6 +139,19 @@ describe('priceParts — installment', () => {
     expect(planParts(fake()).card).toEqual({ label: '首付', value: 6000 })
   })
 
+  it('prefixes the card with the short word where the two words differ', () => {
+    setLocale('en')
+    try {
+      expect(planParts(fake()).card).toEqual({ label: 'Down', value: 6000 })
+      expect(planParts(fake({ earnest: 0 })).card).toEqual({ label: 'Monthly', value: 2500 })
+      // The detail page has the room for the full words.
+      expect(tr('info.downPayment')).toBe('Deposit')
+      expect(tr('money.amount', 6000)).toBe('¥6,000')
+    } finally {
+      setLocale('zh')
+    }
+  })
+
   it('falls back to the monthly amount on the card when there is no deposit', () => {
     const p = planParts(fake({ earnest: 0 }))
     // null means "this listing has no deposit", which is not 0. The detail sheet picks
@@ -237,5 +253,27 @@ describe('publishDayAt', () => {
     expect(publishDayAt(rows(), -1)).toBe('')
     expect(publishDayAt(rows(), 3)).toBe('')
     expect(publishDayAt([], 0)).toBe('')
+  })
+})
+
+describe('the species a listing belongs to', () => {
+  const row = (over: Partial<AdoptListing>) => ({ adoptId: 1, paintersId: 2, productId: 3, ...over }) as AdoptListing
+
+  it('comes from the id, with the joined name as the fallback', () => {
+    // The API still joins 神秘生物 onto rows whose id points elsewhere.
+    const stale = row({ raceId: 7, harmonyRace: { raceName: '神秘生物' } })
+    expect(raceName(stale)).toBe('犬')
+    expect(raceDisplay(stale)).toBe('犬')
+  })
+
+  it('keeps the joined name when the id is one we do not have', () => {
+    const unknown = row({ raceId: 0, harmonyRace: { raceName: '凤凰' } })
+    expect(raceName(unknown)).toBe('凤凰')
+    expect(raceDisplay(unknown)).toBe('凤凰')
+  })
+
+  it('names nothing for a row that came with neither', () => {
+    expect(raceName(row({}))).toBeUndefined()
+    expect(raceDisplay(row({}))).toBeUndefined()
   })
 })

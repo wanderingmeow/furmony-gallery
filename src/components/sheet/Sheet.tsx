@@ -283,7 +283,7 @@ export function Sheet(props: {
           }
         >
           <div
-            class="sheet-card relative w-full h-full bg-canvas overflow-hidden sm:max-w-190 sm:h-[calc(100vh-3rem)] sm:shadow-2xl flex flex-col"
+            class="sheet-card relative w-full h-full bg-canvas clip-no-scroll sm:max-w-190 sm:h-[calc(100vh-3rem)] sm:shadow-2xl flex flex-col"
             style={{
               '--sheet-pull': `${pull()}`,
               // The finger sets the radius, so nothing may lag behind it. After a release the

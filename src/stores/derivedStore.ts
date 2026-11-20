@@ -3,8 +3,9 @@
 import { batch, createEffect, createMemo, createRoot, createSignal, on } from 'solid-js'
 import type { AdoptListing } from '../model/types'
 import { compute, hasSocial } from '../model/filter'
-import { colorNames, isLocked, raceName } from '../model/domain'
+import { colorNames, countedRaceName, isLocked } from '../model/domain'
 import { browserLocale, requestedLocale, setLocale } from '../i18n'
+import { COLOR_ORDER, inOrder, RACE_ORDER } from '../i18n/glossary'
 import type { PriceRange } from '../model/priceRange'
 import { pickEmptyState, type EmptyAction, type EmptyState as EmptyChoice } from '../model/emptyState'
 import { createPriceFacet, type PriceFacet } from './priceFacet'
@@ -89,7 +90,7 @@ createRoot(() => {
   const byRank = (rank: Map<number, number>) =>
     (a: AdoptListing, b: AdoptListing) => rank.get(a.adoptId)! - rank.get(b.adoptId)!
 
-  const sortedUnique = (values: string[]) => [...new Set(values)].sort()
+  const unique = (values: string[]) => [...new Set(values)]
 
   /** The panel's own picks. The price grid leaves them out, so the grid is the tab's shape: a
    *  species with nothing to show still leaves the reader a band to widen. */
@@ -142,9 +143,9 @@ createRoot(() => {
   filteredListings = createMemo(() => (semanticPending() ? held() : merged()))
 
   availableColors = createMemo(() =>
-    sortedUnique(listings().flatMap(colorNames).filter((c) => c.length > 0)))
+    unique(listings().flatMap(colorNames).filter((c) => c.length > 0)).sort(inOrder(COLOR_ORDER)))
   availableRaces = createMemo(() =>
-    sortedUnique(listings().map(raceName).filter((r): r is string => !!r)))
+    unique(listings().map(countedRaceName)).sort(inOrder(RACE_ORDER)))
 
   countAll = createMemo(() => listings().length)
   countUnlocked = createMemo(() => listings().filter((l) => !isLocked(l)).length)

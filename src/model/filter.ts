@@ -5,7 +5,7 @@ import { tr } from '../i18n'
 import { listingDescription, listingName } from './translatedText'
 import type { SocialSearchEntry } from '../data/socials'
 import {
-  colorNames, displayPrice, formatPrice, isLocked, raceName,
+  colorNames, countedRaceName, displayPrice, formatPrice, isLocked,
 } from './domain'
 import { keepsByPrice, type PriceRange } from './priceRange'
 
@@ -133,12 +133,7 @@ export function compute(o: ComputeOptions): AdoptListing[] {
   if (priceRange) result = result.filter((l) => keepsByPrice(l, priceRange))
 
   if (colors.size > 0) result = result.filter((l) => colorNames(l).some((c) => colors.has(c)))
-  if (races.size > 0) {
-    result = result.filter((l) => {
-      const r = raceName(l)
-      return !!r && races.has(r)
-    })
-  }
+  if (races.size > 0) result = result.filter((l) => races.has(countedRaceName(l)))
 
   switch (tab) {
     case 'unlocked': result = result.filter((l) => !isLocked(l)); break

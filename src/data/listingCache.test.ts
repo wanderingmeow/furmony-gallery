@@ -35,7 +35,7 @@ describe('listings cache (adoptId-keyed table + order record)', () => {
     expect(await mod.loadListings('zh')).toBeNull()
   })
 
-  // The shelf writes names and descriptions in the language the request asked in, so a cache
+  // The API writes names and descriptions in the language the request asked in, so a cache
   // kept in another language would paint the old words for a moment before the new ones arrived.
   it('answers null to a language the cache was not kept in', async () => {
     await mod.saveListings([makeListing({ adoptId: 1, adoptName: '名字甲' })], 'zh')
@@ -96,6 +96,15 @@ describe('mergeListings (what the reader would see)', () => {
     expect(r.updated.map((l) => l.adoptId)).toEqual([1])
   })
 
+  it('writes nothing once the page has stopped waiting on the load', async () => {
+    const onScreen = makeListing({ adoptId: 7, adoptName: '蓝', detailDescription: '一只猫' })
+    const late = makeListing({ adoptId: 7, adoptName: '青い', detailDescription: '猫一匹' })
+    const r = await mod.mergeListings([onScreen], [late], 'ja', () => false)
+    expect(r.changed).toBe(false)
+    expect(onScreen.adoptName).toBe('蓝')
+    expect(await mod.loadListings('ja')).toBeNull()
+  })
+
   it('a reshuffled color list is the same row once the API order is settled', async () => {
     // The API gives the color list no fixed order. api.ts sorts it on the way in; without that
     // sort these rows would look changed on every visit.
@@ -147,10 +156,10 @@ describe('mergeListings (what the reader would see)', () => {
 })
 
 describe('a new language', () => {
-  // The shelf answers the name, the description and the painter in the language of the request,
+  // The API answers the name, the description and the painter in the language of the request,
   // and nothing else on a row moves. The waterfall keys each card by its row, so a row that keeps
   // its object keeps its picture painted.
-  it('keeps the row when only the words the shelf translates changed', async () => {
+  it('keeps the row when only the words the API translates changed', async () => {
     const before = makeListing({
       adoptId: 1, adoptName: '名字甲', detailDescription: '文字甲', nonrecurringExpense: 12345,
       harmonyPainterVo: { painterid: 7, painterName: '画师甲' },

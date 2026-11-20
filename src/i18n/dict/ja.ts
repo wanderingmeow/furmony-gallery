@@ -88,6 +88,8 @@ export const ja: Dict = {
     wish: 'お気に入り',
     wished: '保存済み',
     locked: 'ロック済み',
+    downPayment: '頭金',
+    monthly: '月々',
   },
 
   toolbar: {
@@ -156,7 +158,6 @@ export const ja: Dict = {
     monthCount: '月別の新規設定の数',
     axisCount: '件数',
     axisAvg: '平均価格',
-    mysteryRace: '神秘生物',
     count: (n: number) => `${n} 件`,
     times: (n: number) => `${n} 回`,
     totalTimes: (n: number) => `合計 ${n} 回登場`,
@@ -208,8 +209,7 @@ export const ja: Dict = {
   },
 
   money: {
-    /** The shelf's numbers are plain 人民币 integers, with no currency field on the wire, so each
-     *  language writes the money its own readers expect. */
+    /** 日本語 puts the word after the number. */
     amount: (n: number) => `${n}元`,
   },
 

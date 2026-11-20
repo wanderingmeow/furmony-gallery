@@ -167,6 +167,22 @@ body {
   display: none;
 }
 
+/* A box that clips while a child of it does the scrolling. `overflow: hidden` is still a scroll
+   container, so the browser reveals a focused control by scrolling this box: the top of the content
+   goes above the box and the same space stands empty at the bottom. `clip` cuts without being
+   scrollable. */
+.clip-no-scroll {
+  overflow: clip;
+}
+
+/* An engine without `clip` still gets the cut, and only loses the refusal to be scrolled. Written as
+   @supports because a minifier drops the earlier of two `overflow` lines. */
+@supports not (overflow: clip) {
+  .clip-no-scroll {
+    overflow: hidden;
+  }
+}
+
 /* A panel of controls: without these a long press answers 复制 and a drag paints a selection.
    The callout is iOS's own; the selection needs the prefixed spelling on older iOS. */
 .no-pick {

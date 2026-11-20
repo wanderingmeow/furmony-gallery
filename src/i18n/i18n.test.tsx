@@ -16,7 +16,7 @@ const pick = (next: Locale): void => {
   setLocale(next)
 }
 import { tr } from './index'
-import { COLORS, RACES, raceLabel, raceLabelByName } from './glossary'
+import { COLORS, COLOR_ORDER, inOrder, RACES, RACE_ORDER, raceLabel, raceLabelByName } from './glossary'
 import { raceName } from '../model/domain'
 import { LockedIcon } from '../components/ui/LockedIcon'
 import type { AdoptListing } from '../model/types'
@@ -127,9 +127,6 @@ describe('the four dictionaries', () => {
   })
 
   it('writes a sum of money the way its own readers write one', () => {
-    // The wire carries a plain 人民币 integer with no currency field, so the shape is ours:
-    // the symbol in front for 简体中文, the word after for 繁體中文 and 日本語, the name in
-    // front with thousands groups for English.
     pick('zh')
     expect(tr('money.amount', 40500)).toBe('¥40500')
     pick('zh_tw')
@@ -137,8 +134,8 @@ describe('the four dictionaries', () => {
     pick('ja')
     expect(tr('money.amount', 40500)).toBe('40500元')
     pick('en')
-    expect(tr('money.amount', 40500)).toBe('RMB 40,500')
-    expect(tr('money.amount', 999)).toBe('RMB 999')
+    expect(tr('money.amount', 40500)).toBe('¥40,500')
+    expect(tr('money.amount', 999)).toBe('¥999')
   })
 
   it('writes a discount the way its own readers count it', () => {
@@ -217,6 +214,19 @@ describe('the words the API keeps in Chinese', () => {
     expect(raceLabelByName('狗')).not.toBe(raceLabelByName('犬'))
     // A species the shelf invents later keeps the name the API wrote.
     expect(raceLabelByName('水母')).toBe('水母')
+  })
+
+  it('lists every species and every color once in the order the panel shows them', () => {
+    // The panel sorts by these two lists, so a name missing from one lands at the end of its block,
+    // where nobody looks for it.
+    expect(RACE_ORDER).toHaveLength(Object.keys(RACES).length)
+    for (const term of Object.values(RACES)) expect(RACE_ORDER, term.zh).toContain(term.zh)
+    expect(COLOR_ORDER).toHaveLength(Object.keys(COLORS).length)
+    for (const name of Object.keys(COLORS)) expect(COLOR_ORDER).toContain(name)
+  })
+
+  it('keeps a name no order has at the end of the block', () => {
+    expect(['水母', '犬', '狼'].sort(inOrder(RACE_ORDER))).toEqual(['狼', '犬', '水母'])
   })
 
   it('has a word in every language for every color', () => {

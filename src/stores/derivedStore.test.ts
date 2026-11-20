@@ -30,8 +30,8 @@ vi.mock('../data/pictureInput', () => ({
 
 const { picture, pictureAnswers } = await import('./semanticStore')
 const {
-  applyEmptyAction, emptyState, filteredListings, filtersOnCount, listFilterBase, panelHasChanges,
-  price, resetPanel, socialCount, socialsReady,
+  applyEmptyAction, availableColors, availableRaces, emptyState, filteredListings, filtersOnCount,
+  listFilterBase, panelHasChanges, price, resetPanel, socialCount, socialsReady,
 } = await import('./derivedStore')
 
 const listing = (id: number): AdoptListing => ({ adoptId: id, paintersId: 1, productId: 1 })
@@ -288,5 +288,27 @@ describe('the price range', () => {
     setPriceRange([21000, 22000])
     expect(price.bars().map((b) => b.count)).toEqual(before)
     expect(filteredListings().map((l) => l.adoptId)).toEqual([1])
+  })
+})
+
+describe("the panel's color and species lists", () => {
+  it('comes in the order a reader scans', async () => {
+    setListings([
+      { ...listing(1), raceId: 26, harmonyAdoptColorVos: [{ harmonyColor: { colorName: '白' } }] },
+      { ...listing(2), raceId: 2, harmonyAdoptColorVos: [{ harmonyColor: { colorName: '蓝' } }] },
+      { ...listing(3), raceId: 7, harmonyAdoptColorVos: [{ harmonyColor: { colorName: '粉' } }] },
+      { ...listing(4), raceId: 8, harmonyAdoptColorVos: [{ harmonyColor: { colorName: '红' } }] },
+    ])
+    await settled()
+    // Around the wheel, and the grays after it; the dog family, then the cat family, then dragons.
+    expect(availableColors()).toEqual(['红', '粉', '蓝', '白'])
+    expect(availableRaces()).toEqual(['犬', '猫', '龙', '神秘生物'])
+  })
+
+  it('lists a species for every bar the chart counts', async () => {
+    // No row here carries raceId 26; the bar and the pick come from the row with no species at all.
+    setListings([listing(1), { ...listing(2), raceId: 7 }])
+    await settled()
+    expect(availableRaces()).toEqual(['犬', '神秘生物'])
   })
 })
