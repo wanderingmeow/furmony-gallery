@@ -68,6 +68,35 @@ export function indexOfRow(row: number, cols: number, count: number): number {
   return Math.min(row * cols, count - 1)
 }
 
+/** The rows a virtual list paints: the ones the window covers, plus `overscan` on each side.
+ *  `firstRow` is the visible row at the top of the window, which is what a saved position is
+ *  measured in.
+ *
+ *  `start` never passes `end`: an unmeasured row height, an empty list or a scroll past the end
+ *  gives an empty window or the tail of the list, never a negative height or a NaN transform.
+ */
+export function renderWindow(args: {
+  scrollTop: number
+  viewport: number
+  rowHeight: number
+  rowCount: number
+  overscan: number
+}): { firstRow: number; start: number; end: number } {
+  const rows = whole(args.rowCount)
+  const pitch = atLeastZero(args.rowHeight)
+  if (rows === 0 || pitch === 0) return { firstRow: 0, start: 0, end: 0 }
+  const y = atLeastZero(args.scrollTop)
+  const first = Math.min(rows, Math.floor(y / pitch))
+  const last = Math.min(rows, Math.ceil((y + atLeastZero(args.viewport)) / pitch))
+  return { firstRow: first, start: Math.max(0, first - whole(args.overscan)), end: Math.min(rows, last + whole(args.overscan)) }
+}
+
+/** A count the layout may divide by: nothing fractional, negative, or missing. */
+const whole = (n: number): number => (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0)
+
+/** A length the layout may divide by: a row height is fractional, so only its sign is fixed. */
+const atLeastZero = (n: number): number => (Number.isFinite(n) ? Math.max(0, n) : 0)
+
 // ---- detail ----
 // Horizontal padding of the sheet body. The related row bleeds out by this amount and back in again,
 // so Detail and that row share one number.
@@ -245,11 +274,53 @@ export function relatedStripHeight(cardWidth: number): number {
   return relatedCardsHeight(cardWidth) + RELATED_BAR_H + RELATED_BAR_GAP
 }
 
-// ---- top bar ----
-// The bar's bottom edge, summed from the class strings `BAR_BANNER`, `BAR_ROW` and `BAR_TABS`, and
-// 110px in the browser. The list reserves this much so the cards start under the bar. Picture mode
-// changes the bar's rows and the page is at the top by then, so the sum holds either way.
-export const BAR_BOTTOM = 12 + 1 + 12 + 32 + 8 + 32 + 12 + 1
+// ---- 上下两条边 ----
+
+/** The band's distance from the page edge. The corner's circles sit on the same 16px. */
+export const CHROME_EDGE = 16
+
+/** The air between the picture's box and the plate's edge on all four sides. boxes.ts writes the
+ *  same number as padding, and the drop zone's corner subtracts the plate's 1px border. */
+export const PICTURE_INSET = 12
+/** The plate's own edge, twice over: once per side. */
+const PLATE_EDGE = 2
+
+/** The field's four shapes. */
+export const FIELD_REST = 48
+export const FIELD_TEXT = 60
+// the mark's centre is the plate's corner centre, so it reads as the corner's contents
+export const FIELD_LEAD = 60
+/** The staged picture: a 72px picture with the inset all around it. */
+export const FIELD_PICTURE = 72 + PICTURE_INSET * 2 + PLATE_EDGE
+/** The empty drop zone: 122px of target with the same inset. */
+export const FIELD_DROP = 122 + PICTURE_INSET * 2 + PLATE_EDGE
+
+/** The air between the box and the first row. */
+export const CHROME_LIST_GAP = 8
+
+/** The room the box leaves for the corner's filter circle at every height: the circle and the 8px
+ *  between them. */
+export const PLATE_AIR = `calc(var(--fab-size) + 0.5rem)`
+
+/** Where the app stops being a phone: the same 640 the detail card detaches at. */
+export const CHROME_WIDE = 640
+
+/** A fixed measure for an open box on a wide edge, instead of the whole edge. */
+export const FIELD_WIDE = 440
+
+/** The room the box takes once it holds a picture and an answer under it - the height the user
+ *  reads at, whether the answer arrived or the search broke. It does not follow the picture switch:
+ *  a switch the user can flip must not move every row. The empty drop zone is the one state that
+ *  hangs past it, over the row's own top padding. */
+export function chromeTop(safeTop: number): number {
+  return CHROME_EDGE + safeTop + FIELD_PICTURE + CHROME_LIST_GAP
+}
+
+/** The tabs stand at the bottom edge, on the same air the band keeps at the top. */
+export const PILL_H = 56
+
+/** What the last thing on the page keeps free below itself: the tabs and the air under them. */
+export const LIST_BOTTOM = CHROME_EDGE + PILL_H + GAP
 
 
 // ---- row preview chip ----
@@ -258,6 +329,5 @@ export const BAR_BOTTOM = 12 + 1 + 12 + 32 + 8 + 32 + 12 + 1
 export const PREVIEW_H = 36
 export const PREVIEW_SCROLLBAR_GAP = 8
 export const PREVIEW_IDLE_MS = 700
-// The chip's own CSS fade runs 300ms (duration-300). This waits longer on purpose, so the
-// element leaves after its fade instead of partway through it.
+// past the chip's own 300ms fade, so it leaves after the fade rather than partway through
 export const PREVIEW_FADE_MS = 400

@@ -1,8 +1,8 @@
 // src/model/emptyState.ts - what to say when the list has nothing to show.
 //
-// An empty list used to show nothing at all, and the copyright band under the cards slid up
-// under the toolbar. A reader then has to work out which of several things went wrong. These
-// states say which one happened, and the button under them does the fix.
+// An empty list that shows nothing at all leaves the user to work out which of several things
+// went wrong, with the copyright band sitting where the cards were. These states say which one
+// happened, and the button under them does the fix.
 import { tr } from '../i18n'
 
 export type EmptyIcon = 'heart' | 'search' | 'filter' | 'spark' | 'warning'
@@ -11,7 +11,7 @@ export type EmptyIcon = 'heart' | 'search' | 'filter' | 'spark' | 'warning'
  *  empty list. */
 export type PictureSay = 'failed' | 'noMatch'
 
-/** What the reader can press. The component knows what each one does. */
+/** What the user can press. The component knows what each one does. */
 export type EmptyAction = 'search' | 'filters' | 'retry' | 'retryAsk' | 'socialOnly'
 
 export interface EmptyFacts {
@@ -24,7 +24,7 @@ export interface EmptyFacts {
   onWishlistTab: boolean
   savedCount: number
   query: string
-  /** How many picks the reader made: the colors, the species, and the price range as one pick. */
+  /** How many picks the user made: the colors, the species, and the price range as one pick. */
   picked: number
   /** Dropping those picks would bring results back, so the picks are what emptied the list. */
   filtersAreTheCause: boolean
@@ -41,7 +41,7 @@ export interface EmptyState {
   action?: EmptyAction
 }
 
-/** A sentence the reader typed, shortened to fit one line of a title. */
+/** A sentence the user typed, shortened to fit one line of a title. */
 function shortQuery(q: string): string {
   return q.length > 20 ? `${q.slice(0, 20)}…` : q
 }
@@ -83,15 +83,13 @@ export function pickEmptyState(f: EmptyFacts): EmptyState | null {
   if (f.picked) {
     return { icon: 'filter', title: tr('empty.filtersTitle'), action: 'filters' }
   }
-  // The shelf answered with nothing on it. The reader can wait for it to fill up or ask again,
-  // and the second one deserves a button: the sentence above it is not something to act on.
+  // the sentence above the button is not something to act on, so this one carries a button
   return { icon: 'search', title: tr('empty.nothingTitle'), line: tr('empty.nothingAction'), action: 'retry' }}
 
 const EMPTY_ACTION_KEY = {
   search: 'empty.clearSearch',
   filters: 'empty.clearFilters',
-  // Two actions retry two different things, the data load and the enhanced search. The reader
-  // sees one word either way, because the line above the button says what failed.
+  // one word for two retries: the line above the button says what failed
   retry: 'common.retry',
   retryAsk: 'common.retry',
   socialOnly: 'empty.closeFilter',

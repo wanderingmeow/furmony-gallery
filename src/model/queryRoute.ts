@@ -1,6 +1,6 @@
 // src/model/queryRoute.ts - which route the list follows, and what is worth asking the model.
 //
-// The toolbar, the grid and the request all read these answers, so the rules live in one file: a
+// The box, the grid and the request all read these answers, so the rules live in one file: a
 // picture comes before the sentence in the box, a bare number is what the local search matches,
 // and a picture's answer of "nothing" still counts as an answer.
 
@@ -20,7 +20,7 @@ export type Route =
   | { by: 'picture'; ids: number[] }
   /** Exact matches first, the model's neighbors after them. */
   | { by: 'text'; ids: number[] }
-  /** The plain list, in the order the reader chose. */
+  /** The plain list, in the order the user chose. */
   | { by: 'none' }
 
 export interface RouteInput {
@@ -48,8 +48,7 @@ export function shouldAskText(i: {
 }
 
 export function routeFor(i: RouteInput): Route {
-  // A picture's answer of nothing still rules: the list stays empty. The sentence's results stand
-  // only while no picture has answered, because the local search cannot match a sentence.
+  // a picture's answer of nothing still rules: the local search cannot match a sentence
   if (i.pictureOn && i.pictureIds !== null) return { by: 'picture', ids: i.pictureIds }
   return boxHoldsQuestion(i) ? { by: 'text', ids: i.textIds } : { by: 'none' }
 }

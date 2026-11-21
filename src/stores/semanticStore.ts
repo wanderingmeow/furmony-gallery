@@ -7,7 +7,7 @@ import {
 } from '../data/searchApi'
 import { routeFor, shouldAskText, type Route } from '../model/queryRoute'
 // Static, not lazy: splitting this off the entry bought a 366 B chunk plus one more request
-// ahead of it, during the moment the reader waits to see their own picture. The HEIF parser
+// ahead of it, during the moment the user waits to see their own picture. The HEIF parser
 // stays lazy, in a worker file that only a HEIC loads.
 import { prepare } from '../data/pictureInput'
 import { searchText } from './filterStore'
@@ -48,7 +48,7 @@ function makeWait(): Wait {
 }
 
 /** Choosing a picture starts the search, so there is no "waiting to be sent" state. `preparing`
- *  (the reader's own device is re-encoding) and `none` (nothing similar) stay apart from
+ *  (the user's own device is re-encoding) and `none` (nothing similar) stay apart from
  *  `failed`, which would claim the search broke. `staged` - a picture up with nothing running -
  *  needs a wait dropped mid-flight, which no control can cause: the only `open()` left is
  *  hidden while the mode is on. */
@@ -85,11 +85,11 @@ const store = createRoot(() => {
     setPending(false)
   }
 
-  /** Whether the reader's switch is on, and only for a build that was given an address. */
+  /** Whether the user's switch is on, and only for a build that was given an address. */
   const semanticOn = createMemo(() => semanticSearch() && searchConfigured)
 
   /** The hint in the search box. When the enhanced search is on, the hint is a sample query
-   *  that the reader can type as it is. */
+   *  that the user can type as it is. */
   const searchPlaceholder = createMemo(() =>
     semanticOn() ? tr('search.placeholderEnhanced') : tr('search.placeholder'))
 
@@ -110,9 +110,9 @@ const store = createRoot(() => {
     // from the plain list. A complete answer replaces them, even one that is empty; a
     // refusal, a busy service or a timeout keeps the ids already there.
     const [lastShownIds, setLastShownIds] = createSignal<number[] | null>(null)
-    // The reader's own device is re-encoding the picture, before any request exists.
+    // The user's own device is re-encoding the picture, before any request exists.
     const [preparing, setPreparing] = createSignal(false)
-    // Which half of 查找中: the upload over the reader's network, then the search on the server.
+    // Which half of 查找中: the upload over the user's network, then the search on the server.
     const [uploading, setUploading] = createSignal(false)
     const wait = makeWait()
     // A number per chosen picture, dropped along with it. Encoding is slow enough that a job
@@ -169,7 +169,7 @@ const store = createRoot(() => {
       // An empty list with no reason is a complete answer, not a failure.
       if (found) return 'none'
       if (preparing()) return 'preparing'
-      // However the wait ended, the reader's picture stays up rather than reverting to the
+      // However the wait ended, the user's picture stays up rather than reverting to the
       // drop zone.
       return staged() ? 'staged' : 'empty'
     })
@@ -182,7 +182,7 @@ const store = createRoot(() => {
     return {
       on: modeOn,
       answer,
-      /** The preview, made from the picture the reader chose; once the encode lands it is the
+      /** The preview, made from the picture the user chose; once the encode lands it is the
        *  same picture that gets sent. */
       preview: () => staged()?.url ?? '',
       uploading,
@@ -209,12 +209,12 @@ const store = createRoot(() => {
       /** Show a chosen picture and search with it right away. Replaces the picture that was
        *  up and releases its object URL. */
       async stage(file: Blob): Promise<void> {
-        // The reader's own file goes on screen in the task that handled the tap, before a
+        // The user's own file goes on screen in the task that handled the tap, before a
         // single byte is re-encoded. On a phone the encode runs long enough that a drop zone
         // still sitting there reads as a dead button.
         release()
         // A request still running for the previous picture is called off rather than left to
-        // finish: `search` below will not start while one is running, so the reader would see
+        // finish: `search` below will not start while one is running, so the user would see
         // this picture wearing the other one's results and these bytes would never go out.
         stop()
         const turn = stagedTurn
@@ -261,7 +261,7 @@ const store = createRoot(() => {
       /** Why the last picture came back with nothing. Empty when there was an answer. */
       error: () => answer()?.error ?? '',
 
-      /** What the reader can do next. Empty means no button: the service names it for its own
+      /** What the user can do next. Empty means no button: the service names it for its own
        *  refusals, this file for the browser's. */
       action: () => answer()?.action ?? '',
 
@@ -273,8 +273,8 @@ const store = createRoot(() => {
   const picture = makePictureSearch()
 
   // The switch covers both ways to ask, so turning it off closes the picture. The circle that
-  // opened it hides with the switch, so an open drop zone would have no way out. The list would
-  // also keep a picture's order after the reader turned the search off.
+  // opened it hides with the switch, so a drop zone left open would have no way out, and the list
+  // would keep a picture's order after the user turned the search off.
   createEffect(on(semanticOn, (on) => { if (!on) picture.close() }, { defer: true }))
 
   // ---------- what the list reads ----------
@@ -285,8 +285,8 @@ const store = createRoot(() => {
     return found && found.query === searchText().trim() ? found.ids : []
   })
 
-  /** Which route the list follows. The toolbar and the grid both read it, so they cannot
-   *  disagree about the sort buttons while a ranking is on screen. */
+  /** Which route the list follows. The box and the grid both read it, so they cannot disagree
+   *  about the order while a ranking is on screen. */
   const route = createMemo<Route>(() => routeFor({
     pictureOn: picture.on(),
     pictureIds: picture.lastShownIds(),
@@ -299,14 +299,14 @@ const store = createRoot(() => {
   const semanticActive = createMemo(() => route().by !== 'none')
 
   /** The rows on screen are a photograph's answer. An answer of "nothing" counts too, because the
-   *  emptiness came from the picture. With no answer yet, the list is the reader's own text
+   *  emptiness came from the picture. With no answer yet, the list is the user's own text
    *  search, and the tab filters it. */
   const pictureAnswers = createMemo(() => route().by === 'picture')
 
   // ---------- the question the box asks ----------
 
   // picture.holds is a dependency so that dropping a picture re-asks the sentence still in the
-  // box. retryNonce is there for the reader who taps 重试 on the sentence already in the box.
+  // box. retryNonce is there for the user who taps 重试 on the sentence already in the box.
   createEffect(on([searchText, picture.holds, semanticOn, retryNonce], ([typed]) => {
     cancelSentence()
     const q = typed.trim()

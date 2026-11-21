@@ -20,7 +20,7 @@
   100% { transform: translate(-50%, -50%) rotate(var(--theta)) translateY(-1.6em) scaleY(0); opacity: 0; }
 }
 .heart-pop {
-  animation: heart-pop 0.46s cubic-bezier(0.7, 0, 0.3, 1);
+  animation: heart-pop 0.46s var(--ease-heart);
 }
 .heart-burst {
   position: absolute;
@@ -34,7 +34,7 @@
   height: 1em;
   border-radius: 9999px;
   border: 0.14em solid var(--color-red-500);
-  animation: heart-ripple 0.5s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+  animation: heart-ripple 0.5s var(--ease-heart) forwards;
 }
 .heart-spark {
   position: absolute;
@@ -43,7 +43,7 @@
   width: 0.1em;
   height: 0.34em;
   border-radius: 0.05em;
-  animation: heart-spark 0.6s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+  animation: heart-spark 0.6s var(--ease-heart) forwards;
 }
 @media (prefers-reduced-motion: reduce) {
   .heart-pop {

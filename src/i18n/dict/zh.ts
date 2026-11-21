@@ -1,9 +1,8 @@
 // The 简体中文 dictionary. It is the source: every other dictionary is checked against its key
-// tree, so a key missing from another locale fails the test. A reader sees a word or nothing at
+// tree, so a key missing from another locale fails the test. A user sees a word or nothing at
 // all, and never a bare key.
 //
-// A value may be a function. `translator` calls it with the arguments the caller passes, which is
-// how a sentence that carries a number stays a sentence in every language.
+// a value may be a function: `translator` calls it with the caller's arguments
 export const zh = {
   common: {
     retry: '重试',
@@ -36,6 +35,7 @@ export const zh = {
   },
 
   filter: {
+    tabGroup: '设定分类',
     colors: '颜色',
     races: '物种',
     priceMode: '价格显示',
@@ -63,6 +63,8 @@ export const zh = {
   },
 
   detail: {
+    fields: '商品信息',
+    photoOf: (n: number, total: number) => `第 ${n} 张，共 ${total} 张`,
     owner: '主人',
     painter: '画师',
     painterNumbered: (n: number) => `画师${n}`,
@@ -98,18 +100,21 @@ export const zh = {
     monthly: '月供',
   },
 
-  toolbar: {
-    refresh: '刷新',
+  chrome: {
     toTop: '回到顶部',
     stats: '数据统计',
-    social: '主人账号',
   },
 
   search: {
     placeholder: '搜索名称/描述/ID',
-    /** With the enhancement on, the hint is a question the reader can type as it is. */
-    placeholderEnhanced: '爱吃肉的棒小龙…',
+    /** With the enhancement on, the hint is a question the user can type as it is. */
+    placeholderEnhanced: '爱吃肉的棒小龙',
+    /* 增强模式的例子，四个一行，在框里往上滚。分隔符两边留空格，译文里出现竖线也不会误伤。
+       每条都得是搜索真答得了的：它拿句子去比作品的名称和描述，不做画师查找。 */
+    examples: '爱吃肉的棒小龙 | 雪地里的白狐狸 | 会发光的守夜龙 | 披着狼皮的羊 | 万圣节的捣蛋鬼 | 藻海里的实验体 | 提夜灯的守夜犬',
     clear: '清除搜索',
+    open: '搜索',
+    close: '关闭搜索',
   },
 
   picture: {
@@ -200,11 +205,13 @@ export const zh = {
   },
 
   info: {
-    /** The money paid first, which is the number a reader decides on. */
+    /** The money paid first, which is the number a user decides on. */
     downPayment: '首付',
     monthly: '月供',
     periods: (n: number) => `×${n}期`,
     total: (price: string) => `共 ${price}`,
+    /** The price a listing came down from. It reads as part of the discount, not a second price. */
+    original: '原价',
     /** 8.5 折 means the price is 85 % of the original. */
     discount: (tenths: number) => `${tenths.toFixed(1)}折`,
   },
@@ -219,7 +226,7 @@ export const zh = {
 
   money: {
     /** The wire carries plain 人民币 integers with no currency field, so each dictionary writes the
-     *  money its own readers expect. */
+     *  money its own users expect. */
     amount: (n: number) => `¥${n}`,
   },
 

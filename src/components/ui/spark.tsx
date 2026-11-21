@@ -40,7 +40,7 @@ const WORKING = 'spark-pulse'
  */
 export function SparkMark(props: {
   icon?: () => IconDefinition
-  size?: number
+  size?: string | number
   working?: boolean | (() => boolean)
   class?: string
 }) {

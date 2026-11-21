@@ -32,7 +32,7 @@ describe('FabCircle', () => {
 
   it('wears the plain face by default', () => {
     mount(() => <FabCircle title="a">x</FabCircle>)
-    expect(button().className).toContain('bg-surface')
+    expect(button().className).toContain('chrome-glass')
     expect(button().className).not.toContain('bg-accent')
     expect(button().className).not.toContain('fab-glow')
   })

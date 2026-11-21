@@ -134,15 +134,16 @@ export function Sheet(props: {
     onCleanup(release)
   }))
 
-  // Firefox folds the mount style and the target style into one frame, so the transition has
-  // no start value and the sheet jumps in. Reading offsetHeight forces a layout between the
-  // two, and then the slide happens.
+  // Firefox folds the mount style and the target into one frame, and a rAF callback runs before that
+  // frame's style is computed: the start value needs a frame of its own, layout read inside it.
   createEffect(on(open, (shown) => {
     if (!shown) return
     setClosing(false)
     setPos(1)
-    if (sheetEl) void sheetEl.offsetHeight
-    requestAnimationFrame(() => setPos(0))
+    requestAnimationFrame(() => {
+      if (sheetEl) void sheetEl.offsetHeight
+      requestAnimationFrame(() => setPos(0))
+    })
   }))
 
   // The layer keeps its own signal: a back press moves the route away from outside, and the

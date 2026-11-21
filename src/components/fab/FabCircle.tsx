@@ -26,7 +26,7 @@ export function FabCircle(props: {
         props.glow ? ' fab-glow' : ''}${props.class ? ` ${props.class}` : ''}`}
       classList={{
         'bg-accent text-white border-accent-ink/40': accent(),
-        'bg-surface text-ink border-border': !accent(),
+        'chrome-glass text-ink border-border': !accent(),
       }}
       style={props.style}
       title={props.title}

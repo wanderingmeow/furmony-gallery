@@ -1,58 +1,29 @@
-// src/components/toolbar/PictureSearch.tsx - the toolbar's picture mode: one word at a time in
-// the toolbar row, and the picture that was searched beside it.
+// The picture half of the field at the top edge: an empty drop zone, or the picture that was
+// searched with its word beside it.
 import { tr } from '../../i18n'
 import { createEffect, createSignal, on, onCleanup, Show } from 'solid-js'
 import type { JSX } from 'solid-js'
 import { PictureOutlined } from '@ant-design/icons-svg'
 import { picture, type PictureState } from '../../stores/semanticStore'
-import { warmSearch, type PictureError } from '../../data/searchApi'
+import { type PictureError } from '../../data/searchApi'
 import { AntIcon } from '../ui/AntIcon'
 import { SparkMark } from '../ui/spark'
+import { CHROME_DROP_R, CHROME_PICT_STAGED } from '../ui/boxes'
 
-/** Left of the sort buttons because using it removes them: the reader sees what is being
- *  given up. */
-export function PictureToggle() {
-  return (
-    // The row grows when the mode opens, and a control that moves is one that readers miss, so
-    // the circle keeps the top edge it had beside the field.
-    <button
-      class="self-start shrink-0 w-8 h-8 rounded-lg flex items-center justify-center
-             transition-colors"
-      classList={{ 'text-accent': picture.on(), 'text-faint hover:text-ink': !picture.on() }}
-      aria-label={tr('picture.find')}
-      aria-pressed={picture.on()}
-      title={tr('picture.find')}
-      onClick={() => {
-        // The reader is about to go looking for a file, which is the longest pause in this
-        // path: the trip to the service gets paid while that search is happening.
-        warmSearch()
-        picture.on() ? picture.close() : picture.open()
-      }}
-    >
-      <AntIcon icon={PictureOutlined} size={16} />
-    </button>
-  )
-}
-
-
-
-/** The reason, in the reader's words. The *action* is not here: the service sends it with the
- *  reason, and a page that guessed would offer 重试 for a picture that can never be read.
- *  Typed against `PictureError` so a new reason from the encode path cannot ship without its
- *  sentence; a word from a newer service still falls through to the line below. */
+/** The reason in the user's words. The *action* is not here: guessing would offer 重试 for a
+ *  picture that can never be read. Typed against `PictureError` so a new reason cannot ship without
+ *  its sentence; a word from a newer service falls through to the line below. */
 const WHY_KEY: Record<PictureError, 'picture.unreadable' | 'picture.heic' | 'picture.tooBig' |
   'picture.noAnswer' | 'picture.offline' | 'picture.timeout' | 'picture.failed'> = {
   unreadable: 'picture.unreadable',
   not_an_image: 'picture.unreadable',
-  // The file is fine; this browser has no HEVC decoder (Windows Chrome needs the HEVC
-  // extension). 读不出来 would send the reader to another app for nothing.
+  // the file is fine and this browser has no HEVC decoder: 读不出来 would send the user elsewhere
   noHevc: 'picture.heic',
   too_large: 'picture.tooBig',
   embed_down: 'picture.noAnswer',
   network: 'picture.offline',
   timeout: 'picture.timeout',
-  // The body arrived and was not a result at all. Our own word, so it gets its own line
-  // rather than the `??` below, which is for words a newer service invents.
+  // our own word, so it gets its own line rather than the `??` below
   unknown: 'picture.failed',
 }
 
@@ -72,31 +43,20 @@ function Chip(props: { onClick: () => void; children: JSX.Element }) {
   )
 }
 
-// This is the one place a reader compares a picture against the results, so the row has a second
-// height for a pointer. ROW is the height the toolbar had before picture mode.
+// The empty drop zone fills the row it is handed; a staged picture beside its word asks for ROW.
+// draw/layout.ts sizes the field from PICTURE_INSET, so the empty box keeps the same air on all four
+// sides and its corner shares the plate's centre. A row that changed height on a pointer would move
+// the button under the thumb.
 
 const ROW = 72
-const ROW_TALL = 128
-const SLOT = 128
-const SLOT_TALL = 200
-const IMG_TALL = 112
+const SLOT = 72
 
-/** Only the answer grows: 没有很像的 and a failure both show a button under the word, and a row
- *  that changes height moves that button out from under the thumb. The whole banner is the
- *  trigger, so the reader does not have to aim the pointer at this row. */
-const growsOnHover = () => picture.state() === 'done'
-
-/** The picture stands in a slot of its own, so the word beside it starts in the same place for
- *  every picture, and for the same picture as it loads. A word that slides right when the bytes
- *  arrive reads as a new line of text. */
+/** A slot of its own, so the word starts in the same place for every picture, and for the same
+ *  picture as it loads. */
 function PreviewWithBox(props: { onClick: () => void }) {
   return (
     <div
-      class="self-center shrink-0 flex items-center justify-center max-w-1/2 w-[var(--pic-slot)]
-             transition-[width]"
-      classList={{
-        'pointer-fine:group-hover:w-[var(--pic-slot-tall)]': growsOnHover(),
-      }}
+      class="self-center shrink-0 w-[var(--pic-slot)] flex items-center justify-center"
     >
       <button
         class="relative block overflow-hidden rounded-lg bg-black/5"
@@ -115,10 +75,7 @@ function PreviewWithBox(props: { onClick: () => void }) {
           <img
             src={picture.preview()}
             alt=""
-            class="block max-h-[var(--pic-row)] max-w-full transition-[max-height]"
-            classList={{
-              'pointer-fine:group-hover:max-h-[var(--pic-img-tall)]': growsOnHover(),
-            }}
+            class="block max-h-[var(--pic-row)] max-w-full"
           />
           {/* Where the service looked, drawn back over the picture: any sentence about what a
             model attended to would just be a claim. */}
@@ -143,12 +100,9 @@ function PreviewWithBox(props: { onClick: () => void }) {
   )
 }
 
-// `spark` sits with its word so that the compiler checks both when someone adds a state. A wait
-// with no spark looks like a page that stalled. `empty` and `staged` have neither: the picture is
-// up and no wait is running.
+// `spark` sits with its word so the compiler checks both when a state is added
 function stateLines(onPick: () => void): Record<PictureState, { word: () => JSX.Element; spark?: true }> {
-  // No action, no chip: for a reason this build has never heard of, a 重试 that may not help is
-  // worse than no button.
+  // for a reason this build has never heard of, a 重试 that may not help is worse than no button
   const actionLabel = () => {
     const key = ACTION_KEY[picture.action() as keyof typeof ACTION_KEY]
     return key === undefined ? '' : tr(key)
@@ -158,13 +112,11 @@ function stateLines(onPick: () => void): Record<PictureState, { word: () => JSX.
   return {
     empty: { word: () => <></> },
     staged: { word: () => <></> },
-    // The reader's own device opens and shrinks the picture, and no request exists yet. Neither the
-    // uploading word nor the searching word fits, so this line shows the plain loading word.
+    // the user's own device opens the picture: no request exists yet, so neither 上传中 nor 查找中 fits
     preparing: { spark: true, word: () => <>{tr('common.loading')}</> },
     searching: { spark: true, word: () => <>{tr(picture.uploading() ? 'picture.uploading' : 'picture.searching')}</> },
     busy: { word: () => <>{tr('picture.later')}</> },
-    // The button sits below the sentence. A button beside it would shift between lines as the
-    // sentence changed length, and a control that moves is harder to hit than one extra row.
+    // a control that moves is harder to hit than one extra row
     failed: {
       word: () => (
         <span class="flex flex-col items-start gap-2">
@@ -173,8 +125,7 @@ function stateLines(onPick: () => void): Record<PictureState, { word: () => JSX.
         </span>
       ),
     },
-    // The list under the toolbar now follows the picture, and the word says what changed its
-    // order.
+    // The list under the box now follows the picture, and the word says what changed its order.
     done: { word: () => <span class="font-semibold text-ink">{tr('picture.matchTitle')}</span> },
     // The service found nothing alike, and 重试 would only send the same picture back.
     none: {
@@ -188,14 +139,13 @@ function stateLines(onPick: () => void): Record<PictureState, { word: () => JSX.
   }
 }
 
-/** A file held over the row turns the dashed edge solid, because that edge is already the only
- *  frame in this row. */
+/** A file held over the row turns the dashed edge solid: it is already the only frame here. */
 function DropZone(props: { onPick: () => void; dragging: () => boolean }) {
   return (
     <button
-      class="flex-1 min-w-0 rounded-lg border-black/15 dark:border-white/20
+      class={`no-pick flex-1 min-w-0 ${CHROME_DROP_R} border-black/15 dark:border-white/20
              flex flex-col items-center justify-center gap-2.5
-             hover:border-black/30 dark:hover:border-white/35 transition-colors"
+             hover:border-black/30 dark:hover:border-white/35 transition-colors`}
       classList={{
         'border border-dashed': !props.dragging(),
         'border-2 border-solid bg-black/5 dark:bg-white/10': props.dragging(),
@@ -204,15 +154,17 @@ function DropZone(props: { onPick: () => void; dragging: () => boolean }) {
       title={tr('picture.dropHint')}
     >
       <AntIcon icon={PictureOutlined} size={30} class="text-faint" />
-      <span class="flex flex-col items-center gap-0.5">
-        <span class="text-base font-semibold">{tr('picture.question')}</span>
+      {/* The two lines give the box its width back: a column flex item is as wide as its own text,
+          so without this the hint runs past the frame and the plate cuts it off. */}
+      <span class="flex w-full min-w-0 flex-col items-center gap-0.5 px-2 text-center">
+        <span class="text-sm font-semibold">{tr('picture.question')}</span>
         <span class="text-xs text-faint">{tr('picture.hint')}</span>
       </span>
     </button>
   )
 }
 
-// The paste listener sits on the window: the reader copies before this row has a thing to click.
+// The paste listener sits on the window: the user copies before this row has a thing to click.
 function watchPictureArrival(
   drop: () => HTMLElement | undefined,
   take: (file: Blob) => void,
@@ -225,7 +177,7 @@ function watchPictureArrival(
     const hand = (file: File | undefined) => {
       if (file) take(file)
     }
-    // A pasted picture is usually one that the reader has cut out: the ideal input.
+    // A pasted picture is usually one that the user has cut out: the ideal input.
     const onPaste = (event: ClipboardEvent) => hand(event.clipboardData?.files[0])
     const onDrop = (event: DragEvent) => {
       event.preventDefault()
@@ -265,19 +217,9 @@ export function PictureMode() {
   return (
     <div
       ref={drop}
-      class="flex items-stretch gap-2 w-full min-w-0 transition-[height]"
-      style={{
-        '--pic-row': `${ROW}px`,
-        '--pic-row-tall': `${ROW_TALL}px`,
-        '--pic-slot': `${SLOT}px`,
-        '--pic-slot-tall': `${SLOT_TALL}px`,
-        '--pic-img-tall': `${IMG_TALL}px`,
-      }}
-      classList={{
-        'h-[var(--pic-row-tall)]': empty(),
-        'h-[var(--pic-row)]': !empty(),
-        'pointer-fine:group-hover:h-[var(--pic-row-tall)]': growsOnHover(),
-      }}
+      class="flex items-stretch gap-2 w-full min-w-0"
+      style={{ '--pic-row': `${ROW}px`, '--pic-slot': `${SLOT}px` }}
+      classList={{ 'h-[var(--pic-row)]': !empty() }}
     >
       <input
         ref={input}
@@ -293,14 +235,14 @@ export function PictureMode() {
       <Show
         when={empty()}
         fallback={(
-          <>
+          <div class={`flex items-center gap-2 min-w-0 flex-1 ${CHROME_PICT_STAGED}`}>
             <PreviewWithBox onClick={pick} />
             {/* Its own item in the row, so the one gap on the row sits on both sides of the spark. */}
             <Show when={line().spark}><SparkMark class="self-center" size={16} working /></Show>
             {/* The row stretches its children; without this the word hangs at the top of a
                 tall row next to a centerd picture. */}
             <div class="self-center min-w-0 text-sm text-muted">{line().word()}</div>
-          </>
+          </div>
         )}
       >
         <DropZone onPick={pick} dragging={dragging} />

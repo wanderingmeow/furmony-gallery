@@ -1,15 +1,11 @@
-// The filter circle: the number at its corner, the funnel it wears, and when it turns orange.
-// What those signals mean is the stores' business, tested there; the mocks here just answer.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'solid-js/web'
-import { FloatingActions } from './FloatingActions'
+import { CornerActions } from './CornerActions'
 
 const facts = vi.hoisted(() => ({ count: 0 }))
 
 vi.mock('@solidjs/router', () => ({ useNavigate: () => () => {} }))
 
-// The circle's own four inputs. What the panel holds is FilterPanel's own test's business, so the
-// panel is a stub here; one test still opens it, to check that the fill follows.
 vi.mock('./FilterPanel', () => ({ FilterPanel: () => <div>panel</div> }))
 vi.mock('../../stores/derivedStore', () => ({
   filtersOnCount: () => facts.count,
@@ -19,14 +15,18 @@ vi.mock('../../stores/listingsStore', () => ({
   fetchFailed: () => false,
   loadData: () => Promise.resolve(),
 }))
-vi.mock('../../stores/semanticStore', () => ({ semanticActive: () => false }))
+const staged = vi.hoisted(() => ({ picture: false }))
+vi.mock('../../stores/semanticStore', () => ({
+  semanticActive: () => false,
+  picture: { on: () => staged.picture },
+}))
 
 let dispose: (() => void) | undefined
 let host: HTMLDivElement
 
 const circle = () => {
   const button = host.querySelector<HTMLButtonElement>('button[aria-label^="排序"]')
-  if (!button) throw new Error('no filter circle')
+  if (!button) throw new Error('no funnel')
   return button
 }
 
@@ -38,13 +38,12 @@ const badge = () => {
 }
 
 function draw() {
-  // Rendering twice replaces what is on screen, so a test can change the facts and look again.
-  // The facts are plain objects, so nothing else would tell the page that they moved.
+  // the facts are plain objects, so a redraw has to replace what is on screen
   dispose?.()
   host?.remove()
   host = document.createElement('div')
   document.body.appendChild(host)
-  dispose = render(() => <FloatingActions scrollTop={() => 0} onTop={() => {}} />, host)
+  dispose = render(() => <CornerActions />, host)
 }
 
 beforeEach(() => {
@@ -75,5 +74,23 @@ describe('the filter circle', () => {
     circle().click()
     expect(circle().className).toContain('bg-accent')
     expect(badge()).toBe('2')
+  })
+})
+
+describe('the charts beside it', () => {
+  const charts = () => {
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label^="数据统计"]')
+    if (!button) throw new Error('no charts')
+    return button
+  }
+
+  it('stands beside the funnel', () => {
+    draw()
+    expect(charts()).toBeTruthy()
+  })
+
+  it('stands in the slot the band gives its exit to', () => {
+    draw()
+    expect((charts().parentElement as HTMLElement).dataset.chrome).toBe('stats')
   })
 })

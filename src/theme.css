@@ -1,0 +1,42 @@
+/* The palette, shared by every sheet the build emits: the one inside the document and the one
+   the app waits for. Dark mode flips the same names, so no color utility needs a `dark:` partner. */
+@theme {
+  /* Every chrome move: quick out of the finger, easing into place. iOS gives a finger this shape, so
+     anything that follows one uses it. A theme key is also a utility, so this is `ease-chrome`. */
+  --ease-chrome: cubic-bezier(0.32, 0.72, 0, 1);
+  /* The heart answers a press with a hard stop and no overshoot. */
+  --ease-heart: cubic-bezier(0.7, 0, 0.3, 1);
+  --color-canvas: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-surface-2: #f3f4f6;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-ink: #1f2937;
+  --color-muted: #6b7280;
+  --color-faint: #9ca3af;
+  /* The chrome's fill: the search box, the tab pill and the popups are one material, so the two edges
+     of the screen read as one thing whichever of them has grown. It sits on the palette because the
+     document's own sheet paints the pill's first frame. */
+  --chrome-glass: rgba(255, 255, 255, 0.85);
+  /* The accent by role, aliased to the palette so every use lands on one orange. */
+  --color-accent: var(--color-orange-500);
+  --color-accent-ink: var(--color-orange-600);
+  --color-accent-soft: var(--color-orange-700);
+  --color-accent-deep: var(--color-orange-900);
+}
+
+/* Dark palette - neutral grays with no blue tint, base #121212. The document's own sheet imports
+   this file too, so the spinner already stands on the dark canvas. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-canvas: #121212;
+    --chrome-glass: rgba(30, 30, 30, 0.85);
+    --color-surface: #262626;
+    --color-surface-2: #404040;
+    --color-border: rgba(255, 255, 255, 0.1);
+    --color-ink: #e5e5e5;
+    --color-muted: #a3a3a3;
+    --color-faint: #737373;
+    --color-accent-soft: var(--color-orange-300);
+  }
+}

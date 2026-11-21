@@ -1,6 +1,5 @@
-// One round button in the bottom-right column, with its own panel above it. The panel opens upward
-// only: these buttons sit in the corner of the screen, and one that opened downward would fall off
-// the edge.
+// The panel opens away from the edge the button stands on, takes the room that direction has, and
+// stops short of the far edge.
 //
 // The panel is portalled to <body>. The waterfall sits in a fixed layer, and a second .glass inside
 // that layer is clipped by it, so the blur would never paint.
@@ -21,7 +20,7 @@ const ON_EDGE: JSX.CSSProperties = {
   transform: `translate(calc(-50% + ${EDGE}px), calc(-50% - ${EDGE}px))`,
 }
 
-// The popup's bottom edge rests POPUP_GAP above the button, and POPUP_AIR stays free above it.
+// the near edge rests POPUP_GAP from the button; POPUP_AIR stays free at the far edge
 const POPUP_GAP = 8
 const POPUP_AIR = 8
 
@@ -52,6 +51,8 @@ export function FabMenu(props: {
   face?: () => JSX.Element | null
   /** The number on the corner button. It has to be readable with the panel shut. */
   badge?: () => number
+  /** Hang the panel below the button instead of above it. */
+  drop?: boolean
   panelClass?: string
   children?: JSX.Element
 }) {
@@ -60,19 +61,20 @@ export function FabMenu(props: {
 
   let wrap!: HTMLDivElement
   let popup!: HTMLDivElement
-  const [pos, setPos] = createSignal<{ bottom: number; right: number; roomAbove: number } | null>(null)
+  type Placement = { side: 'top' | 'bottom'; at: number; right: number; room: number }
+  const [pos, setPos] = createSignal<Placement | null>(null)
 
   createEffect(on(open, (shown) => {
     if (!shown) { setPos(null); return }
-    // Every measurement reads the box again: the column shifts as a whole when 回到顶部 arrives and
-    // when it leaves.
+    // portalled to <body>, so it shares no box with the circle: every scroll and resize reads it again
     const measure = () => {
       const r = wrap.getBoundingClientRect()
-      setPos({
-        bottom: window.innerHeight - r.top + POPUP_GAP,
-        right: window.innerWidth - r.right,
-        roomAbove: r.top - (POPUP_GAP + POPUP_AIR),
-      })
+      const right = window.innerWidth - r.right
+      setPos(props.drop
+        ? { side: 'top', at: r.bottom + POPUP_GAP, right,
+            room: window.innerHeight - r.bottom - (POPUP_GAP + POPUP_AIR) }
+        : { side: 'bottom', at: window.innerHeight - r.top + POPUP_GAP, right,
+            room: r.top - (POPUP_GAP + POPUP_AIR) })
     }
     measure()
     window.addEventListener('resize', measure)
@@ -117,7 +119,7 @@ export function FabMenu(props: {
         accent={open}
         onClick={() => setOpen((o) => !o)}
       >
-        {props.face?.() ?? <AntIcon icon={props.icon} size="1.25em" />}
+        {props.face?.() ?? <AntIcon icon={props.icon} size={22} />}
         <Show when={badge() > 0}>
           {/* The same orange as the fill, so the number and the button mean one thing. The ring
               takes the circle's own colour, so the number stays cut out when the button is orange
@@ -135,8 +137,8 @@ export function FabMenu(props: {
           <div
             ref={popup}
             class={`${POPUP_BOX} ${props.panelClass ?? ''}`}
-            style={{ bottom: `${pos()!.bottom}px`, right: `${pos()!.right}px`,
-              'max-height': `${pos()!.roomAbove}px` }}
+            style={{ [pos()!.side]: `${pos()!.at}px`, right: `${pos()!.right}px`,
+              'max-height': `${pos()!.room}px` }}
           >
             {props.children}
           </div>

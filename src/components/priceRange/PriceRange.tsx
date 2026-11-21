@@ -15,7 +15,6 @@ import {
 import { AntIcon } from '../ui/AntIcon'
 import { PANEL_BLOCK, PanelHeader, UNDER_TEXT } from '../fab/panelParts'
 import { PriceRail } from './PriceRail'
-import './PriceRange.css'
 
 export function PriceRangeBlock() {
   // Fix the grid before the first bar is drawn.

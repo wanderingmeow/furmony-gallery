@@ -21,13 +21,9 @@ const scope = self as unknown as {
 
 scope.onmessage = async (event) => {
   try {
-    // PNG rather than an ImageBitmap. A tiled HEIC - most camera photos, 8×6 tiles of 512px -
-    // is composited from its tiles, and the bitmap this library returns from that composite has
-    // measured wrong along the last tile row and column: on a real phone, 30/255 per pixel
-    // across the bottom 15% of a 3072×4096 photo against a macOS decode, with the rest matching
-    // within 3. `convertHeic` reads its own canvas back on the CPU and encodes it, so the damage
-    // never crosses: same file and device it measures 1–2/255 there, where `decodeHeic` plus our
-    // own draw measures 11–17. PNG also keeps transparency, which the encode worker lays on
+    // PNG, not an ImageBitmap: the bitmap this library composites for a tiled HEIC has measured wrong
+    // along its last tile row and column on a real phone. `convertHeic` reads its own canvas back on
+    // the CPU and encodes it, so the damage never crosses. PNG also keeps transparency, which the encode worker lays on
     // white.
     //
     // A workaround, deletable once the returned bitmap survives a draw. To check: re-run the
@@ -36,9 +32,11 @@ scope.onmessage = async (event) => {
     const converted = await convertHeic(event.data, { type: 'image/png', maxDimension: MAX_EDGE })
     scope.postMessage({ blob: converted.blob })
   } catch (error) {
-    // An error with attempts came from a file that did parse as HEIF; anything else was no
-    // HEIF at all, and the reader's photo is not what is being reported.
+    // An error with attempts came from a file the parser opened and then found no decoder for. An
+    // empty list means the container held something that is not a HEVC picture at all (an AVIF in
+    // a HEIF wrapper, a file past the parser's pixel limit), and naming a codec the parser never
+    // reached sends the user looking for a decoder they do not need. Anything else was no HEIF.
     const attempts = (error as { attempts?: unknown } | null)?.attempts
-    scope.postMessage({ blob: null, heic: Array.isArray(attempts) })
+    scope.postMessage({ blob: null, heic: Array.isArray(attempts) && attempts.length > 0 })
   }
 }

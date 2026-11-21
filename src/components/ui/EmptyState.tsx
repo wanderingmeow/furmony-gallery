@@ -33,9 +33,8 @@ export function EmptyNote(props: { icon: IconDefinition; title: string; line?: s
 /**
  * What the list says when it has nothing to show: the reason, and the one thing that fixes it.
  *
- * The box fills the space between the floating toolbar and the controls at the bottom, so the
- * words sit where the reader is looking. The box stays on the page even with no reason to show,
- * which keeps the copyright band from jumping up to the toolbar.
+ * The box grows to whatever room the caller's column leaves it. It stays on the page even with no
+ * reason to show, which keeps the copyright band from riding up under the chrome.
  */
 export function EmptyState() {
   const run = () => {
@@ -45,10 +44,7 @@ export function EmptyState() {
   }
 
   return (
-    // 16rem is what the page's own parts take up: the toolbar's 8rem above this box and the
-    // copyright band's 8rem below it. The box fills the rest, so the band sits at the bottom of
-    // the screen in full view.
-    <div class="flex min-h-[calc(100vh-16rem)] flex-col items-center justify-center gap-1.5 px-8 py-10 text-center">
+    <div class="flex flex-1 flex-col items-center justify-center gap-1.5 px-8 py-10 text-center">
       <Show when={emptyState()}>
         {(s) => (
           <>
@@ -56,7 +52,7 @@ export function EmptyState() {
             <Show when={s().action}>
               {(action) => (
                 <button
-                  class="mt-2 rounded-full border border-border bg-surface px-4 py-1.5 text-sm text-ink hover:bg-surface-2"
+                  class="no-pick mt-2 rounded-full border border-border bg-surface px-4 py-1.5 text-sm text-ink hover:bg-surface-2"
                   onClick={run}
                 >
                   {emptyActionLabel(action())}

@@ -8,7 +8,6 @@ import {
   edgeOf, railShare, stepAt, stepIndex, type PriceEnd, type PriceRange,
 } from '../../model/priceRange'
 import { holdPointer } from '../../draw/trackPointer'
-import './PriceRail.css'
 
 export function PriceRail(props: {
   /** The edges the thumbs rest on. */

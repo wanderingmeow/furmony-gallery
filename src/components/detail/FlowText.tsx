@@ -52,7 +52,7 @@ export function FlowText(props: { text: string; flow: boolean }) {
   const step = () => (props.flow ? SWEEP_MS / Math.max(groups().length, 1) : 0)
 
   return (
-    <span class="whitespace-pre-wrap" style={{ '--step': `${step().toFixed(2)}ms` }}>
+    <p class="whitespace-pre-wrap" style={{ '--step': `${step().toFixed(2)}ms` }}>
       {props.flow ? (
         <For each={groups()}>{(group, i) => (
           <span class="flow-unit" style={{ '--i': i() }}>{group}</span>
@@ -61,6 +61,6 @@ export function FlowText(props: { text: string; flow: boolean }) {
         // Not new: the untranslated original, shown as it is.
         props.text
       )}
-    </span>
+    </p>
   )
 }

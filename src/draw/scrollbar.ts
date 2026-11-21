@@ -51,25 +51,22 @@ export function pointerProgress(
 /**
  * The y of the preview chip, at the middle of the scrollbar thumb. No browser reports where it
  * drew its own thumb, so the chip is placed from the same model the related row's bar uses: the
- * page becomes a scroller whose content is one screen plus `scrollRange`, and the track is the
- * window's height.
- *
- * WebKit insets its track from the edges and takes its own floor from AppKit, so the chip sits a
- * little low at either end.
- *
- * null when the page scrolls less than one screen. Otherwise a few px of scroll on a short list
- * would move the chip the whole way down the edge, and that reads as a jump.
+ * page becomes a scroller one screen plus `scrollRange` long, and the thumb is scaled to `track`
+ * rather than to the page. WebKit insets its track and takes its floor from AppKit, so the chip sits
+ * a little low at either end. null when the chip has nowhere to travel.
  */
 export function previewTop(
-  scrollTop: number, scrollRange: number, viewport: number, height: number,
+  scrollTop: number, scrollRange: number, viewport: number,
+  track: { top: number; bottom: number }, height: number,
 ): number | null {
-  if (scrollRange < viewport) return null
+  const room = track.bottom - track.top
+  if (scrollRange < viewport || room < height) return null
   const thumb = scrollThumb(
     { scrollLeft: scrollTop, scrollWidth: viewport + scrollRange, clientWidth: viewport },
-    viewport,
+    room,
     THUMB_MIN,
   )
   if (!thumb) return null
   const center = thumb.offset + thumb.width / 2
-  return Math.min(viewport - height, Math.max(0, center - height / 2))
+  return track.top + Math.min(room - height, Math.max(0, center - height / 2))
 }

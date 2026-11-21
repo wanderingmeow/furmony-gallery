@@ -4,4 +4,4 @@
  */
 import { tr } from '../i18n'
 
-export const statsTitle = (): string => tr('toolbar.stats')
+export const statsTitle = (): string => tr('chrome.stats')

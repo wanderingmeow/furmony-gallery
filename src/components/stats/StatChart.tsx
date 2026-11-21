@@ -15,10 +15,9 @@ const isDark =
   typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
 const AXIS_STROKE = isDark ? '#a3a3a3' : '#6b7280'
 const GRID_STROKE = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'
-// Axis ticks OUTSIDE the plot: same color & width as the grid (they used to be a
-// darker stroke), and shorter (size 4 vs uPlot's default 10).
+// ticks in the grid's own color, shorter than uPlot's default: a darker tick reads as an edge of the data
 const TICKS = { stroke: GRID_STROKE, width: 2, size: 4 }
-// The band a flat axis needs: labels (10px) + gap 5 + ticks 4.
+// the band a flat axis needs: labels 10 + gap 5 + ticks 4
 const FLAT_AXIS = 26
 // The room a tilted axis may take from the 200px chart. Words longer than this are cut.
 const BAND = 52

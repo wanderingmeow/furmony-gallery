@@ -28,10 +28,11 @@ function Row(props: { label: string; children: JSXElement }) {
     // It belongs on the label: Safari keeps a grid column's minimum from the first layout, and
     // the label is the one box in the row whose height never changes.
     <div class={`${GRID} border-t border-border mt-1.5 pt-1.5`}>
-      <span class="text-xs text-muted pt-1 min-h-6">{props.label}</span>
+      <dt class="text-xs text-muted pt-1 min-h-6">{props.label}</dt>
       {/* items-center keeps a 20.5px badge in the middle of the line. The grid cell lets the child
-          fill the width, so the color chips can wrap. */}
-      <div class="min-w-0 grid items-center">{props.children}</div>
+          fill the width, so the color chips can wrap. The margin is preflight's to take, and this
+          says so in case the row is ever drawn outside the app sheet. */}
+      <dd class="m-0 min-w-0 grid items-center">{props.children}</dd>
     </div>
   )
 }
@@ -120,7 +121,11 @@ function OncePriceLine(props: { parts: () => OncePrice }) {
     <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 tabular-nums">
       <span class="text-lg font-bold text-accent-ink">{formatPrice(p().main)}</span>
       <Show when={p().secondary}>{(total) => (
-        <span class="text-sm text-faint line-through">{formatPrice(total())}</span>
+        // Struck in a way a reader can say out loud: the number alone would read as a second price.
+        <s class="text-sm text-faint">
+          <span class="sr-only">{tr('info.original')}</span>
+          {formatPrice(total())}
+        </s>
       )}</Show>
       <Show when={p().discount > 0}>
         <span class="px-1.5 py-0.5 rounded-md bg-red-600 text-white text-[11px] font-bold">
@@ -196,9 +201,9 @@ export function InfoTable(props: { listing: AdoptListing }) {
         <HeadImg url={sizedUrl(stableImageUrl(l().adoptHeadPicture), 'badge')} />
         <div class="min-w-0">
           <div class="flex items-baseline gap-2">
-            <h2 class="text-xl font-bold truncate">
+            <h1 class="text-xl font-bold truncate">
               {wordsPending() ? <SkelText class="h-6 w-28" /> : listingName(l()) ?? tr('common.unknown')}
-            </h2>
+            </h1>
             <span class="text-sm text-muted shrink-0">#{l().adoptId}</span>
           </div>
           <Show when={plan()}>{(p) => <InstallmentPlan parts={p} />}</Show>
@@ -206,14 +211,18 @@ export function InfoTable(props: { listing: AdoptListing }) {
         </div>
       </div>
 
+      {/* A description list, so a reader takes a field and its value as one thing — "Race, Dragon"
+          — and the rotor can walk the fields without the row borders getting in the way. */}
+      <dl class="m-0" aria-label={tr('detail.fields')}>
       {/* We load socials per detail page, so 主人 shows only when that table has this id */}
       <OptRow label={tr('detail.owner')} when={!!owner()}>{owner()}</OptRow>
 
       <Show when={l().harmonyPainterVo}>
         <Row label={tr('detail.painter')}>
           <div class="flex items-center gap-1.5">
+            {/* The row is already named 画师, so the face is decoration. */}
             <Show when={painterAvatar(l())} fallback={<span class="w-6 h-6 rounded-full bg-surface-2" />}>
-              {(url) => <img src={url()} alt={tr('detail.painter')} class="w-6 h-6 rounded-full object-cover" />}
+              {(url) => <img src={url()} alt="" class="w-6 h-6 rounded-full object-cover" />}
             </Show>
             {/* The painter's name is one of the fields the API returns translated, so the one the
                 row carries belongs to the language before the reader's pick. */}
@@ -255,6 +264,7 @@ export function InfoTable(props: { listing: AdoptListing }) {
           <Description listing={l} />
         </Show>
       </OptRow>
+      </dl>
     </div>
   )
 }

@@ -5,7 +5,6 @@
 // inside the label: a tap on the label turns the switch, and that turn comes from the reader, so it
 // buzzes. The sizes and the hit test are in haptics.css.
 
-import './haptics.css'
 
 export const canBuzz = (): boolean => 'switch' in document.createElement('input')
 

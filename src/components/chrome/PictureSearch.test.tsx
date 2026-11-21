@@ -3,13 +3,9 @@ import { render } from 'solid-js/web'
 import { settled } from '../../testSetup'
 import { PictureMode } from './PictureSearch'
 import { setSemanticSearch } from '../../stores/displayStore'
-// The store's tests cover when each state happens. These cover what the row says and offers:
-// nothing else checks that 加载中 belongs to the local decode while 上传中 belongs to the wifi.
 const sent = vi.hoisted(() => ({
   answer: null as unknown,
   uploaded: null as (() => void) | null,
-  // Re-encoding a picture takes a moment on a phone. A test can hold that step open to keep
-  // the row in 加载中.
   encodeGate: null as Promise<void> | null,
 }))
 
@@ -41,14 +37,12 @@ let disposeApp: () => void
 let host: HTMLDivElement
 
 const text = () => (host.textContent ?? '').replace(/\s+/g, '')
-/** What the reader can press: the name a screen reader would read. */
-const names = () =>
+const pressableLabels = () =>
   Array.from(host.querySelectorAll('button')).map(
     (b) => b.getAttribute('aria-label') ?? (b.textContent ?? '').trim(),
   )
 const spinning = () => !!host.querySelector('.spark-pulse svg')
 
-/** Show a picture and let the row reach the state that this answer describes. */
 async function answerWith(body: unknown): Promise<void> {
   sent.answer = Promise.resolve(body)
   void picture.stage(new Blob(['x'], { type: 'image/jpeg' }))
@@ -77,8 +71,7 @@ afterEach(() => {
 describe('the picture row', () => {
   it('shows the drop zone before any picture', () => {
     expect(text()).toContain('是哪一只毛毛？上传就知道')
-    // The row's one control is the picker: the way out is the bar's own circle.
-    expect(names()).toHaveLength(1)
+    expect(pressableLabels()).toHaveLength(1)
     expect(spinning()).toBe(false)
   })
 
@@ -87,7 +80,6 @@ describe('the picture row', () => {
     sent.encodeGate = new Promise<void>((done) => { release = done })
     void picture.stage(new Blob(['x'], { type: 'image/jpeg' }))
     await settled()
-    // Neither 上传中 nor 查找中 is true yet: no byte has left the device.
     expect(text()).toContain('加载中')
     expect(spinning()).toBe(true)
     release()
@@ -111,32 +103,30 @@ describe('the picture row', () => {
     await answerWith({ ids: [201], box: [0.25, 0.25, 0.5, 0.5] })
     expect(text()).toContain('视觉匹配结果')
     expect(spinning()).toBe(false)
-    // The picture itself is the way to choose another.
-    expect(names()).toEqual(['换一张'])
+    expect(pressableLabels()).toEqual(['换一张'])
   })
 
   it('offers 换一张 and not 重试 when nothing matched', async () => {
     await answerWith({ ids: [], box: null })
     expect(text()).toContain('没有很像的')
-    expect(names()).toEqual(['换一张', '换一张'])
+    expect(pressableLabels()).toEqual(['换一张', '换一张'])
   })
 
   it('offers 重试 for a reason that could pass next time', async () => {
     await answerWith({ ids: [], box: null, error: 'network', action: 'retry' })
     expect(text()).toContain('没连上服务')
-    expect(names()).toEqual(['换一张', '重试'])
+    expect(pressableLabels()).toEqual(['换一张', '重试'])
   })
 
   it('keeps a word it was not taught, and offers no button with it', async () => {
-    // A reason from a newer service gets no 重试: this build cannot know whether one would help.
     await answerWith({ ids: [], box: null, error: 'from-a-newer-service' })
     expect(text()).toContain('没搜成')
-    expect(names()).toEqual(['换一张'])
+    expect(pressableLabels()).toEqual(['换一张'])
   })
 
   it('says 稍后再试 while the service holds its one upload slot', async () => {
     await answerWith({ ids: [], box: null, busy: true })
     expect(text()).toContain('稍后再试')
-    expect(names()).toEqual(['换一张'])
+    expect(pressableLabels()).toEqual(['换一张'])
   })
 })

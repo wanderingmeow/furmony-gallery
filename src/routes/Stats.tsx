@@ -54,8 +54,7 @@ export function StatsHeader(props: {
 export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
   const data = createMemo(() => filterByLock(listings(), props.mode()))
 
-  // Esc closes the stats sheet. The content owns the key (not the shared Sheet)
-  // so deferral logic stays local; the Sheet no longer handles Esc globally.
+  // the content owns Esc, because this is the one screen with a sheet of its own
   onMount(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') props.onClose()

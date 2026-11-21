@@ -94,7 +94,7 @@ function draw(source: AdoptListing | (() => AdoptListing), lang: 'en' | 'ja' | '
   document.body.appendChild(host)
   hosts.push(host)
   dispose = render(() => <InfoTable listing={l()} />, host)
-  const label = [...host.querySelectorAll('span')].find((s) => s.textContent === 'Description')
+  const label = [...host.querySelectorAll('dt')].find((s) => s.textContent === 'Description')
   return { host, body: () => label!.parentElement! }
 }
 

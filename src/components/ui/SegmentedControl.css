@@ -1,17 +1,65 @@
-/* The segmented control: a track, a chip that slides to the chosen segment, and a hairline
-   between neighbors. 价格显示 in the filter panel and the stats lock filter use it. */
+/* 价格显示 in the filter panel and the stats lock filter wear this control, and so does the tab
+   pill at the bottom edge. */
 .seg-row {
   display: inline-grid;
   grid-auto-flow: column;
-  /* One width for every segment, so the chip is the same length wherever it lands. */
+  /* So the chip is the same length wherever it lands. */
   grid-auto-columns: minmax(0, 1fr);
   align-items: stretch;
   position: relative;
   border-radius: 9999px;
-  /* The ring of track left around the chip. 4px is what keeps the chip reading as inside it. */
+  /* 4px is the least ring that keeps the chip reading as inside the track. */
   padding: 4px;
   background: rgba(120, 120, 128, 0.16);
+  /* The band it sits in passes clicks through to the page; the row takes them back. */
+  pointer-events: auto;
 }
+
+/* The bottom pill's glass. The brightness lift is what keeps it reading as one object over both
+   dark and blown-out covers; chrome that floats over a photo stays plain blur. Written at this
+   specificity to outrank the gray track above. */
+.seg-row.seg-glass {
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
+  box-shadow: var(--shadow-sm);
+}
+
+/* The unprefixed property gets its own @supports block, as in `.glass`: the build drops it as
+   redundant beside the prefixed one, and Android WebView only supports this spelling. With a real
+   blur the fill can be thinner. */
+@supports (backdrop-filter: blur(0)) {
+  .seg-row.seg-glass {
+    backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
+    background: var(--chrome-glass);
+  }
+}
+
+/* The bottom pill's height, on the root so the placeholder band can stand the same box. */
+:root {
+  --seg-h-glass: 56px;
+}
+/* --seg-h: the pill on the bottom line is taller than the circles it shares that line with, and
+   centred on it. --chip-inset 0: the track's own 4px is the whole ring, and past that the chosen
+   tab stops being the loudest thing on the line. A row inside a panel keeps the default inset. */
+.seg-row.seg-glass {
+  --seg-h: var(--seg-h-glass);
+  --chip-inset: 0px;
+}
+/* One number moves the whole pill: the type rides --seg-h, and the hint is an em share of it. */
+.seg-row.seg-glass .seg-item {
+  font-size: calc(var(--seg-h) * 0.25);
+}
+.seg-row.seg-glass .seg-hint {
+  font-size: 0.8em;
+  line-height: 1em;
+  font-weight: 400;
+}
+/* The word is what you choose and the count only reports it, so the weight runs against the size. */
+.seg-row.seg-glass .seg-label {
+  font-weight: 600;
+}
+
 .seg-fill {
   width: 100%;
 }
@@ -26,28 +74,70 @@
   font-weight: 500;
   -webkit-tap-highlight-color: transparent;
 }
+/* The labels never give up a pixel, so the air inside each segment is what gives on a narrow
+   screen. The wrapper is the container and its own padding already clears the page edges; the clamp
+   pays for the corner column on both sides, because the pill is centred. */
+.seg-stacked {
+  flex-direction: column;
+  justify-content: center;
+  /* -10px is the track's 8px of padding plus the glass border's 2px. */
+  min-height: calc(var(--seg-h, var(--fab-size)) - 10px);
+  padding: 0;
+  padding-inline: clamp(var(--seg-pad-min),
+    (100cqw - var(--seg-side) * 2 - var(--seg-labels) - 8px) / 8,
+    var(--seg-pad-max));
+}
 .seg-chip {
   position: absolute;
   left: 0;
-  /* The row's own padding, so the chip sits inside the ring of track. */
-  top: 4px;
-  bottom: 4px;
+  /* The row's 4px of padding puts the tab here and --chip-inset stands the chip back from the tab.
+     The script adds the same number horizontally as it measures: a chip whose ring is equal on all
+     four sides reads as one shape. */
+  top: calc(4px + var(--chip-inset, 0px));
+  bottom: calc(4px + var(--chip-inset, 0px));
   border-radius: 9999px;
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06);
   /* The iOS curve for anything that follows a finger. */
-  transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1),
-    width 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.24s var(--ease-chrome),
+    width 0.24s var(--ease-chrome);
+}
+/* The page's main switch wears the accent. The shadow carries a little of it outward, which is what
+   makes the chip read as painted. */
+.seg-accent .seg-chip {
+  background: var(--color-accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14),
+    0 2px 6px color-mix(in oklab, var(--color-accent) 30%, transparent);
 }
 .seg-label {
   white-space: nowrap;
   color: var(--color-muted);
   transition: color 0.2s ease, opacity 0.2s ease;
 }
+/* 11px under a 12px label keeps the pair short. tabular-nums holds the column while the count
+   changes. */
+.seg-hint {
+  font-size: 11px;
+  line-height: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-faint);
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
 .seg-item input:checked ~ .seg-label {
   color: var(--color-ink);
 }
-.seg-item:active .seg-label {
+.seg-item input:checked ~ .seg-hint {
+  color: var(--color-ink);
+  opacity: 0.72;
+}
+/* On the accent chip both lines go white: ink disappears into it, and half-transparent ink smudges
+   at this size. */
+.seg-accent .seg-item input:checked ~ .seg-label,
+.seg-accent .seg-item input:checked ~ .seg-hint {
+  color: #fff;
+  opacity: 1;
+}
+.seg-item:active .seg-label,
+.seg-item:active .seg-hint {
   opacity: 0.6;
 }
 /* The line belongs to the item on its right, so it sits on that item's left edge. */
@@ -61,17 +151,17 @@
   transform: translateX(-0.5px);
   background: rgba(120, 120, 128, 0.4);
 }
-/* A line coming back waits for the chip to clear it. */
+/* Timed to the chip's slide, so the line and the chip leave and arrive together. */
 .seg-item::before {
-  transition: opacity 0.16s ease 0.12s;
+  transition: opacity 0.16s ease;
 }
 /* The chip cuts through the two lines it touches, so they fade ahead of it. */
 .seg-item.seg-adj::before {
   opacity: 0;
   transition: opacity 0.12s ease;
 }
-/* Full strength, because it has to clear 3:1 on both the track and the chip. Blue is what the app
-   already uses for a mark outside the accent. */
+/* Full strength, because it has to clear 3:1 on both the track and the chip. Blue is the app's mark
+   for anything outside the accent. */
 .seg-row:has(input:focus-visible) .seg-chip {
   outline: 2px solid #3b82f6;
   outline-offset: 1px;
@@ -80,10 +170,23 @@
   .seg-row {
     background: rgba(120, 120, 128, 0.24);
   }
-  /* A lifted gray, the way iOS lifts it: white would carry the page's own ink. */
+  /* The same fill the search box wears, so the two edges of the screen read as one material. */
+  .seg-row.seg-glass {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: var(--chrome-glass);
+    -webkit-backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
+    box-shadow: var(--shadow-md);
+  }
+  @supports (backdrop-filter: blur(0)) {
+    .seg-row.seg-glass {
+      backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
+      background: var(--chrome-glass);
+    }
+  }
+  /* A gray lifted off the track and short of the page's own ink: white would read as a second text
+     color, and the chip carries no shadow to separate it. */
   .seg-chip {
-    background: #636366;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    background: #48484a;
   }
   .seg-item:not(.seg-first)::before {
     background: rgba(180, 180, 190, 0.28);

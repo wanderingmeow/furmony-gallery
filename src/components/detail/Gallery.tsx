@@ -1,4 +1,5 @@
 import { createEffect, createSignal, For, Match, on, onCleanup, onMount, Show, Switch, untrack } from 'solid-js'
+import { tr } from '../../i18n'
 import { onImageError, preloadImage, imageReady } from '../../data/image'
 import { EASE } from '../../draw/anim'
 import { ART_PLACEHOLDER, DETAIL_THUMB, DETAIL_THUMB_ROW, SK_FILL } from '../ui/boxes'
@@ -188,8 +189,14 @@ export function Gallery(props: {
             </Show>
           </div>
           <div class="relative h-0">
-            <span class="absolute left-1/2 -translate-x-1/2 -top-8 px-2 py-0.5 rounded-md bg-black/50 text-white text-[11px]">
-              {props.index() + 1} / {count}
+            {/* The counter floats over the swipe surface, so a held thumb lands on it. A reader says
+                the whole line instead of the bare fraction, and says it again when the page turns. */}
+            <span
+              class="no-pick absolute left-1/2 -translate-x-1/2 -top-8 px-2 py-0.5 rounded-md bg-black/50 text-white text-[11px]"
+              role="status"
+            >
+              <span class="sr-only">{tr('detail.photoOf', props.index() + 1, count)}</span>
+              <span aria-hidden="true">{props.index() + 1} / {count}</span>
             </span>
           </div>
           {/* For keys on the url, so a re-render keeps the thumbnails that are already loaded */}

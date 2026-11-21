@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   GAP, MIN_CARD, MIN_COLS, RELATED_CARD_GAP, RELATED_CARD_MIN, VIEW_PAD,
   detailBodyHeight, detailPictureHeight, indexOfRow, relatedCardWidth, relatedCardsHeight,
-  relatedPerView, relatedStripHeight, rowOfIndex, type Shape, shapeAt, sheetCardBox, skeletonRows,
+  relatedPerView, relatedStripHeight, renderWindow, rowOfIndex, type Shape, shapeAt, sheetCardBox, skeletonRows,
   waterfallCardWidth, waterfallCols, waterfallRowHeight,
 } from './layout'
 
@@ -151,8 +151,55 @@ describe('waterfall column math', () => {
   })
 })
 
+// The window is the only place the list decides which rows exist: a negative height or a NaN
+// transform there paints nothing, and the user sees a blank list until the browser's own scroll
+// clamp lands.
+describe('waterfall render window', () => {
+  type Window = Parameters<typeof renderWindow>[0]
+  const at = (over: Partial<Window> = {}) => renderWindow(
+    { scrollTop: 900, viewport: 800, rowHeight: 300, rowCount: 100, overscan: 2, ...over })
+
+  it('paints the rows the window covers plus the overscan on each side', () => {
+    expect(at()).toEqual({ firstRow: 3, start: 1, end: 8 })
+  })
+
+  it('starts at the first row at the top of the list', () => {
+    expect(at({ scrollTop: 0 })).toEqual({ firstRow: 0, start: 0, end: 5 })
+  })
+
+  it('stops at the last row when the page is scrolled past the end', () => {
+    expect(at({ scrollTop: 99999 })).toEqual({ firstRow: 100, start: 98, end: 100 })
+  })
+
+  it('is an empty window when the list is empty', () => {
+    expect(at({ rowCount: 0, scrollTop: 5000 })).toEqual({ firstRow: 0, start: 0, end: 0 })
+  })
+
+  it('is an empty window before the row height is measured', () => {
+    expect(at({ rowHeight: 0 })).toEqual({ firstRow: 0, start: 0, end: 0 })
+    expect(at({ rowHeight: Number.NaN })).toEqual({ firstRow: 0, start: 0, end: 0 })
+  })
+
+  it('reads a rubber-band offset as the top of the list', () => {
+    expect(at({ scrollTop: -80 })).toEqual({ firstRow: 0, start: 0, end: 5 })
+  })
+
+  it('never inverts, whatever the numbers', () => {
+    for (const rowHeight of [0, -300, 0.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      for (const rowCount of [0, -4, Number.NaN, 100]) {
+        for (const scrollTop of [-500, 0, 900, Number.NaN]) {
+          const w = at({ rowHeight, rowCount, scrollTop })
+          expect(w.start).toBeLessThanOrEqual(w.end)
+          expect(Number.isFinite(w.start) && Number.isFinite(w.end)).toBe(true)
+          expect(w.end).toBeLessThanOrEqual(Math.max(0, Number.isFinite(rowCount) ? Math.floor(rowCount) : 0))
+        }
+      }
+    }
+  })
+})
+
 // The placeholder list draws the grid that the real list will use, so it needs the same number of
-// rows that a reader would see filled: every row that starts above the fold. The cards start
+// rows that a user would see filled: every row that starts above the fold. The cards start
 // VIEW_PAD under the bar's bottom edge, which measures 110px.
 describe('placeholder row math', () => {
   const topPad = 110 + VIEW_PAD
@@ -221,7 +268,7 @@ describe("the detail's shape and box", () => {
   })
 
   it("holds a sheet's art to half its card", () => {
-    // A tablet upright has room for a cover that fills the card, and a reader who has to scroll past
+    // A tablet upright has room for a cover that fills the card, and a user who has to scroll past
     // it to reach the table.
     expect(detailPictureHeight(sheetCardBox(744, 1133), 'sheet'), 'an iPad mini upright').toBeCloseTo(542.5)
     expect(detailPictureHeight(sheetCardBox(1024, 1366), 'sheet'), 'an iPad Pro upright').toBeCloseTo(659)

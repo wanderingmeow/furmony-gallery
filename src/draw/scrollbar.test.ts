@@ -1,9 +1,7 @@
-// Tests for the scrollbar maths (scrollbar.ts). No DOM, no reactivity.
 import { describe, expect, it } from 'vitest'
 import { pointerProgress, previewTop, scrollThumb } from './scrollbar'
 
-// 1000px of content in a 400px window, so the row can scroll 600px, on a 200px track.
-// scrollThumb has no default floor, so these tests pass 24.
+// 1000px of content in a 400px window: 600px of scroll, on a 200px track.
 const TRACK_LEFT = 1000
 const at = (scrollLeft: number, track = 200, min = 24) =>
   scrollThumb({ scrollLeft, scrollWidth: 1000, clientWidth: 400 }, track, min)
@@ -22,14 +20,14 @@ describe('scrollThumb', () => {
   })
 
   it('holds the thumb of a long list at the floor', () => {
-    // 4000px of content in a 400px window would put the thumb at 20px on a 200px track.
+    // 4000px of content would put the thumb at 20px, under the floor
     const row = (scrollLeft: number) => ({ scrollLeft, scrollWidth: 4000, clientWidth: 400 })
     expect(scrollThumb(row(0), 200, 24)).toEqual({ width: 24, offset: 0 })
     expect(scrollThumb(row(3600), 200, 24)).toEqual({ width: 24, offset: 176 })
   })
 
   it('fits the thumb into a track narrower than the floor', () => {
-    // A 20px track cannot hold a 24px thumb, so the thumb is 20px wide and cannot move.
+    // a 20px track cannot hold a 24px thumb
     expect(at(600, 20)).toEqual({ width: 20, offset: 0 })
   })
 
@@ -39,15 +37,14 @@ describe('scrollThumb', () => {
   })
 
   it('clamps a row dragged past either end', () => {
-    // Written as literals. Two calls of the same function return the same value when the
-    // clamp is wrong, so comparing them proves nothing.
+    // literals: with a broken clamp two calls agree, so comparing them proves nothing
     expect(at(5000)).toEqual({ width: 80, offset: 120 })
     expect(at(-50)).toEqual({ width: 80, offset: 0 })
   })
 })
 
 describe('pointerProgress', () => {
-  // The two directions have to agree, or the thumb jumps out from under the hand that grabs it.
+  // a disagreement between the two directions throws the thumb out from under the hand
   it('agrees with scrollThumb about where a grab lands', () => {
     for (const scrollLeft of [0, 150, 300, 600]) {
       const thumb = at(scrollLeft)
@@ -71,16 +68,17 @@ describe('pointerProgress', () => {
 })
 
 describe('previewTop', () => {
-  // A 3200px page in an 800px window leaves 2400px of scroll. The thumb takes the visible
-  // share: 800 * 800 / 3200 = 200px, so its center runs from 100px to 700px.
-  const at = (scrollTop: number, scrollRange = 2400) => previewTop(scrollTop, scrollRange, 800, 36)
+  // 800 visible of 3200 on a 600px track: a 150px thumb, centers from 75 to 525 of a track
+  // that starts 100px down the window.
+  const at = (scrollTop: number, scrollRange = 2400) =>
+    previewTop(scrollTop, scrollRange, 800, { top: 100, bottom: 700 }, 36)
 
   it('sits on the middle of the thumb, at the top', () => {
-    expect(at(0)).toBe(82)
+    expect(at(0)).toBe(157)
   })
 
   it('sits on the middle of the thumb, at the bottom', () => {
-    expect(at(2400)).toBe(682)
+    expect(at(2400)).toBe(607)
   })
 
   it('holds the middle of the edge at the middle of the page', () => {
@@ -94,21 +92,30 @@ describe('previewTop', () => {
   })
 
   it('stays on the thumb when the page is long and the thumb is at its floor', () => {
-    // 100800px of page puts the thumb at the 24px floor, so the chip can reach both ends.
-    expect(at(0, 100000)).toBe(0)
+    // the thumb sits at its 24px floor, so the chip reaches both ends of the track
+    expect(at(0, 100000)).toBe(100)
     expect(at(50000, 100000)).toBe(382)
-    expect(at(100000, 100000)).toBe(764)
+    expect(at(100000, 100000)).toBe(664)
   })
 
   it('keeps a scroll past the end on the last thumb position', () => {
-    expect(at(9000)).toBe(682)
+    expect(at(9000)).toBe(607)
+  })
+
+  it('never leaves the track', () => {
+    // a track that starts 72px down the edge and stops 140px short of the bottom
+    const edge = (n: number) => previewTop(n, 2400, 800, { top: 72, bottom: 712 }, 36)!
+    expect(edge(0)).toBeGreaterThanOrEqual(72)
+    expect(edge(2400)).toBeLessThanOrEqual(712 - 36)
+  })
+
+  it('is null when the chrome has left less room than the chip needs', () => {
+    expect(previewTop(200, 2400, 800, { top: 72, bottom: 100 }, 36)).toBeNull()
   })
 
   it('centers the chip when the window is shorter than the thumb floor', () => {
-    // A thumb cannot run longer than its track. That is the rule scrollThumb follows and the one
-    // the chip's own copy of the maths broke: a 20px window measured a 24px thumb, so the top of
-    // the page and the bottom of it landed 4px apart instead of both on the middle of the edge.
-    expect(previewTop(0, 200, 20, 8)).toBe(6)
-    expect(previewTop(200, 200, 20, 8)).toBe(6)
+    // a thumb cannot run longer than its track, so both ends of a short window share a centre
+    expect(previewTop(0, 200, 20, { top: 0, bottom: 20 }, 8)).toBe(6)
+    expect(previewTop(200, 200, 20, { top: 0, bottom: 20 }, 8)).toBe(6)
   })
 })

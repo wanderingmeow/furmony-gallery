@@ -12,6 +12,7 @@ import { DETAIL_PAD_X } from './draw/layout'
 import type { LockFilter } from './model/statistics'
 import { NotificationCenter } from './components/ui/NotificationCenter'
 import { tr } from './i18n'
+import { appSheetReady } from './draw/appSheet'
 import { Alert } from './components/ui/Alert'
 import { loadData, loadError, setLoadError } from './stores/listingsStore'
 
@@ -60,10 +61,12 @@ function Shell() {
         )}
       </Sheet>
       {/* One column for both, so the notification center and the banner stack instead of
-          overlapping. */}
-      <div class="fixed z-50 flex flex-col items-end gap-2 top-[calc(0.75rem+var(--safe-top))]
-        right-[calc(1rem+var(--safe-right))]">
-        <NotificationCenter />
+          overlapping. It waits for the sheet with everything else: none of these utilities travel
+          inside the document, so an early one would sit in the wrong corner until the sheet lands. */}
+      <Show when={appSheetReady()}>
+        <div class="fixed z-50 flex flex-col items-end gap-2 top-[calc(0.75rem+var(--safe-top))]
+          right-[calc(1rem+var(--safe-right))]">
+          <NotificationCenter />
           <Show when={loadError()}>
             {(error) => (
               <Alert
@@ -81,13 +84,15 @@ function Shell() {
             )}
           </Show>
         </div>
+      </Show>
     </>
   )
 }
 
 export default function App() {
   return (
-    <Router root={Shell} base={routerBase}>
+    // the app puts its own row back, so the router keeps its saved positions to itself
+    <Router root={Shell} base={routerBase} scrollRestoration={false}>
       <Route path={indexRoute} />
       <Route path={detailRoute} />
       <Route path={statsRoute} />

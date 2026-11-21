@@ -16,8 +16,7 @@ export function WaterfallSkeleton(props: { topOffset: () => number }) {
   const cols = createMemo(() => waterfallCols(frameW()))
   const cardWidth = createMemo(() => waterfallCardWidth(frameW(), cols()))
   const rowHeight = createMemo(() => waterfallRowHeight(cardWidth()))
-  const topPad = createMemo(() => props.topOffset() + VIEW_PAD)
-  const rows = createMemo(() => skeletonRows(viewportH(), topPad(), rowHeight()))
+  const rows = createMemo(() => skeletonRows(viewportH(), props.topOffset(), rowHeight()))
 
   // The wrapper is no taller than the window, so the page cannot scroll while the placeholders
   // are up.
@@ -25,8 +24,8 @@ export function WaterfallSkeleton(props: { topOffset: () => number }) {
     <div
       class="relative w-full overflow-hidden sk-pulse"
       style={{
-        height: `${Math.min(topPad() + rows() * rowHeight() + VIEW_PAD, viewportH())}px`,
-        'padding-top': `${topPad()}px`,
+        height: `${Math.min(props.topOffset() + rows() * rowHeight() + VIEW_PAD, viewportH())}px`,
+        'padding-top': `${props.topOffset()}px`,
         'padding-right': `calc(${VIEW_PAD}px + var(--safe-right))`,
         'padding-left': `calc(${VIEW_PAD}px + var(--safe-left))`,
       }}

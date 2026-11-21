@@ -17,7 +17,7 @@ export const SK_BOX = 'sk-box'
 
 const OVERLAY_CSS = `
 .sk-overlay .sk-pulse { animation: none; }
-.sk-overlay .sk-bar, .sk-overlay .sk-box, .sk-overlay .search-field {
+.sk-overlay .sk-bar, .sk-overlay .sk-box {
   background: transparent;
   border-color: var(--color-orange-500);
   outline: 1px solid var(--color-orange-500);

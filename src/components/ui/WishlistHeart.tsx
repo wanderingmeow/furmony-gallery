@@ -1,7 +1,6 @@
 import { createEffect, createSignal, For, on, onCleanup, Show } from 'solid-js'
 import { HeartFilled, HeartOutlined } from '@ant-design/icons-svg'
 import { AntIcon } from './AntIcon'
-import './WishlistHeart.css'
 
 const SPARKS = Array.from({ length: 6 }, (_, i) => ({
   theta: `${(i / 6) * 360}deg`,

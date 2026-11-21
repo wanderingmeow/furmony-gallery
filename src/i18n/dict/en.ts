@@ -38,6 +38,7 @@ export const en: Dict = {
   },
 
   filter: {
+    tabGroup: 'Category',
     colors: 'Colors',
     races: 'Species',
     priceMode: 'Price display',
@@ -66,6 +67,9 @@ export const en: Dict = {
   },
 
   detail: {
+    fields: 'Listing details',
+    /** The counter reads as a sentence: a bare 1 / 2 says nothing about pictures. */
+    photoOf: (n: number, total: number) => `Picture ${n} of ${total}`,
     owner: 'Owner',
     painter: 'Painter',
     painterNumbered: (n: number) => `Painter ${n}`,
@@ -101,17 +105,18 @@ export const en: Dict = {
     monthly: 'Monthly',
   },
 
-  toolbar: {
-    refresh: 'Refresh',
+  chrome: {
     toTop: 'Back to top',
     stats: 'Statistics',
-    social: 'Owner accounts',
   },
 
   search: {
     placeholder: 'Search name, description or ID',
-    placeholderEnhanced: 'a small dragon that loves meat…',
+    placeholderEnhanced: 'a small dragon that loves meat',
+    examples: 'a small dragon that loves meat | a white fox in the snow | a glowing night dragon | a lamb in a wolf skin | a Halloween trickster | a lab escapee | a dog with a night lamp',
     clear: 'Clear search',
+    open: 'Search',
+    close: 'Close search',
   },
 
   picture: {
@@ -200,11 +205,13 @@ export const en: Dict = {
   },
 
   info: {
-    /** The money paid first, which is the number a reader decides on. */
+    /** The money paid first, which is the number a user decides on. */
     downPayment: 'Deposit',
     monthly: 'Per month',
     periods: (n: number) => `× ${countOf(n, 'month')}`,
     total: (price: string) => `${price} in total`,
+    /** The price a listing came down from. Read as part of the discount, not as a second price. */
+    original: 'Original price',
     /** Chinese 折 names the part of the price left to pay, so it becomes a percentage here. */
     discount: (tenths: number) => `${Math.round((10 - tenths) * 10)}% off`,
   },

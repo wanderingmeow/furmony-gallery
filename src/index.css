@@ -1,33 +1,83 @@
 @import "tailwindcss";
+@import "./theme.css";
+/* The three component sheets the entry graph used to pull into the document. The document carries
+   boot.css and nothing else, so a component that the entry reaches has to arrive on this sheet. */
+@import "./components/ui/SegmentedControl.css";
+@import "./components/ui/WishlistHeart.css";
+@import "./components/priceRange/PriceRail.css";
+@import "./components/priceRange/PriceRange.css";
+@import "./draw/haptics.css";
 
-/* Semantic color palette - tokens generate Tailwind utilities (bg-surface,
-   text-muted, border-border, ...). Dark mode flips by overriding the SAME CSS
-   variables inside the prefers-color-scheme media query below: v4 color
-   utilities reference these vars, so no per-component `dark:` classes needed
-   for palette colors. Brand accents (orange/blue/red/amber) stay hardcoded. */
 @theme {
-  --color-canvas: #f5f5f7;      /* page background */
-  --color-surface: #ffffff;    /* cards / sheet / tables / image placeholders */
-  --color-surface-2: #f3f4f6;  /* thumbnails / chips / inactive buttons */
-  --color-border: rgba(0, 0, 0, 0.1);
-  --color-ink: #1f2937;        /* primary text */
-  --color-muted: #6b7280;      /* secondary text */
-  --color-faint: #9ca3af;      /* tertiary text */
-  /* The accent by role, aliased to the palette so every use lands on one orange. */
-  --color-accent: var(--color-orange-500);
-  --color-accent-ink: var(--color-orange-600);
-  --color-accent-soft: var(--color-orange-700);
-  --color-accent-deep: var(--color-orange-900);
+  /* The examples the enhanced search rolls through the field, one line at a time: 5s each, 35s round,
+     one stop per 14.29%. The last stop repeats the first line, so the round restarts on words the
+     user has already seen. The stops are cut for seven lines - every dictionary ships seven - and a
+     language that ships another count needs new stops. */
+  --animate-search-reel: search-reel 35s var(--ease-chrome) infinite;
+  @keyframes search-reel {
+    0%, 12% { transform: translateY(0) }
+    14.29%, 26.29% { transform: translateY(-24px) }
+    28.57%, 40.57% { transform: translateY(-48px) }
+    42.86%, 54.86% { transform: translateY(-72px) }
+    57.14%, 69.14% { transform: translateY(-96px) }
+    71.43%, 83.43% { transform: translateY(-120px) }
+    85.71%, 97.71% { transform: translateY(-144px) }
+    100% { transform: translateY(-168px) }
+  }
+}
+
+html, body {
+  touch-action: pan-y;
+  /* Scroll anchoring would fight the virtualized list, whose content shifts as rows mount. */
+  overflow-anchor: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS ignores `overflow: hidden` for touch, and once the document pans it sends every later flick
+   to the document wherever the finger lands. `touch-action` is read up the DOM and stops at the
+   scroller in use, so the sheet keeps its own scrolling. */
+html[data-scroll-locked],
+body[data-scroll-locked] {
+  touch-action: none;
 }
 
 :root {
-  color-scheme: light;
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
-
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+  /* The band's bar and the search field's box. The list reserves --bar-h and nothing else; the
+     chrome writes --field-h as the field changes shape. Both stand here so the placeholder bar has
+     a height before the script arrives. */
+  --bar-h: 56px;
+  --field-h: 48px;
+  /* The corner circle the two corner actions and the back-to-top button share. */
+  --fab-size: 48px;
+  /* The part of the pill that never gives way: its four labels at their natural width. The script
+     measures it once it arrives; until then this guess carries the first paint. Too small clips the
+     tabs in a wide language, too large leaves air on the line. */
+  --seg-labels: 176px;
+  /* The room one side leaves for the corner column and the gap beside it, counted twice because the
+     pill is centred. */
+  --seg-side: 56px;
+  --seg-pad-max: 16px;
+  --seg-pad-min: 0px;
+}
+
+/* The placeholder bars: only the look lives here. The shapes come from ui/boxes, and the sizes
+   sit next to the row that each bar stands in for. */
+.sk-pulse {
+  animation: sk-pulse 1.4s ease-in-out infinite;
+}
+.sk-bar {
+  flex: none;
+  background: rgba(128, 128, 138, 0.18);
+}
+@keyframes sk-pulse {
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-pulse { animation: none; }
 }
 
 /* Reusable spinner: a ring with an accent top edge that turns. Size via w-/h-. */
@@ -38,129 +88,50 @@
   animation: var(--animate-spin);
 }
 
-/* The waterfall scrolls the DOCUMENT (html/body) - the only way iOS status-bar tap-to-top
-   and the PC Home key (both target the document's main scrollable) scroll it to top.
-   `pan-y` allows vertical document scrolling while still blocking pinch at the
-   touch-action level; the viewport meta (maximum-scale=1, user-scalable=no) already
-   disables pinch + double-tap zoom page-wide. overflow-anchor:none stops scroll anchoring
-   from fighting the virtualized content (which shifts as rows mount/unmount). */
-html, body {
-  touch-action: pan-y;
-  overflow-anchor: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Stops the document from being panned while a sheet is open. iOS ignores
-   `overflow: hidden` for touch, and once the document is scrolling, iOS sends later flicks
-   to the document wherever the finger lands. The browser reads `touch-action` up the DOM and
-   stops at the scroller that is being scrolled, so the sheet's own scroller still works. */
-html[data-scroll-locked],
-body[data-scroll-locked] {
-  touch-action: none;
-}
-
-body {
-  margin: 0;
-  background: var(--color-canvas);
-  /* Safari uses its own default (black) for inheriting text even in dark - follow ink */
-  color: var(--color-ink);
-  -webkit-font-smoothing: antialiased;
-}
-
-/* Re-enable touch scrolling on the actual scroll containers (waterfall, detail
-   sheet, notification list, color/race popup, filter tabs) - pan-x pan-y keeps
-   panning but still excludes pinch-zoom. */
-.vscroll,
+/* The waterfall scrolls the document, because the iOS status bar and the PC Home key scroll the
+   document's main scroller to top and nothing else. The page-level `pan-y` leaves vertical panning
+   and drops pinch; each scroller below takes its own axes back. */
 [data-sheet-scroll],
 .overflow-y-auto,
 .overflow-x-auto {
   touch-action: pan-x pan-y;
 }
 
-/* Sheet scroller: never chain its scroll to the page behind the sheet (iOS Safari
-   keeps scrolling the viewport once an inner scroller hits its edge). `contain`
-   keeps the sheet's own overscroll bounce but stops it propagating upward. */
+/* iOS Safari keeps scrolling the viewport once an inner scroller hits its edge. `contain` keeps the
+   sheet's own bounce and stops it chaining to the page. */
 [data-sheet-scroll] {
   overscroll-behavior: contain;
 }
 
-/* Search field inset - translucent overlay dimming the toolbar's backdrop (its own
-   backdrop-filter would be clipped inside .glass). Light: gray 192 @0.25; dark: black @0.25. */
-.search-field {
-  background: rgba(192, 192, 192, 0.25);
-}
-
-/* The sheet's floating round buttons. Light mode puts near-white glass on a near-white
-   canvas, where the border alone does not lift them; a wide, faint shadow reads as
-   floating, while a dark tight one draws an edge. Dark mode separates by brightness. */
-.sheet-fab {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05), 0 8px 20px rgba(0, 0, 0, 0.07);
-}
-
-@media (prefers-color-scheme: dark) {
-  .sheet-fab {
-    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.38);
-  }
-}
-
-/* Glass toolbar background - blur + saturate + brightness lifts the backdrop.
-   Android WebViews (older Chromium) don't support backdrop-filter, so the default
-   here is a near-opaque fallback that stays readable WITHOUT blur; browsers that
-   DO support it drop to the translucent 0.75 + full filter stack (blur/saturate/brightness). */
+/* The material of the popups, the sheet and the preview chip. The default is a near-opaque fill that
+   reads without blur, because older Android WebView has no backdrop-filter; a browser that has it
+   wears the same fill with the filter stack. */
 .glass {
-  background: rgba(255, 255, 255, 0.92);
-  -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
+  background: var(--chrome-glass);
+  -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(200%) brightness(1.12);
 }
 
-/* The UNPREFIXED backdrop-filter lives in its own @supports block (not adjacent
-   to the -webkit- declaration). The build (Lightning CSS) otherwise strips it as
-   "redundant", leaving only the prefixed one - Android WebView supports only the
-   unprefixed property, so the blur disappears in production builds. Keeping it
-   in a separate rule preserves it. */
+/* The unprefixed property gets its own @supports block instead of sitting beside the -webkit- one:
+   Lightning CSS drops it as "redundant", and Android WebView only reads this spelling, so the blur
+   would vanish from production builds. */
 @supports (backdrop-filter: blur(0)) {
   .glass {
-    backdrop-filter: blur(24px) saturate(200%) brightness(1.2);
-    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(var(--blur-xl)) saturate(200%) brightness(1.12);
   }
 }
 
-/* Dark theme - system-auto only (no toggle button). Tailwind's `dark:` variant
-   already follows prefers-color-scheme in v4; these cover the non-Tailwind
-   surfaces (body, .glass). Placed after the @supports block so dark overrides it. */
-/* Dark palette - neutral warm-grays (no blue tint), base #121212.
-   Overriding the same @theme vars here flips every bg-surface/text-muted/...
-   utility automatically; body uses var(--color-canvas) so it follows too. */
+/* The palette flips in theme.css; what stays here are the surfaces that hold their own color. System
+   dark only, and placed after the @supports block so it overrides it. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --color-canvas: #121212;
-    --color-surface: #262626;
-    --color-surface-2: #404040;
-    --color-border: rgba(255, 255, 255, 0.1);
-    --color-ink: #e5e5e5;
-    --color-muted: #a3a3a3;
-    --color-faint: #737373;
-    --color-accent-soft: var(--color-orange-300);
-  }
   .glass {
-    background: rgba(30, 30, 30, 0.85);
-    /* dark backdrop needs no brightness lift */
-    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    background: var(--chrome-glass);
+    -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(200%) brightness(1.12);
   }
   @supports (backdrop-filter: blur(0)) {
     .glass {
-      backdrop-filter: blur(24px) saturate(200%);
+      backdrop-filter: blur(var(--blur-xl)) saturate(200%) brightness(1.12);
     }
   }
-  .search-field {
-    background: rgba(0, 0, 0, 0.25);
-  }
-}
-
-/* Custom drag bar removed: rely on the native scrollbar (iOS overlay bar shows
-   during scroll; desktop bar is draggable and fires scroll events → preview shows) */
-.vscroll {
-  overflow-y: auto;
 }
 
 /* Horizontal card strips scroll without a visible bar: on desktop a native bar would eat
@@ -172,10 +143,8 @@ body {
   display: none;
 }
 
-/* A box that clips while a child of it does the scrolling. `overflow: hidden` is still a scroll
-   container, so the browser reveals a focused control by scrolling this box: the top of the content
-   goes above the box and the same space stands empty at the bottom. `clip` cuts without being
-   scrollable. */
+/* `overflow: hidden` is still a scroll container, so the browser reveals a focused control by
+   scrolling this box and leaves the same space empty at the bottom. `clip` cuts without scrolling. */
 .clip-no-scroll {
   overflow: clip;
 }
@@ -196,16 +165,14 @@ body {
   -webkit-touch-callout: none;
 }
 
-/* Card image aspect ratio reservation (921/597) */
+/* The API's cover ratio, the same number as THUMB_ASPECT in draw/layout. */
 .card-img {
   aspect-ratio: 921 / 597;
 }
 
-/* Virtualized waterfall content layer.
-   NOTE: no `will-change: transform` here. Scroll displacement is done by the OUTER
-   native overflow scroller, so this layer never translates itself; a composited
-   sub-layer that doesn't move forces WebKit to re-raster it every frame (paint ~667).
-   `contain: layout paint` stays: it clips + scopes raster to this window. */
+/* The virtualized content layer. `will-change: transform` belongs to the outer native scroller,
+   which is what actually moves; compositing this layer instead makes WebKit re-raster it every
+   frame. `contain` clips and scopes raster to this window. */
 .virtual-content {
   contain: layout paint;
 }
@@ -228,22 +195,19 @@ body {
   animation-fill-mode: forwards;
 }
 
-/* The sparkle while a search is in flight. The answer takes about 150ms, and a fast typist
-   runs several at once, so the pulse stays quick enough to look like work.
-   Only the color moves, and both ends of the cycle are the color that the resting mark already
-   has. The mark stops on `animationiteration`, which is one of those ends, so handing it back
-   is a no-op. An opacity pulse could not do that: it stopped at full brightness, and the resting
-   mark is the tertiary gray, a color that no dimmed accent reaches. */
+/* The sparkle while a search is in flight. A search answers in about 150ms and a fast typist
+   overlaps them, so the pulse stays quick. Only the color moves, and both ends of the cycle are the
+   color the mark already sits in - the chrome's mark and the picture row's are not the same color -
+   so stopping on `animationiteration` hands it back without a jump. */
 @keyframes spark-pulse {
-  0%, 100% { color: var(--color-faint); }
+  0%, 100% { color: currentColor; }
   50% { color: var(--spark-on); }
 }
 .spark-pulse {
   --spark-on: var(--color-accent);
   animation: spark-pulse 0.9s ease-in-out infinite;
 }
-/* With no animation the mark would sit in the resting gray and look idle while it is working,
-   so the accent is stated here too. */
+/* With no animation the mark would sit in the resting gray and look idle while it works. */
 @media (prefers-reduced-motion: reduce) {
   .spark-pulse {
     animation: none;
@@ -251,17 +215,14 @@ body {
   }
 }
 
+/* A tap brings no feedback from the engine - the highlight is transparent page-wide - so these
+   classes are the feedback. The press is instant and the release eased, so the screen answers in the
+   frame the finger arrives.
 
-/* A tap brings no feedback from the engine: the highlight is transparent page-wide (html, body).
-   These classes are the feedback. A card shrinks to 0.97 while the finger is down and eases back on
-   release. The round controls that float over the pages grow to 1.18, the same factor the switch
-   knob and the price slider's thumb grow by. The press is instant and the release eased, so the
-   screen answers in the frame the finger arrives. `--press-shrink` sets the factor per control.
-
-   The scale runs on the box that shows the paint. The box that receives the press keeps its size, so
-   a release lands inside it and the control fires. A control that receives the press and shows the
-   paint is `.press-card`. A control whose own box has to stay put - the card, whose box is also the
-   release target - is `.press-host`, and its paint is a `.press-face` child. */
+   The scale runs on the box that shows the paint; the box that receives the press keeps its size, so
+   a release still lands inside it and the control fires. A control that does both is `.press-card`.
+   One whose own box must stay put - the card, whose box is also the release target - is `.press-host`
+   with a `.press-face` child. */
 .press-card,
 .press-host > .press-face,
 .press-fab {
@@ -290,6 +251,55 @@ body {
   transition: none;
 }
 
+/* The circle that opens the search answers to two clocks: the box it grows into travels at the
+   chrome's 300ms, a finger on it grows the circle at the round controls' rate. The growth runs on the
+   plate; the press arrives on a taller band laid over it, and that band keeps its size.
+   The band carries its own `data-press`: closing sets `data-open` false while the finger is still
+   down, so a rule keyed on the live state would grow the circle in the middle of the way out. */
+[data-chrome='plate'] {
+  /* The build adds iOS's -webkit- entry to a transition list only while the list holds no var(),
+     so the filtered property is named both ways here. */
+  transition:
+    right 300ms var(--ease-chrome),
+    border-radius 300ms var(--ease-chrome),
+    background-color 300ms var(--ease-chrome),
+    box-shadow 300ms var(--ease-chrome),
+    -webkit-backdrop-filter 300ms var(--ease-chrome),
+    backdrop-filter 300ms var(--ease-chrome),
+    transform 140ms ease-out;
+}
+
+.chrome-mark {
+  transition: transform 140ms ease-out;
+}
+
+/* The mark grows with its circle: a circle that grew on its own would read as a mark that shrank.
+   The two share a centre, so the pair grows outward from one point. */
+[data-chrome='band'][data-open='false']:has([data-chrome='hit'][data-press='true']) [data-chrome='plate'],
+[data-chrome='band'][data-open='false']:has([data-chrome='hit'][data-press='true']) .chrome-mark {
+  transform: scale(1.18);
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-chrome='plate'],
+  .chrome-mark {
+    transition: none;
+  }
+}
+
+/* The lift arrives with the box and goes with it, eased over the same 300ms as the growth: a circle
+   that brightened in the frame the user touched it would read as a flicker. */
+[data-chrome='band'][data-open='true'] [data-chrome='plate'] {
+  -webkit-backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
+}
+
+@supports (backdrop-filter: blur(0)) {
+  [data-chrome='band'][data-open='true'] [data-chrome='plate'] {
+    backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .press-card,
   .press-face,
@@ -298,14 +308,203 @@ body {
   }
 }
 
-/* The circles that float over the grid. Two short layers keep the edge soft. A caller can hand
-   over --fab-shadow, which is how the accent circle keeps its own. */
-.fab-circle {
-  box-shadow: var(--fab-shadow, 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.12));
+/* The circles that float over the pages - the sheet's ✕ and the corner controls - are one family. On
+   a near-white canvas a wide faint shadow reads as floating; a tight dark one draws an edge. A
+   caller passes --fab-shadow to keep a shadow of its own, which is how the accent circle keeps its
+   glow. */
+.fab-circle,
+.sheet-fab {
+  box-shadow: var(--fab-shadow, 0 2px 6px rgba(0, 0, 0, 0.05), 0 8px 20px rgba(0, 0, 0, 0.07));
 }
+
 @media (prefers-color-scheme: dark) {
-  .fab-circle {
-    box-shadow: var(--fab-shadow, 0 2px 6px rgba(0, 0, 0, 0.55));
+  .fab-circle,
+  .sheet-fab {
+    box-shadow: var(--fab-shadow, 0 6px 22px rgba(0, 0, 0, 0.38));
+  }
+}
+
+/* A floating circle under a pointer takes the fill a press takes, so it answers before the click
+   arrives. Ink over the fill: the accent circle keeps its hue and no circle changes its edge. Touch
+   screens have no hover to give back, so the layer is not built there. */
+@media (hover: hover) and (pointer: fine) {
+  .fab-circle::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: color-mix(in oklab, var(--color-ink) 12%, transparent);
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+
+  .fab-circle:hover::after {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fab-circle::after {
+      transition: none;
+    }
+  }
+}
+
+/* The reel's window fades its own top and bottom edge, so the line leaving and the line arriving
+   both dissolve rather than sliding out of a hard cut. With no animation the window stands still
+   and there is nothing to dissolve, so the mask is dropped and the one line reads at full strength. */
+.search-reel-window {
+  --reel-edge: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  -webkit-mask-image: var(--reel-edge);
+}
+
+/* The unprefixed spelling stays in its own @supports block, the way `.glass` keeps its blur. */
+@supports (mask-image: linear-gradient(#000, #000)) {
+  .search-reel-window {
+    mask-image: var(--reel-edge);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-reel-window {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+/* The open box hangs over the cards, so the shadow says "above them": deeper and softer, with the
+   spread pulled in, rather than a band of gray across the top of the screen. */
+[data-chrome='band'][data-open='true'] [data-chrome='plate'] {
+  box-shadow:
+    0 14px 34px -10px rgb(0 0 0 / 0.22),
+    0 3px 10px -3px rgb(0 0 0 / 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-chrome='band'][data-open='true'] [data-chrome='plate'] {
+    box-shadow:
+      0 16px 40px -10px rgb(0 0 0 / 0.6),
+      0 3px 10px -3px rgb(0 0 0 / 0.45);
+  }
+}
+
+/* The chrome blurs the cards behind it and leaves their brightness alone: a brightened patch over a
+   photograph is the brightest thing on the screen whatever it sits on, and on an HDR display it
+   clips first. The circle, the corner controls, the popups and the pill wear the plain blur; the lift
+   belongs to the open box, the one surface the user is working in. */
+.chrome-glass {
+  background: var(--chrome-glass);
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+}
+
+@supports (backdrop-filter: blur(0)) {
+  .chrome-glass {
+    backdrop-filter: blur(var(--blur-xl));
+  }
+}
+
+/* The field grows under the finger, so a quick second tap can land on a circle that was not there
+   when the finger went down. The circles wait out the growth: `visibility` holds its old value for
+   the whole 300ms, and a hidden box takes no taps. Shutting the box runs the other way — the row
+   stops taking taps at once and keeps fading for the 300ms. */
+[data-chrome="acts"] {
+  pointer-events: none;
+  transition: opacity 300ms var(--ease-chrome), visibility 0s 300ms;
+}
+
+[data-chrome="band"][data-open="true"] [data-chrome="acts"] {
+  pointer-events: auto;
+  transition: opacity 300ms var(--ease-chrome) 300ms, visibility 0s 300ms;
+}
+
+/* With no growth there is nothing arriving under the finger, so the circles simply appear. */
+@media (prefers-reduced-motion: reduce) {
+  [data-chrome="acts"] {
+    transition: none;
+  }
+}
+
+/* The tab pill leaves the line by sliding up and dissolving into its own top edge. The mask is one
+   ramp twice the box: bottom-aligned it shows the solid half, top-aligned the ramp. The band says
+   which shape it is in.
+
+   The mask sits on the glass itself, never on a wrapper: a masked ancestor becomes the backdrop
+   root, and the blur inside it then has nothing but that wrapper to blur, which on macOS Safari is
+   no blur at all. A mask also clips the shadow its own element wears, so the wrapper paints that. */
+[data-chrome="pill"] > .seg-row {
+  --chrome-leave: linear-gradient(to top, #000 50%, transparent);
+  -webkit-mask: var(--chrome-leave) 0 100% / 100% 200% no-repeat;
+  /* iOS animates the mask position only under the prefixed name, and the build stops adding that
+     entry once the list holds var(). */
+  transition: -webkit-mask-position 300ms var(--ease-chrome), mask-position 300ms var(--ease-chrome),
+    opacity 300ms var(--ease-chrome),
+    transform 300ms var(--ease-chrome), visibility 300ms;
+}
+
+/* The unprefixed spelling stays in its own @supports block, the way `.glass` keeps its blur: the
+   build strips it as redundant beside the prefixed one, and Android WebView only reads this one. */
+@supports (mask: linear-gradient(#000, #000)) {
+  [data-chrome="pill"] > .seg-row {
+    mask: var(--chrome-leave) 0 100% / 100% 200% no-repeat;
+  }
+}
+
+[data-chrome="pill"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  box-shadow: var(--shadow-sm);
+  transition: opacity 300ms var(--ease-chrome);
+}
+
+[data-chrome="pill"] .seg-row.seg-glass {
+  box-shadow: none;
+}
+
+/* A picture is the other search: while one is being staged the tabs are the wrong way out. They
+   slide down off the edge they stand on and dissolve on the way. */
+[data-chrome='tabs'][data-picture='true'] [data-chrome='pill'] > .seg-row {
+  -webkit-mask-position: 0 0;
+  mask-position: 0 0;
+  transform: translateY(0.75rem);
+  opacity: 0;
+  visibility: hidden;
+}
+
+[data-chrome='tabs'][data-picture='true'] [data-chrome='pill']::before {
+  opacity: 0;
+}
+
+/* An open box is the user working inside the list, and the charts are a way out of it, so this
+   circle gives its place to the funnel: it shrinks into the corner it stands in and dissolves. */
+[data-chrome='stats'] {
+  transition:
+    transform 300ms var(--ease-chrome),
+    opacity 300ms var(--ease-chrome),
+    visibility 300ms;
+}
+
+/* Only where the box has to take the corner's room: on a wide edge the box stands at a fixed measure
+   and the two circles keep the rest, so the charts have nothing to give up. */
+@media (max-width: 639.98px) {
+  [data-chrome='band'][data-open='true'] [data-chrome='stats'] {
+    transform: scale(0.75);
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-chrome="pill"]::before {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-chrome="pill"] > .seg-row,
+  [data-chrome="pill"]::before,
+  [data-chrome='corner'] {
+    transition: none;
   }
 }
 .fab-glow {
@@ -313,16 +512,14 @@ body {
     0 1px 2px -1px color-mix(in oklab, var(--color-accent) 40%, transparent);
 }
 
-/* Scroll-progress ring on the back-to-top button.
-   A conic-gradient arc clipped to a thin ring via a radial mask, driven by a custom-property
-   angle (turn unit). The arc starts at 12 o'clock and sweeps clockwise. */
+/* Scroll progress on the back-to-top button: a conic-gradient arc masked to a thin ring, driven by
+   --float-btn-progress in turns, sweeping clockwise from 12 o'clock. */
 .float-progress {
   position: relative;
   --float-btn-progress: 0turn;
 }
-/* The ring sits inside the button, against its inner edge. A band outside would make this circle
-   wider than the buttons under it. Only the read part is painted, so the rest of the edge shows
-   the button surface. */
+/* The ring sits against the button's inner edge: a band outside would make this circle wider than
+   the ones under it. Only the read part is painted. */
 .float-progress::before {
   content: '';
   position: absolute;
@@ -337,9 +534,9 @@ body {
   pointer-events: none;
 }
 
-/* A full-bleed sheet rests square against the screen edge. Sheet.tsx writes --sheet-pull
-   (0..1, how far the current drag has travelled), and that rounds the top corners as the
-   sheet detaches. From 640px it is a centerd card with one fixed radius. */
+/* A full-bleed sheet rests square against the screen edge. Sheet.tsx writes --sheet-pull (0..1, how
+   far the drag has travelled), which rounds the top corners as the sheet detaches. From 640px it is
+   a centered card with one radius. */
 .sheet-card {
   --sheet-corner: calc(var(--sheet-pull, 0) * 24px);
   border-radius: var(--sheet-corner) var(--sheet-corner) 0 0;
@@ -348,46 +545,4 @@ body {
   .sheet-card {
     border-radius: 1rem;
   }
-}
-
-/* Before the JavaScript arrives, this spinner is all the document has. */
-#boot-spinner {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-canvas);
-}
-#boot-spinner::after {
-  content: "";
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 4px solid var(--color-surface-2);
-  border-top-color: var(--color-accent);
-  animation: boot-spin 0.9s linear infinite;
-}
-@keyframes boot-spin {
-  to { transform: rotate(360deg); }
-}
-/* Reduced motion slows the spin: a mark that stands still looks like a page that failed. */
-@media (prefers-reduced-motion: reduce) {
-  #boot-spinner::after { animation-duration: 2.4s; }
-}
-
-/* The placeholder bars: only the look lives here. The shapes come from ui/boxes, and the sizes
-   sit next to the row that each bar stands in for. */
-.sk-pulse {
-  animation: sk-pulse 1.4s ease-in-out infinite;
-}
-.sk-bar {
-  flex: none;
-  background: rgba(128, 128, 138, 0.18);
-}
-@keyframes sk-pulse {
-  50% { opacity: 0.55; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sk-pulse { animation: none; }
 }

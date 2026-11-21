@@ -32,6 +32,7 @@ export const ja: Dict = {
   },
 
   filter: {
+    tabGroup: '分類',
     colors: '色',
     races: '種族',
     priceMode: '価格の表示',
@@ -59,6 +60,8 @@ export const ja: Dict = {
   },
 
   detail: {
+    fields: '詳細情報',
+    photoOf: (n: number, total: number) => `全 ${total} 枚中 ${n} 枚目`,
     owner: '飼い主',
     painter: '作家',
     painterNumbered: (n: number) => `作家${n}`,
@@ -92,17 +95,18 @@ export const ja: Dict = {
     monthly: '月々',
   },
 
-  toolbar: {
-    refresh: '更新',
+  chrome: {
     toTop: 'トップへ',
     stats: '統計',
-    social: '飼い主アカウント',
   },
 
   search: {
     placeholder: '名前・説明・ID を検索',
-    placeholderEnhanced: 'お肉が大好きな龍ちゃん…',
+    placeholderEnhanced: 'お肉が大好きな龍ちゃん',
+    examples: 'お肉が大好きな龍ちゃん | 雪の中の白い狐 | 光る守り夜の竜 | 狼皮をかぶった羊 | ハロウィンの悪戯っ子 | 藻海の被験体 | 夜灯の守り犬',
     clear: '検索をクリア',
+    open: '検索',
+    close: '検索を閉じる',
   },
 
   picture: {
@@ -191,11 +195,12 @@ export const ja: Dict = {
   },
 
   info: {
-    /** The money paid first, which is the number a reader decides on. */
+    /** The money paid first, which is the number a user decides on. */
     downPayment: '頭金',
     monthly: '月々',
     periods: (n: number) => `${n} 回`,
     total: (price: string) => `合計 ${price}`,
+    original: '元の価格',
     /** Japanese 割 counts the discount, while Chinese 折 counts the price left to pay. */
     discount: (tenths: number) => `${Math.round((10 - tenths) * 10)}%引き`,
   },

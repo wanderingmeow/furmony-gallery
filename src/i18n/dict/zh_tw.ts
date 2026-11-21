@@ -1,5 +1,5 @@
 // 繁體中文. Mostly the 简体中文 dictionary in traditional characters, with the wording its own
-// readers expect. The key tree is the one in `zh.ts`.
+// users expect. The key tree is the one in `zh.ts`.
 import type { Dict } from './shape'
 
 export const zh_tw: Dict = {
@@ -31,6 +31,7 @@ export const zh_tw: Dict = {
   },
 
   filter: {
+    tabGroup: '設定分類',
     colors: '顏色',
     races: '物種',
     priceMode: '價格顯示',
@@ -58,6 +59,8 @@ export const zh_tw: Dict = {
   },
 
   detail: {
+    fields: '商品資訊',
+    photoOf: (n: number, total: number) => `第 ${n} 張，共 ${total} 張`,
     owner: '主人',
     painter: '畫師',
     painterNumbered: (n: number) => `畫師${n}`,
@@ -89,17 +92,18 @@ export const zh_tw: Dict = {
     monthly: '月付',
   },
 
-  toolbar: {
-    refresh: '重新整理',
+  chrome: {
     toTop: '回到頂端',
     stats: '數據統計',
-    social: '主人帳號',
   },
 
   search: {
     placeholder: '搜尋名稱／描述／ID',
-    placeholderEnhanced: '愛吃肉的棒小龍…',
+    placeholderEnhanced: '愛吃肉的棒小龍',
+    examples: '愛吃肉的棒小龍 | 雪地裡的白狐狸 | 會發光的守夜龍 | 披著狼皮的羊 | 萬聖節的搗蛋鬼 | 藻海裡的實驗體 | 提夜燈的守夜犬',
     clear: '清除搜尋',
+    open: '搜尋',
+    close: '關閉搜尋',
   },
 
   picture: {
@@ -189,11 +193,12 @@ export const zh_tw: Dict = {
   },
 
   info: {
-    /** The money paid first, which is the number a reader decides on. */
+    /** The money paid first, which is the number a user decides on. */
     downPayment: '首付',
     monthly: '月付',
     periods: (n: number) => `×${n}期`,
     total: (price: string) => `共 ${price}`,
+    original: '原價',
     /** 8.5 折 means the price is 85 % of the original. */
     discount: (tenths: number) => `${tenths.toFixed(1)}折`,
   },
