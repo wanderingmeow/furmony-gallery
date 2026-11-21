@@ -12,71 +12,85 @@
 
 /** The part of a pointer event that the gate reads. A real `PointerEvent` fits it as it is. */
 export type TapPointer = {
-  target: EventTarget | null
-  timeStamp: number
-  clientX: number
-  clientY: number
-}
+  target: EventTarget | null;
+  timeStamp: number;
+  clientX: number;
+  clientY: number;
+};
 
 /** How long a press still counts as a tap. Past it the reader is holding, not tapping. */
-const TAP_MS = 400
+const TAP_MS = 400;
 
 /** How far a finger may drift while it is down. A pan moves by more than this. */
-export const TAP_SLOP = 10
+export const TAP_SLOP = 10;
 
 /** The browser sends a click for a tap after the release. On Android WebView the gap was 5 ms.
  *  This window leaves room for engines that send the click later. */
-const CLICK_AFTER_TAP_MS = 250
+const CLICK_AFTER_TAP_MS = 250;
 
 export type TapGate = {
   /** For every `pointerdown`. Call it in the capture phase: a listener on the element can stop
    *  the press from bubbling, and then it never reaches here. */
-  down(event: TapPointer): void
+  down(event: TapPointer): void;
   /** For every `pointerup`. Register it where the release always arrives: the window. */
-  up(event: TapPointer): void
+  up(event: TapPointer): void;
   /** For every `pointercancel`. */
-  cancel(): void
-}
+  cancel(): void;
+};
 
 /** Watches presses and calls `onTap` once for a single tap on a watched target. */
 export function makeTapGate(opts: {
   /** Whether this press landed on something that the caller watches. */
-  owns: (target: EventTarget | null) => boolean
-  onTap: () => void
+  owns: (target: EventTarget | null) => boolean;
+  onTap: () => void;
 }): TapGate {
-  let fingers = 0
-  let extraFinger = false
-  let onWatched = false
-  let downTime = 0
-  let downX = 0
-  let downY = 0
+  let fingers = 0;
+  let extraFinger = false;
+  let onWatched = false;
+  let downTime = 0;
+  let downX = 0;
+  let downY = 0;
 
   return {
     down(event) {
-      fingers += 1
-      if (fingers > 1) extraFinger = true
-      onWatched = opts.owns(event.target)
-      if (!onWatched) return
-      downTime = event.timeStamp
-      downX = event.clientX
-      downY = event.clientY
+      fingers += 1;
+      if (fingers > 1) extraFinger = true;
+      onWatched = opts.owns(event.target);
+      if (!onWatched) return;
+      downTime = event.timeStamp;
+      downX = event.clientX;
+      downY = event.clientY;
     },
 
     up(event) {
-      fingers = Math.max(0, fingers - 1)
-      const stillHeld = fingers > 0
-      const heldMs = event.timeStamp - downTime
-      const drifted = Math.max(Math.abs(event.clientX - downX), Math.abs(event.clientY - downY))
-      const tapped = onWatched && !extraFinger && !stillHeld
-        && heldMs <= TAP_MS && drifted <= TAP_SLOP
-      if (!stillHeld) { extraFinger = false; onWatched = false }
-      if (tapped) opts.onTap()
+      fingers = Math.max(0, fingers - 1);
+      const stillHeld = fingers > 0;
+      const heldMs = event.timeStamp - downTime;
+      const drifted = Math.max(
+        Math.abs(event.clientX - downX),
+        Math.abs(event.clientY - downY),
+      );
+      const tapped =
+        onWatched &&
+        !extraFinger &&
+        !stillHeld &&
+        heldMs <= TAP_MS &&
+        drifted <= TAP_SLOP;
+      if (!stillHeld) {
+        extraFinger = false;
+        onWatched = false;
+      }
+      if (tapped) opts.onTap();
     },
 
     // The browser takes a gesture over (a system swipe, or the OS reclaiming the touch) and never
     // says what the reader meant, so this only resets.
-    cancel() { fingers = 0; extraFinger = false; onWatched = false },
-  }
+    cancel() {
+      fingers = 0;
+      extraFinger = false;
+      onWatched = false;
+    },
+  };
 }
 
 /** Watch the window for a single tap, and call `onTap` once for each tap. It reads the press in
@@ -85,29 +99,35 @@ export function makeTapGate(opts: {
  *  under the finger, so that click would land on whatever sits behind it. `watchTaps` stops it.
  *  Returns the call that stops watching. */
 export function watchTaps(opts: {
-  owns: (target: EventTarget | null) => boolean
-  onTap: () => void
+  owns: (target: EventTarget | null) => boolean;
+  onTap: () => void;
 }): () => void {
   // The removal sits on a bare timer. Cleanup owned by the closing surface would remove the
   // listener before the click arrives.
   const blockNextClick = () => {
     // The document is held, not looked up again: the timer can outlive the page that scheduled it,
     // and a test environment drops its document between files.
-    const doc = document
-    const block = (e: MouseEvent) => e.stopPropagation()
-    doc.addEventListener('click', block, true)
-    setTimeout(() => doc.removeEventListener('click', block, true), CLICK_AFTER_TAP_MS)
-  }
+    const doc = document;
+    const block = (e: MouseEvent) => e.stopPropagation();
+    doc.addEventListener("click", block, true);
+    setTimeout(
+      () => doc.removeEventListener("click", block, true),
+      CLICK_AFTER_TAP_MS,
+    );
+  };
   const gate = makeTapGate({
     owns: opts.owns,
-    onTap: () => { blockNextClick(); opts.onTap() },
-  })
-  window.addEventListener('pointerdown', gate.down, true)
-  window.addEventListener('pointerup', gate.up)
-  window.addEventListener('pointercancel', gate.cancel)
+    onTap: () => {
+      blockNextClick();
+      opts.onTap();
+    },
+  });
+  window.addEventListener("pointerdown", gate.down, true);
+  window.addEventListener("pointerup", gate.up);
+  window.addEventListener("pointercancel", gate.cancel);
   return () => {
-    window.removeEventListener('pointerdown', gate.down, true)
-    window.removeEventListener('pointerup', gate.up)
-    window.removeEventListener('pointercancel', gate.cancel)
-  }
+    window.removeEventListener("pointerdown", gate.down, true);
+    window.removeEventListener("pointerup", gate.up);
+    window.removeEventListener("pointercancel", gate.cancel);
+  };
 }

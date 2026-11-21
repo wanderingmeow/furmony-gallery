@@ -84,7 +84,10 @@
   background-color: var(--color-surface);
   border: 2px solid var(--color-accent);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out;
+  transition:
+    transform 140ms ease-out,
+    background-color 140ms ease-out,
+    border-color 140ms ease-out;
 }
 .pr-thumb::-moz-range-thumb {
   width: 18px;
@@ -93,7 +96,10 @@
   background-color: var(--color-surface);
   border: 2px solid var(--color-accent);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out;
+  transition:
+    transform 140ms ease-out,
+    background-color 140ms ease-out,
+    border-color 140ms ease-out;
 }
 .pr-thumb::-webkit-slider-runnable-track {
   background: transparent;
@@ -128,10 +134,12 @@
    would not show which end is chosen. A class says when, not :focus-visible: Safari gives that to
    a focus a press hands over, and a press should not ring. */
 .pr-thumb.pr-key::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 35%, transparent);
+  box-shadow: 0 0 0 3px
+    color-mix(in oklab, var(--color-accent) 35%, transparent);
 }
 .pr-thumb.pr-key::-moz-range-thumb {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent) 35%, transparent);
+  box-shadow: 0 0 0 3px
+    color-mix(in oklab, var(--color-accent) 35%, transparent);
 }
 
 @media (prefers-color-scheme: dark) {

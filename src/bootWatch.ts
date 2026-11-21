@@ -85,5 +85,5 @@ export function bootWatchScript(): string {
     const text = String((why && (why.stack || why.message)) || why)
     if (ourText(text)) note(text)
   })
-})()`
+})()`;
 }

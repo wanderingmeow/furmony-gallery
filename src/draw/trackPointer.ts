@@ -13,25 +13,27 @@ function track(
   onMove: (clientX: number, clientY: number) => void,
   onStop: () => void,
 ): () => void {
-  const pointer = (run: (event: PointerEvent) => void): EventListener =>
-    (event) => run(event as PointerEvent)
+  const pointer =
+    (run: (event: PointerEvent) => void): EventListener =>
+    (event) =>
+      run(event as PointerEvent);
   const onPointerMove = pointer((event) => {
-    if (mine(event)) onMove(event.clientX, event.clientY)
-  })
+    if (mine(event)) onMove(event.clientX, event.clientY);
+  });
   const onRelease = pointer((event) => {
-    if (!mine(event)) return
-    detach()
-    onStop()
-  })
+    if (!mine(event)) return;
+    detach();
+    onStop();
+  });
   function detach(): void {
-    target.removeEventListener('pointermove', onPointerMove)
-    target.removeEventListener('pointerup', onRelease)
-    target.removeEventListener('pointercancel', onRelease)
+    target.removeEventListener("pointermove", onPointerMove);
+    target.removeEventListener("pointerup", onRelease);
+    target.removeEventListener("pointercancel", onRelease);
   }
-  target.addEventListener('pointermove', onPointerMove)
-  target.addEventListener('pointerup', onRelease)
-  target.addEventListener('pointercancel', onRelease)
-  return detach
+  target.addEventListener("pointermove", onPointerMove);
+  target.addEventListener("pointerup", onRelease);
+  target.addEventListener("pointercancel", onRelease);
+  return detach;
 }
 
 /** Capture `pointerId` on `el`, so every move and the release come to `el` after the finger walks
@@ -43,8 +45,8 @@ export function holdPointer(
   onMove: (clientX: number, clientY: number) => void,
   onStop: () => void,
 ): void {
-  el.setPointerCapture?.(pointerId)
-  track(el, () => true, onMove, onStop)
+  el.setPointerCapture?.(pointerId);
+  track(el, () => true, onMove, onStop);
 }
 
 /** Follow `pointerId` on the document, and leave the browser in charge of the gesture: the buzz
@@ -56,5 +58,10 @@ export function followPointer(
   onMove: (clientX: number, clientY: number) => void,
   onStop: () => void,
 ): () => void {
-  return track(document, (event) => event.pointerId === pointerId, onMove, onStop)
+  return track(
+    document,
+    (event) => event.pointerId === pointerId,
+    onMove,
+    onStop,
+  );
 }

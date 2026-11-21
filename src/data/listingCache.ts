@@ -5,35 +5,50 @@
 //
 // Opening the database and running transactions lives in idb.ts. Fetching from the API lives
 // in api.ts.
-import type { AdoptListing } from '../model/types'
-import { urlPath } from './image'
-import { LISTINGS_STORE, LANG_KEY, ORDER_KEY, clearStore, readAll, replaceAll } from './idb'
+import type { AdoptListing } from "../model/types";
+import { urlPath } from "./image";
+import {
+  LISTINGS_STORE,
+  LANG_KEY,
+  ORDER_KEY,
+  clearStore,
+  readAll,
+  replaceAll,
+} from "./idb";
 
 /** The saved rows and the language they were answered in. */
 export interface Cache {
-  rows: AdoptListing[]
-  lang: string
+  rows: AdoptListing[];
+  lang: string;
 }
 
 export async function readCache(): Promise<Cache | null> {
   try {
-    const all = await readAll<number | string, AdoptListing | number[] | string>(LISTINGS_STORE)
-    const byId = new Map<number, AdoptListing>()
+    const all = await readAll<
+      number | string,
+      AdoptListing | number[] | string
+    >(LISTINGS_STORE);
+    const byId = new Map<number, AdoptListing>();
     for (const [key, value] of all) {
-      if (typeof key === 'number' && typeof value !== 'string' && !Array.isArray(value)) {
-        byId.set(key, value)
+      if (
+        typeof key === "number" &&
+        typeof value !== "string" &&
+        !Array.isArray(value)
+      ) {
+        byId.set(key, value);
       }
     }
-    const order = all.get(ORDER_KEY)
-    const rows = Array.isArray(order) && order.length > 0
-      ? order.map((id) => byId.get(id)).filter((l): l is AdoptListing => !!l)
-      : [...byId.values()]
-    if (rows.length === 0) return null
+    const order = all.get(ORDER_KEY);
+    const rows =
+      Array.isArray(order) && order.length > 0
+        ? order.map((id) => byId.get(id)).filter((l): l is AdoptListing => !!l)
+        : [...byId.values()];
+    if (rows.length === 0) return null;
     // A cache written before the language was recorded reads as the language the data is in.
-    const lang = all.get(LANG_KEY)
-    return { rows, lang: typeof lang === 'string' ? lang : 'zh' }
+    const lang = all.get(LANG_KEY);
+    return { rows, lang: typeof lang === "string" ? lang : "zh" };
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -44,23 +59,35 @@ export async function readCache(): Promise<Cache | null> {
  * another language holds the wrong words. A cache that carries no language is treated the same way,
  * and the next save fills it in.
  */
-export async function loadListings(lang: string): Promise<AdoptListing[] | null> {
-  const cache = await readCache()
-  return cache && cache.lang === lang ? cache.rows : null
+export async function loadListings(
+  lang: string,
+): Promise<AdoptListing[] | null> {
+  const cache = await readCache();
+  return cache && cache.lang === lang ? cache.rows : null;
 }
 
-export async function saveListings(listings: AdoptListing[], lang: string): Promise<void> {
+export async function saveListings(
+  listings: AdoptListing[],
+  lang: string,
+): Promise<void> {
   try {
-    const entries: [string | number, unknown][] = listings.map((l) => [l.adoptId, l])
-    entries.push([ORDER_KEY, listings.map((l) => l.adoptId)], [LANG_KEY, lang])
-    await replaceAll(LISTINGS_STORE, entries)
-  } catch { /* ignore */ }
+    const entries: [string | number, unknown][] = listings.map((l) => [
+      l.adoptId,
+      l,
+    ]);
+    entries.push([ORDER_KEY, listings.map((l) => l.adoptId)], [LANG_KEY, lang]);
+    await replaceAll(LISTINGS_STORE, entries);
+  } catch {
+    /* ignore */
+  }
 }
 
 export async function clearListings(): Promise<void> {
   try {
-    await clearStore(LISTINGS_STORE)
-  } catch { /* ignore */ }
+    await clearStore(LISTINGS_STORE);
+  } catch {
+    /* ignore */
+  }
 }
 
 // The waterfall keys each card by its listing object, so a row with the same content has to be
@@ -71,31 +98,33 @@ export async function clearListings(): Promise<void> {
 // can see. The order inside a list is visible: api.ts sorts the two lists that the API returns
 // unordered, and a third one would rebuild every card.
 function fingerprint(value: unknown): string {
-  if (typeof value === 'string') return JSON.stringify(urlPath(value))
-  if (Array.isArray(value)) return `[${value.map(fingerprint).join(',')}]`
-  if (value && typeof value === 'object') {
-    const row = value as Record<string, unknown>
-    return `{${Object.keys(row).sort()
-      .map((k) => `${JSON.stringify(k)}:${fingerprint(row[k])}`).join(',')}}`
+  if (typeof value === "string") return JSON.stringify(urlPath(value));
+  if (Array.isArray(value)) return `[${value.map(fingerprint).join(",")}]`;
+  if (value && typeof value === "object") {
+    const row = value as Record<string, unknown>;
+    return `{${Object.keys(row)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${fingerprint(row[k])}`)
+      .join(",")}}`;
   }
-  return value === undefined ? 'null' : JSON.stringify(value)
+  return value === undefined ? "null" : JSON.stringify(value);
 }
 
 /** The fields the API answers in the language the request asked for. */
-const TRANSLATED = ['adoptName', 'detailDescription']
+const TRANSLATED = ["adoptName", "detailDescription"];
 
 /** The row as the API would answer it in any language: the picture, the money, the sizes. Two
  *  rows that share this hold everything a card draws besides words. */
 function untranslated(row: AdoptListing): AdoptListing {
-  const rest: Record<string, unknown> = { ...row }
-  for (const key of TRANSLATED) delete rest[key]
-  const painter = row.harmonyPainterVo
+  const rest: Record<string, unknown> = { ...row };
+  for (const key of TRANSLATED) delete rest[key];
+  const painter = row.harmonyPainterVo;
   if (painter) {
-    const vo: Record<string, unknown> = { ...painter }
-    delete vo.painterName
-    rest.harmonyPainterVo = vo
+    const vo: Record<string, unknown> = { ...painter };
+    delete vo.painterName;
+    rest.harmonyPainterVo = vo;
   }
-  return rest as unknown as AdoptListing
+  return rest as unknown as AdoptListing;
 }
 
 /**
@@ -113,30 +142,37 @@ export async function mergeListings(
   lang: string,
   stillCurrent: () => boolean = () => true,
 ): Promise<{ updated: AdoptListing[]; changed: boolean }> {
-  if (!stillCurrent()) return { updated: old, changed: false }
-  const shape = (l: AdoptListing): string => fingerprint(untranslated(l))
-  const byId = new Map(old.map((l) => [l.adoptId, { row: l, print: fingerprint(l), shape: shape(l) }]))
-  let wordsMoved = false
+  if (!stillCurrent()) return { updated: old, changed: false };
+  const shape = (l: AdoptListing): string => fingerprint(untranslated(l));
+  const byId = new Map(
+    old.map((l) => [
+      l.adoptId,
+      { row: l, print: fingerprint(l), shape: shape(l) },
+    ]),
+  );
+  let wordsMoved = false;
   const updated = newRows.map((item) => {
-    const prior = byId.get(item.adoptId)
-    if (!prior) return item
-    if (prior.shape !== shape(item)) return item
+    const prior = byId.get(item.adoptId);
+    if (!prior) return item;
+    if (prior.shape !== shape(item)) return item;
     // The new words land on the object this card already draws, so the picture stays put. The
     // screen reads them through model/translatedText, and the cache holds the row with them.
     if (prior.print !== fingerprint(item)) {
-      Object.assign(prior.row, item)
-      wordsMoved = true
+      Object.assign(prior.row, item);
+      wordsMoved = true;
     }
-    return prior.row
-  })
+    return prior.row;
+  });
   // A row that kept its object is unchanged, so a new object here is a change. New words count too:
   // the cache holds them and carries their language.
   const changed =
-    updated.length !== old.length || wordsMoved || updated.some((l, i) => l !== old[i])
+    updated.length !== old.length ||
+    wordsMoved ||
+    updated.some((l, i) => l !== old[i]);
 
   if (changed) {
-    await saveListings(updated, lang)
+    await saveListings(updated, lang);
   }
 
-  return { updated, changed }
+  return { updated, changed };
 }

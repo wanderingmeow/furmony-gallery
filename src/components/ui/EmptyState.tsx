@@ -1,10 +1,15 @@
-import { Show } from 'solid-js'
-import { FilterOutlined, HeartOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons-svg'
-import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
-import { applyEmptyAction, emptyState } from '../../stores/derivedStore'
-import { emptyActionLabel, type EmptyIcon } from '../../model/emptyState'
-import { AntIcon } from './AntIcon'
-import { SPARK } from './spark'
+import { Show } from "solid-js";
+import {
+  FilterOutlined,
+  HeartOutlined,
+  SearchOutlined,
+  WarningOutlined,
+} from "@ant-design/icons-svg";
+import type { IconDefinition } from "@ant-design/icons-svg/lib/types";
+import { applyEmptyAction, emptyState } from "../../stores/derivedStore";
+import { emptyActionLabel, type EmptyIcon } from "../../model/emptyState";
+import { AntIcon } from "./AntIcon";
+import { SPARK } from "./spark";
 
 const ICONS: Record<EmptyIcon, IconDefinition> = {
   heart: HeartOutlined,
@@ -12,13 +17,17 @@ const ICONS: Record<EmptyIcon, IconDefinition> = {
   filter: FilterOutlined,
   spark: SPARK,
   warning: WarningOutlined,
-}
+};
 
 /**
  * The look every empty state has: a faint mark, the reason, and one line under it. The caller owns
  * the column, because only it knows how much room the message has.
  */
-export function EmptyNote(props: { icon: IconDefinition; title: string; line?: string }) {
+export function EmptyNote(props: {
+  icon: IconDefinition;
+  title: string;
+  line?: string;
+}) {
   return (
     <>
       <AntIcon icon={props.icon} size="34px" class="text-faint" />
@@ -27,7 +36,7 @@ export function EmptyNote(props: { icon: IconDefinition; title: string; line?: s
         {(line) => <div class="text-sm text-muted">{line()}</div>}
       </Show>
     </>
-  )
+  );
 }
 
 /**
@@ -38,17 +47,21 @@ export function EmptyNote(props: { icon: IconDefinition; title: string; line?: s
  */
 export function EmptyState() {
   const run = () => {
-    const s = emptyState()
-    if (!s?.action) return
-    applyEmptyAction(s.action)
-  }
+    const s = emptyState();
+    if (!s?.action) return;
+    applyEmptyAction(s.action);
+  };
 
   return (
     <div class="flex flex-1 flex-col items-center justify-center gap-1.5 px-8 py-10 text-center">
       <Show when={emptyState()}>
         {(s) => (
           <>
-            <EmptyNote icon={ICONS[s().icon]} title={s().title} line={s().line} />
+            <EmptyNote
+              icon={ICONS[s().icon]}
+              title={s().title}
+              line={s().line}
+            />
             <Show when={s().action}>
               {(action) => (
                 <button
@@ -63,5 +76,5 @@ export function EmptyState() {
         )}
       </Show>
     </div>
-  )
+  );
 }

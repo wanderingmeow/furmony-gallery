@@ -6,24 +6,28 @@
  * the wrong rows under the right name.
  */
 export const ENDPOINT_URL = {
-  primary: 'https://apo.furmony.com/adopt/HarmonyAdopt/entrustAdopt/list',
+  primary: "https://apo.furmony.com/adopt/HarmonyAdopt/entrustAdopt/list",
   // `series` is the site's 「新作登场」 list: new art styles.
-  series: 'https://apo.furmony.com/adopt/HarmonyAdopt/productSeries/list',
-} as const
+  series: "https://apo.furmony.com/adopt/HarmonyAdopt/productSeries/list",
+} as const;
 
-export type Endpoint = keyof typeof ENDPOINT_URL
+export type Endpoint = keyof typeof ENDPOINT_URL;
 
 /** Without `pageSize` the answer carries only 10 rows and the total. */
-export function pageUrl(endpoint: Endpoint, pageSize?: number, pageNum = 1): string {
-  const qs = new URLSearchParams({ pageNum: String(pageNum) })
-  if (pageSize !== undefined) qs.set('pageSize', String(pageSize))
-  return `${ENDPOINT_URL[endpoint]}?${qs}`
+export function pageUrl(
+  endpoint: Endpoint,
+  pageSize?: number,
+  pageNum = 1,
+): string {
+  const qs = new URLSearchParams({ pageNum: String(pageNum) });
+  if (pageSize !== undefined) qs.set("pageSize", String(pageSize));
+  return `${ENDPOINT_URL[endpoint]}?${qs}`;
 }
 
 /**
  * The number sits above the size of the whole shelf, so one request returns the whole list.
  */
-export const LIST_PAGE_SIZE = 2000
+export const LIST_PAGE_SIZE = 2000;
 
 /**
  * What the document's own chain is filed under, one per list.
@@ -32,10 +36,11 @@ export const LIST_PAGE_SIZE = 2000
  * a name to look it up by. Matching addresses would matter to a cache, and this API sends no
  * headers that let one form.
  */
-export const listKey = (endpoint: Endpoint): string => `furmony:list:${endpoint}`
+export const listKey = (endpoint: Endpoint): string =>
+  `furmony:list:${endpoint}`;
 
 /** The part of every list request that is the same for every language. */
-export const LIST_REQUEST_BASE = { referrerPolicy: 'no-referrer' } as const
+export const LIST_REQUEST_BASE = { referrerPolicy: "no-referrer" } as const;
 
 /**
  * The request that every list fetch makes. The document runs it before the app exists, and api.ts,
@@ -47,5 +52,5 @@ export const LIST_REQUEST_BASE = { referrerPolicy: 'no-referrer' } as const
  */
 export const listRequestInit = (targetLanguage: string) => ({
   ...LIST_REQUEST_BASE,
-  headers: { 'Target-Language': targetLanguage },
-})
+  headers: { "Target-Language": targetLanguage },
+});

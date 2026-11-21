@@ -36,11 +36,15 @@ body {
   animation: boot-spin 0.9s linear infinite;
 }
 @keyframes boot-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 /* Reduced motion slows the spin: a mark that stands still looks like a page that failed. */
 @media (prefers-reduced-motion: reduce) {
-  #boot-spinner::after { animation-duration: 2.4s; }
+  #boot-spinner::after {
+    animation-duration: 2.4s;
+  }
 }
 
 /* The watchdog (bootWatch.ts) stops the ring when something failed and writes what the browser said

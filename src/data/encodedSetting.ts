@@ -7,8 +7,8 @@
  *  reads '' as off. */
 export function decodeSetting(encoded: string): string {
   try {
-    return atob(encoded.trim())
+    return atob(encoded.trim());
   } catch {
-    return ''
+    return "";
   }
 }

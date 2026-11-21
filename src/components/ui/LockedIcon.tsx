@@ -1,6 +1,6 @@
-import { tr } from '../../i18n'
-import { LockFilled } from '@ant-design/icons-svg'
-import { AntIcon } from './AntIcon'
+import { tr } from "../../i18n";
+import { LockFilled } from "@ant-design/icons-svg";
+import { AntIcon } from "./AntIcon";
 
 /**
  * The lock that says "no longer available" — it covers both 已锁定 and 已领养.
@@ -9,12 +9,12 @@ import { AntIcon } from './AntIcon'
 export function LockedIcon(props: { class?: string; size: string }) {
   return (
     <span
-      class={`flex text-red-600 ${props.class ?? ''}`}
+      class={`flex text-red-600 ${props.class ?? ""}`}
       role="img"
-      title={tr('card.locked')}
-      aria-label={tr('card.locked')}
+      title={tr("card.locked")}
+      aria-label={tr("card.locked")}
     >
       <AntIcon icon={LockFilled} size={props.size} />
     </span>
-  )
+  );
 }

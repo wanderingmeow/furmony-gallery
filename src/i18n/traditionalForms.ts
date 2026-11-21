@@ -14,17 +14,17 @@
  * because simplified writing never uses one of these letterforms.
  */
 export const TRADITIONAL_FORMS =
-  '價製對過個後長靈實體隻這飾購戰從發現開惡處獸種頭氣經讓邊並說獨爾傳藍卻將還滿沒樣類誕變遊點機夢遠獵擊驗陽學內態紅離場數脈隨異' +
-  '鬥魚裏條險難維雖電結聲飛傷員閃術師視賦則觀雙終兩獄尋麼隱號黃轉關話練萬調貓劍習稱識據殺霧際隊嚴堅漸門認裝徵區綠滅圍頂織聽細觸' +
-  '養願陰狀衝單歷穩園應業產屬臉試遺衛潑團盡顯絕緣嚇斷復懷葉藥聞劇許節義圖喚憑厭髮殘標樹壞設腳脫毀閒燈導務亂論僅獲絲鬆燼奧顆聖歸' +
-  '驅資幾連線軍計鬧創歲盜戲藉執賽繞華鋒纏掛爍國響棄漁眾囙較組舊夠納廢跡臨選陸積煙燒災諾畫誤亞劃夥蒼驚鮮淨煉寧虛訓釋棲紀擾討項鱗' +
-  '畢軟墜鳥煩藝塊櫻絨凜蹤費層淺魯顏飄貪測網鯊銀縷書換漿鏡幹餘優躍羅報憶確敗庫達厲齒儀緊曬楓縱綴預誠潛銳鑄緒擔賜兇撿鈴聯該權補騎' +
-  '榮軀渾遞邏嘗懶擺膽揚萊縮殼專帥蝕繪題擇係螢貝盤輪編訊惱輩禮恆闖參碼溝錯兒簡詛興審'
+  "價製對過個後長靈實體隻這飾購戰從發現開惡處獸種頭氣經讓邊並說獨爾傳藍卻將還滿沒樣類誕變遊點機夢遠獵擊驗陽學內態紅離場數脈隨異" +
+  "鬥魚裏條險難維雖電結聲飛傷員閃術師視賦則觀雙終兩獄尋麼隱號黃轉關話練萬調貓劍習稱識據殺霧際隊嚴堅漸門認裝徵區綠滅圍頂織聽細觸" +
+  "養願陰狀衝單歷穩園應業產屬臉試遺衛潑團盡顯絕緣嚇斷復懷葉藥聞劇許節義圖喚憑厭髮殘標樹壞設腳脫毀閒燈導務亂論僅獲絲鬆燼奧顆聖歸" +
+  "驅資幾連線軍計鬧創歲盜戲藉執賽繞華鋒纏掛爍國響棄漁眾囙較組舊夠納廢跡臨選陸積煙燒災諾畫誤亞劃夥蒼驚鮮淨煉寧虛訓釋棲紀擾討項鱗" +
+  "畢軟墜鳥煩藝塊櫻絨凜蹤費層淺魯顏飄貪測網鯊銀縷書換漿鏡幹餘優躍羅報憶確敗庫達厲齒儀緊曬楓縱綴預誠潛銳鑄緒擔賜兇撿鈴聯該權補騎" +
+  "榮軀渾遞邏嘗懶擺膽揚萊縮殼專帥蝕繪題擇係螢貝盤輪編訊惱輩禮恆闖參碼溝錯兒簡詛興審";
 
-const FORMS = new Set(TRADITIONAL_FORMS)
+const FORMS = new Set(TRADITIONAL_FORMS);
 
 /** Whether the text holds one of these letterforms. None of them means the text is not 繁體中文. */
 export function hasTraditionalForm(text: string): boolean {
-  for (const ch of text) if (FORMS.has(ch)) return true
-  return false
+  for (const ch of text) if (FORMS.has(ch)) return true;
+  return false;
 }

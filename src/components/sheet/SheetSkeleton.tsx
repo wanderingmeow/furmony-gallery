@@ -1,11 +1,15 @@
-import { tr } from '../../i18n'
-import { CloseOutlined } from '@ant-design/icons-svg'
-import { AntIcon } from '../ui/AntIcon'
-import { SheetFab } from '../ui/SheetFab'
+import { tr } from "../../i18n";
+import { CloseOutlined } from "@ant-design/icons-svg";
+import { AntIcon } from "../ui/AntIcon";
+import { SheetFab } from "../ui/SheetFab";
 import {
-  ART_PLACEHOLDER, SHEET_FAB_BOX, SHEET_FAB_ROW, SHEET_HEADER_ROW, SHEET_TITLE,
-} from '../ui/boxes'
-import { SK_BOX } from '../ui/skeletonView'
+  ART_PLACEHOLDER,
+  SHEET_FAB_BOX,
+  SHEET_FAB_ROW,
+  SHEET_HEADER_ROW,
+  SHEET_TITLE,
+} from "../ui/boxes";
+import { SK_BOX } from "../ui/skeletonView";
 
 /**
  * The body of a sheet whose screen has not arrived yet.
@@ -15,20 +19,32 @@ import { SK_BOX } from '../ui/skeletonView'
  * header row cannot hold it, because the detail screen has no header. Both screens put their
  * real ✕ 16px from the sheet's top left corner, so the placeholder's ✕ does not move.
  */
-export function SheetBodySkeleton(props: { onClose: () => void; pad?: string; padX?: number }) {
+export function SheetBodySkeleton(props: {
+  onClose: () => void;
+  pad?: string;
+  padX?: number;
+}) {
   // The screen decides its own padding; the placeholder repeats it so nothing moves on arrival.
   const inset = () =>
-    props.padX ? { 'padding-left': `${props.padX}px`, 'padding-right': `${props.padX}px` } : undefined
+    props.padX
+      ? {
+          "padding-left": `${props.padX}px`,
+          "padding-right": `${props.padX}px`,
+        }
+      : undefined;
   return (
-    <div class={`min-h-full w-full${props.pad ? ` ${props.pad}` : ''}`} style={inset()}>
+    <div
+      class={`min-h-full w-full${props.pad ? ` ${props.pad}` : ""}`}
+      style={inset()}
+    >
       <div class={SHEET_FAB_ROW}>
-        <SheetFab label={tr('common.close')} onClick={props.onClose}>
+        <SheetFab label={tr("common.close")} onClick={props.onClose}>
           <AntIcon icon={CloseOutlined} size={22} />
         </SheetFab>
       </div>
       <SheetPulse />
     </div>
-  )
+  );
 }
 
 /** The pulsing body on its own. A screen that already paints its own ✕ can cover a second wait
@@ -46,7 +62,7 @@ export function SheetPulse() {
         <span class={`sk-bar h-4 w-2/5 rounded-md ${SK_BOX}`} />
       </div>
     </div>
-  )
+  );
 }
 
 /**
@@ -61,5 +77,5 @@ export function SheetTitleSkeleton(props: { title: string }) {
       <span class={`${SHEET_FAB_BOX} shrink-0`} />
       <h1 class={SHEET_TITLE}>{props.title}</h1>
     </div>
-  )
+  );
 }

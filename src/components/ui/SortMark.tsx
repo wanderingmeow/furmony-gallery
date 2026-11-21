@@ -1,6 +1,6 @@
-import type { IconDefinition } from '@ant-design/icons-svg/lib/types'
-import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons-svg'
-import { AntIcon } from './AntIcon'
+import type { IconDefinition } from "@ant-design/icons-svg/lib/types";
+import { ArrowDownOutlined, ArrowUpOutlined } from "@ant-design/icons-svg";
+import { AntIcon } from "./AntIcon";
 
 /**
  * The order in one mark: the arrow in front, the icon it sorts by behind it.
@@ -16,8 +16,10 @@ export function SortMark(props: { what: IconDefinition; up: boolean }) {
         class="absolute inset-0 flex"
         style={{
           // mask = a diagonal away from the arrow, so the corner farthest from it stays solid
-          'mask-image': 'linear-gradient(to top right, transparent 24%, black 58%)',
-          '-webkit-mask-image': 'linear-gradient(to top right, transparent 24%, black 58%)',
+          "mask-image":
+            "linear-gradient(to top right, transparent 24%, black 58%)",
+          "-webkit-mask-image":
+            "linear-gradient(to top right, transparent 24%, black 58%)",
         }}
       >
         <AntIcon icon={() => props.what} size={20} />
@@ -27,8 +29,11 @@ export function SortMark(props: { what: IconDefinition; up: boolean }) {
           flex keeps the glyph in its box: as an inline-block it would sit on the button's own
           line, which drops it a few pixels. */}
       <span class="absolute -left-[3px] top-[11px] flex">
-        <AntIcon icon={() => (props.up ? ArrowUpOutlined : ArrowDownOutlined)} size={12} />
+        <AntIcon
+          icon={() => (props.up ? ArrowUpOutlined : ArrowDownOutlined)}
+          size={12}
+        />
       </span>
     </span>
-  )
+  );
 }

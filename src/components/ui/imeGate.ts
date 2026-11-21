@@ -18,36 +18,47 @@
 // The gate holds no timer, so `ready()` costs no time. How long a field waits before it asks
 // again belongs to that field: see the pause in SearchBar.tsx.
 
-import { hasUncommittedText } from '../../model/composing'
+import { hasUncommittedText } from "../../model/composing";
 
 export interface ImeGate {
-  input(inputType: string, isComposing: boolean): void
-  compositionStart(): void
-  compositionEnd(): void
+  input(inputType: string, isComposing: boolean): void;
+  compositionStart(): void;
+  compositionEnd(): void;
   /** The box lost focus: this is the way out when `compositionend` never arrives. */
-  blur(): void
+  blur(): void;
   /** The value changed by code, so no event will arrive: the clear button. */
-  reset(): void
+  reset(): void;
   /** Whether the box holds the text that the writer finished with. */
-  ready(): boolean
+  ready(): boolean;
 }
 
 /** Track the events that show whether a writer is still at work. `read` returns what the box
  *  holds when the field asks the question. */
 export function makeImeGate(read: () => string): ImeGate {
-  let composing = false
+  let composing = false;
   return {
     input(inputType, isComposing) {
       // Syllables being put together, or taken back: nothing to ask yet. The flag is the clearest
       // signal, but iOS leaves it false for every event, so the event name is the only signal
       // while a composition is open.
-      composing = isComposing
-        || (composing && /^(insert|delete)CompositionText$/.test(inputType))
+      composing =
+        isComposing ||
+        (composing && /^(insert|delete)CompositionText$/.test(inputType));
     },
-    compositionStart() { composing = true },
-    compositionEnd() { composing = false },
-    blur() { composing = false },
-    reset() { composing = false },
-    ready() { return !composing && !hasUncommittedText(read()) },
-  }
+    compositionStart() {
+      composing = true;
+    },
+    compositionEnd() {
+      composing = false;
+    },
+    blur() {
+      composing = false;
+    },
+    reset() {
+      composing = false;
+    },
+    ready() {
+      return !composing && !hasUncommittedText(read());
+    },
+  };
 }

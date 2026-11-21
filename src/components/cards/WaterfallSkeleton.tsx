@@ -1,22 +1,37 @@
-import { createMemo } from 'solid-js'
+import { createMemo } from "solid-js";
 import {
-  GAP, THUMB_ASPECT, VIEW_PAD, skeletonRows, waterfallCardWidth, waterfallCols, waterfallRowHeight,
-} from '../../draw/layout'
-import { CARD_ARTIST, CARD_BASE, CARD_BODY, CARD_COVER, CARD_FOOT, CARD_NAME } from '../ui/boxes'
-import { SK_BOX } from '../ui/skeletonView'
-import { watchViewport } from '../ui/viewport'
+  GAP,
+  THUMB_ASPECT,
+  VIEW_PAD,
+  skeletonRows,
+  waterfallCardWidth,
+  waterfallCols,
+  waterfallRowHeight,
+} from "../../draw/layout";
+import {
+  CARD_ARTIST,
+  CARD_BASE,
+  CARD_BODY,
+  CARD_COVER,
+  CARD_FOOT,
+  CARD_NAME,
+} from "../ui/boxes";
+import { SK_BOX } from "../ui/skeletonView";
+import { watchViewport } from "../ui/viewport";
 
 /**
  * The list screen before the data arrives, built from ui/boxes so the real cards land where the
  * placeholders stood and the page does not jump.
  */
 export function WaterfallSkeleton(props: { topOffset: () => number }) {
-  const { viewportH, frameW } = watchViewport()
+  const { viewportH, frameW } = watchViewport();
 
-  const cols = createMemo(() => waterfallCols(frameW()))
-  const cardWidth = createMemo(() => waterfallCardWidth(frameW(), cols()))
-  const rowHeight = createMemo(() => waterfallRowHeight(cardWidth()))
-  const rows = createMemo(() => skeletonRows(viewportH(), props.topOffset(), rowHeight()))
+  const cols = createMemo(() => waterfallCols(frameW()));
+  const cardWidth = createMemo(() => waterfallCardWidth(frameW(), cols()));
+  const rowHeight = createMemo(() => waterfallRowHeight(cardWidth()));
+  const rows = createMemo(() =>
+    skeletonRows(viewportH(), props.topOffset(), rowHeight()),
+  );
 
   // The wrapper is no taller than the window, so the page cannot scroll while the placeholders
   // are up.
@@ -25,9 +40,9 @@ export function WaterfallSkeleton(props: { topOffset: () => number }) {
       class="relative w-full overflow-hidden sk-pulse"
       style={{
         height: `${Math.min(props.topOffset() + rows() * rowHeight() + VIEW_PAD, viewportH())}px`,
-        'padding-top': `${props.topOffset()}px`,
-        'padding-right': `calc(${VIEW_PAD}px + var(--safe-right))`,
-        'padding-left': `calc(${VIEW_PAD}px + var(--safe-left))`,
+        "padding-top": `${props.topOffset()}px`,
+        "padding-right": `calc(${VIEW_PAD}px + var(--safe-right))`,
+        "padding-left": `calc(${VIEW_PAD}px + var(--safe-left))`,
       }}
     >
       <div
@@ -35,7 +50,7 @@ export function WaterfallSkeleton(props: { topOffset: () => number }) {
         style={{
           width: `${cols() * cardWidth() + GAP * (cols() - 1)}px`,
           gap: `${GAP}px`,
-          '--cols': `${cols()}`,
+          "--cols": `${cols()}`,
         }}
       >
         {Array.from({ length: cols() * rows() }, () => (
@@ -49,7 +64,7 @@ export function WaterfallSkeleton(props: { topOffset: () => number }) {
             <div class={CARD_COVER}>
               <div
                 class="sk-bar w-full rounded-lg"
-                style={{ 'aspect-ratio': String(THUMB_ASPECT) }}
+                style={{ "aspect-ratio": String(THUMB_ASPECT) }}
               />
             </div>
             <div class={CARD_BODY}>
@@ -68,5 +83,5 @@ export function WaterfallSkeleton(props: { topOffset: () => number }) {
         ))}
       </div>
     </div>
-  )
+  );
 }

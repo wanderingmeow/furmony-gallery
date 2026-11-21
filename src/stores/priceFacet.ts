@@ -8,29 +8,41 @@
 // Pulling it back would lay it over listings it never covered, so the block adds one empty bar
 // beyond the end and lets the band sit there. The pair the reader chose stays in the store until
 // they drag again.
-import { createMemo, createSignal } from 'solid-js'
-import type { AdoptListing } from '../model/types'
-import { displayPrice } from '../model/domain'
-import { priceBins, priceEdges, withEmptyBar, PRICE_BUCKET, type Bin, type EmptyBarSide } from '../model/statistics'
-import { countInRange, isFullRange, rangeExtent, type PriceRange } from '../model/priceRange'
+import { createMemo, createSignal } from "solid-js";
+import type { AdoptListing } from "../model/types";
+import { displayPrice } from "../model/domain";
+import {
+  priceBins,
+  priceEdges,
+  withEmptyBar,
+  PRICE_BUCKET,
+  type Bin,
+  type EmptyBarSide,
+} from "../model/statistics";
+import {
+  countInRange,
+  isFullRange,
+  rangeExtent,
+  type PriceRange,
+} from "../model/priceRange";
 
 export interface PriceFacet {
   /** The bars, in blocks of `PRICE_BUCKET`, plus the empty bar while the block holds one. */
-  bars: () => Bin[]
+  bars: () => Bin[];
   /** The edges the bars are drawn between, which is where a thumb may rest. */
-  steps: () => number[]
+  steps: () => number[];
   /** The two outer edges of the grid, or null while the tab carries no price. This is what
    *  `isFullRange` measures a band against. */
-  full: () => PriceRange | null
+  full: () => PriceRange | null;
   /** Whether the stored pair narrows the list. A pair over everything narrows nothing. */
-  on: () => boolean
+  on: () => boolean;
   /** The band the list runs with: null while `on` is false. */
-  effective: () => PriceRange | null
+  effective: () => PriceRange | null;
   /** How many rows the band keeps. */
-  count: () => number
+  count: () => number;
   /** Call when the block mounts. The block decides here whether to hold an empty bar, and keeps
    *  that shape until it mounts again. Taking a bar away mid-drag would move the grid. */
-  remount: () => void
+  remount: () => void;
 }
 
 /**
@@ -50,29 +62,45 @@ export function createPriceFacet(
   listed: () => AdoptListing[],
   stored: () => PriceRange | null,
 ): PriceFacet {
-  const priced = (rows: AdoptListing[]) => rows.map(displayPrice).filter((p) => p > 0)
+  const priced = (rows: AdoptListing[]) =>
+    rows.map(displayPrice).filter((p) => p > 0);
   // The tab's spread on its own, with no extra bar: this is what a band is measured against.
-  const home = createMemo(() => rangeExtent(priceEdges(priceBins(priced(tab())))))
+  const home = createMemo(() =>
+    rangeExtent(priceEdges(priceBins(priced(tab())))),
+  );
   const emptySide = createMemo<EmptyBarSide>(() => {
-    const h = home()
-    const r = stored()
-    if (!h || !r) return 'none'
-    if (r[1] > h[1]) return r[0] < h[0] ? 'both' : 'above'
-    return r[0] < h[0] ? 'below' : 'none'
-  })
-  const [held, setHeld] = createSignal<EmptyBarSide>('none')
+    const h = home();
+    const r = stored();
+    if (!h || !r) return "none";
+    if (r[1] > h[1]) return r[0] < h[0] ? "both" : "above";
+    return r[0] < h[0] ? "below" : "none";
+  });
+  const [held, setHeld] = createSignal<EmptyBarSide>("none");
   const bars = createMemo(() =>
-    withEmptyBar(priceBins(priced(listed()), PRICE_BUCKET, home()), PRICE_BUCKET, held()))
-  const steps = createMemo(() => priceEdges(bars()))
-  const full = createMemo(() => rangeExtent(steps()))
+    withEmptyBar(
+      priceBins(priced(listed()), PRICE_BUCKET, home()),
+      PRICE_BUCKET,
+      held(),
+    ),
+  );
+  const steps = createMemo(() => priceEdges(bars()));
+  const full = createMemo(() => rangeExtent(steps()));
   const on = createMemo(() => {
-    const r = stored()
-    return !!r && !!full() && !isFullRange(r, full())
-  })
-  const effective = createMemo(() => (on() ? stored() : null))
+    const r = stored();
+    return !!r && !!full() && !isFullRange(r, full());
+  });
+  const effective = createMemo(() => (on() ? stored() : null));
   const count = createMemo(() => {
-    const r = effective()
-    return r ? countInRange(listed(), r) : 0
-  })
-  return { bars, steps, full, on, effective, count, remount: () => setHeld(emptySide()) }
+    const r = effective();
+    return r ? countInRange(listed(), r) : 0;
+  });
+  return {
+    bars,
+    steps,
+    full,
+    on,
+    effective,
+    count,
+    remount: () => setHeld(emptySide()),
+  };
 }

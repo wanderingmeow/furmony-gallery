@@ -11,5 +11,5 @@
  * opened in a fresh tab simply has no ←.
  */
 export interface DetailEntry {
-  fromDetail?: number
+  fromDetail?: number;
 }

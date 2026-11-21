@@ -7,19 +7,19 @@
  * 2.5 px/ms is about three screens a second: slower than a thumb drag across the scrollbar
  * track, faster than a flick on a phone.
  */
-export const FAST_PX_PER_MS = 2.5
+export const FAST_PX_PER_MS = 2.5;
 
 /**
  * How long the page has to stop moving fast before pictures come back. A drag ends in a few
  * small steps. Turning the pictures on at the first slow one starts them while the cards are
  * still flying past.
  */
-export const SETTLE_MS = 120
+export const SETTLE_MS = 120;
 
 /** Whether the step from prevY to y took less time than a picture is worth. */
 export function isFast(y: number, prevY: number, elapsedMs: number): boolean {
-  if (elapsedMs <= 0) return false
-  return Math.abs(y - prevY) / elapsedMs > FAST_PX_PER_MS
+  if (elapsedMs <= 0) return false;
+  return Math.abs(y - prevY) / elapsedMs > FAST_PX_PER_MS;
 }
 
 /**
@@ -33,37 +33,37 @@ export function isFast(y: number, prevY: number, elapsedMs: number): boolean {
  * came back for.
  */
 export function createScrollMotion(report: (fast: boolean) => void): {
-  step: (y: number, now: number) => void
-  dispose: () => void
+  step: (y: number, now: number) => void;
+  dispose: () => void;
 } {
-  let fast = false
-  let primed = false
-  let lastY = 0
-  let lastMs = 0
-  let settleTimer = 0
+  let fast = false;
+  let primed = false;
+  let lastY = 0;
+  let lastMs = 0;
+  let settleTimer = 0;
   const stop = (): void => {
-    clearTimeout(settleTimer)
-    if (!fast) return
-    fast = false
-    report(false)
-  }
+    clearTimeout(settleTimer);
+    if (!fast) return;
+    fast = false;
+    report(false);
+  };
   const step = (y: number, now: number): void => {
     if (primed) {
       if (isFast(y, lastY, now - lastMs)) {
         if (!fast) {
-          fast = true
-          report(true)
+          fast = true;
+          report(true);
         }
         // A drag ends in a few small steps, so the window restarts on every fast one.
-        clearTimeout(settleTimer)
-        settleTimer = setTimeout(stop, SETTLE_MS)
+        clearTimeout(settleTimer);
+        settleTimer = setTimeout(stop, SETTLE_MS);
       } else {
-        stop()
+        stop();
       }
     }
-    primed = true
-    lastY = y
-    lastMs = now
-  }
-  return { step, dispose: () => clearTimeout(settleTimer) }
+    primed = true;
+    lastY = y;
+    lastMs = now;
+  };
+  return { step, dispose: () => clearTimeout(settleTimer) };
 }

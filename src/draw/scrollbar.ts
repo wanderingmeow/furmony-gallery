@@ -2,18 +2,18 @@
 // row, and the preview chip at the right edge of the waterfall.
 //
 // A separate module so the maths can be tested without a document.
-import type { Scroller } from './fade'
+import type { Scroller } from "./fade";
 
 export interface Thumb {
   /** width along the track, in px */
-  width: number
+  width: number;
   /** distance from the track's left edge, in px */
-  offset: number
+  offset: number;
 }
 
 // The floor for a thumb's width. No engine reports the length it draws, so this number is ours to
 // pick. The preview chip shares it, because the chip sits at the middle of the thumb.
-const THUMB_MIN = 24
+const THUMB_MIN = 24;
 
 /**
  * The thumb for a row that scrolls, on a track `track` px wide. null when the content fits or
@@ -23,12 +23,19 @@ const THUMB_MIN = 24
  * thumb. `min` is the floor for that width, and a track narrower than `min` gives a thinner thumb,
  * since the thumb cannot exceed the track.
  */
-export function scrollThumb(row: Scroller, track: number, min: number): Thumb | null {
-  const rest = row.scrollWidth - row.clientWidth
-  if (rest <= 0 || track <= 0) return null
-  const width = Math.min(track, Math.max(min, (track * row.clientWidth) / row.scrollWidth))
-  const progress = Math.min(1, Math.max(0, row.scrollLeft / rest))
-  return { width, offset: progress * (track - width) }
+export function scrollThumb(
+  row: Scroller,
+  track: number,
+  min: number,
+): Thumb | null {
+  const rest = row.scrollWidth - row.clientWidth;
+  if (rest <= 0 || track <= 0) return null;
+  const width = Math.min(
+    track,
+    Math.max(min, (track * row.clientWidth) / row.scrollWidth),
+  );
+  const progress = Math.min(1, Math.max(0, row.scrollLeft / rest));
+  return { width, offset: progress * (track - width) };
 }
 
 /**
@@ -43,9 +50,12 @@ export function pointerProgress(
   track: number,
   thumb: Thumb,
 ): number {
-  const room = track - thumb.width
-  if (room <= 0) return 0
-  return Math.min(1, Math.max(0, (clientX - trackLeft - thumb.width / 2) / room))
+  const room = track - thumb.width;
+  if (room <= 0) return 0;
+  return Math.min(
+    1,
+    Math.max(0, (clientX - trackLeft - thumb.width / 2) / room),
+  );
 }
 
 /**
@@ -56,17 +66,24 @@ export function pointerProgress(
  * a little low at either end. null when the chip has nowhere to travel.
  */
 export function previewTop(
-  scrollTop: number, scrollRange: number, viewport: number,
-  track: { top: number; bottom: number }, height: number,
+  scrollTop: number,
+  scrollRange: number,
+  viewport: number,
+  track: { top: number; bottom: number },
+  height: number,
 ): number | null {
-  const room = track.bottom - track.top
-  if (scrollRange < viewport || room < height) return null
+  const room = track.bottom - track.top;
+  if (scrollRange < viewport || room < height) return null;
   const thumb = scrollThumb(
-    { scrollLeft: scrollTop, scrollWidth: viewport + scrollRange, clientWidth: viewport },
+    {
+      scrollLeft: scrollTop,
+      scrollWidth: viewport + scrollRange,
+      clientWidth: viewport,
+    },
     room,
     THUMB_MIN,
-  )
-  if (!thumb) return null
-  const center = thumb.offset + thumb.width / 2
-  return track.top + Math.min(room - height, Math.max(0, center - height / 2))
+  );
+  if (!thumb) return null;
+  const center = thumb.offset + thumb.width / 2;
+  return track.top + Math.min(room - height, Math.max(0, center - height / 2));
 }

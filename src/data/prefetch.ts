@@ -7,13 +7,17 @@ import {
   listKey,
   pageUrl,
   type Endpoint,
-} from './endpoints.ts'
-import { API_LANGUAGE, DETECT_LOCALE_SCRIPT, LOCALE_KEY } from '../i18n/apiLanguage.ts'
+} from "./endpoints.ts";
+import {
+  API_LANGUAGE,
+  DETECT_LOCALE_SCRIPT,
+  LOCALE_KEY,
+} from "../i18n/apiLanguage.ts";
 
 declare global {
   interface Window {
     /** Answers the document started downloading before the app existed, one per list key. */
-    __furmonyPrefetch?: Record<string, Promise<unknown> | undefined>
+    __furmonyPrefetch?: Record<string, Promise<unknown> | undefined>;
   }
 }
 
@@ -23,10 +27,10 @@ declare global {
  * agree: a first list in one language and a retry in another would show two different sets of names.
  */
 const languageScript = (): string => {
-  const codes = JSON.stringify(API_LANGUAGE)
-  const stored = `(()=>{try{return localStorage.getItem(${JSON.stringify(LOCALE_KEY)})}catch(e){return null}})()`
-  return `const LANG=${codes}[${stored}]||${codes}[(${DETECT_LOCALE_SCRIPT})(navigator.language)];`
-}
+  const codes = JSON.stringify(API_LANGUAGE);
+  const stored = `(()=>{try{return localStorage.getItem(${JSON.stringify(LOCALE_KEY)})}catch(e){return null}})()`;
+  return `const LANG=${codes}[${stored}]||${codes}[(${DETECT_LOCALE_SCRIPT})(navigator.language)];`;
+};
 
 /**
  * The list requests, as code the document can run before the app exists. The answers come back from
@@ -41,18 +45,18 @@ const languageScript = (): string => {
  */
 export function prefetchScript(): string {
   const lists = (Object.keys(ENDPOINT_URL) as Endpoint[]).map((endpoint) => {
-    const start = JSON.stringify(pageUrl(endpoint, LIST_PAGE_SIZE))
-    return `${JSON.stringify(listKey(endpoint))}:ask(${start})`
-  })
+    const start = JSON.stringify(pageUrl(endpoint, LIST_PAGE_SIZE));
+    return `${JSON.stringify(listKey(endpoint))}:ask(${start})`;
+  });
   // The API can report a failure in the body of a response that is ok. The script treats that as a
   // failure too, so the app makes the request itself and retries on its own schedule.
   const ask =
     `${languageScript()}` +
     `const INIT={...${JSON.stringify(LIST_REQUEST_BASE)},headers:{"Target-Language":LANG}};` +
     `const ask=(u)=>fetch(u,INIT)` +
-    '.then((r)=>(r.ok?r.json():null)).catch(()=>null)' +
-    '.then((d)=>(d&&d.code===200?d:null));'
-  return `${ask}window.__furmonyPrefetch={${lists.join(',')}};`
+    ".then((r)=>(r.ok?r.json():null)).catch(()=>null)" +
+    ".then((d)=>(d&&d.code===200?d:null));";
+  return `${ask}window.__furmonyPrefetch={${lists.join(",")}};`;
 }
 
 /**
@@ -64,7 +68,7 @@ export function prefetchScript(): string {
  * failed should not be handed on to the next one.
  */
 export function takePrefetched(key: string): Promise<unknown> | undefined {
-  const stashed = window.__furmonyPrefetch?.[key]
-  if (stashed) delete window.__furmonyPrefetch![key]
-  return stashed
+  const stashed = window.__furmonyPrefetch?.[key];
+  if (stashed) delete window.__furmonyPrefetch![key];
+  return stashed;
 }

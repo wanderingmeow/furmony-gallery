@@ -1,33 +1,35 @@
-import { tr } from '../../i18n'
-import { SolidUplot } from '@dschz/solid-uplot'
-import { cursor } from '@dschz/solid-uplot/plugins'
-import uPlot from 'uplot'
-import type { AlignedData } from 'uplot'
-import { axisRoom, AXIS_FONT, axisWords, tiltFor } from '../../draw/axisLabels'
+import { tr } from "../../i18n";
+import { SolidUplot } from "@dschz/solid-uplot";
+import { cursor } from "@dschz/solid-uplot/plugins";
+import type { UplotPluginFactory } from "@dschz/solid-uplot";
+import uPlot from "uplot";
+import type { AlignedData } from "uplot";
+import { axisRoom, AXIS_FONT, axisWords, tiltFor } from "../../draw/axisLabels";
 
 // Unified chart height (Swift StatisticsView: every chart is 200px)
-export const STAT_CHART_H = 200
+export const STAT_CHART_H = 200;
 
 // uPlot's default axis stroke is black (#000) and grid is rgba(0,0,0,0.07) —
 // both are invisible/wrong on the dark surface. Resolve the palette once at
 // module load so axes/grid/labels follow the current mode.
 const isDark =
-  typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
-const AXIS_STROKE = isDark ? '#a3a3a3' : '#6b7280'
-const GRID_STROKE = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-color-scheme: dark)").matches;
+const AXIS_STROKE = isDark ? "#a3a3a3" : "#6b7280";
+const GRID_STROKE = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
 // ticks in the grid's own color, shorter than uPlot's default: a darker tick reads as an edge of the data
-const TICKS = { stroke: GRID_STROKE, width: 2, size: 4 }
+const TICKS = { stroke: GRID_STROKE, width: 2, size: 4 };
 // the band a flat axis needs: labels 10 + gap 5 + ticks 4
-const FLAT_AXIS = 26
+const FLAT_AXIS = 26;
 // The room a tilted axis may take from the 200px chart. Words longer than this are cut.
-const BAND = 52
+const BAND = 52;
 
 // uPlot has no native bar renderer — use the built-in `paths.bars` factory.
 // align:0 CENTERS each bar on its x tick (xShift = barWid/2), so labels/cursor
 // line up with the bar's middle — align:1 leaves xShift≈0 (bar's LEFT edge at
 // the tick) and the bar drifts right by half a width.
 function barPaths() {
-  return uPlot.paths.bars!({ align: 0, radius: 0.3, size: [0.9, 100] })
+  return uPlot.paths.bars!({ align: 0, radius: 0.3, size: [0.9, 100] });
 }
 
 // Pad the x scale by half a slot so edge bars aren't clipped — with align:0 the
@@ -36,8 +38,13 @@ function barPaths() {
 // labels room.
 function xScales(): uPlot.Scales {
   return {
-    x: { range: (_u: uPlot, min: number, max: number): [number, number] => [min - 0.5, max + 0.5] },
-  }
+    x: {
+      range: (_u: uPlot, min: number, max: number): [number, number] => [
+        min - 0.5,
+        max + 0.5,
+      ],
+    },
+  };
 }
 
 /**
@@ -56,18 +63,24 @@ function xScales(): uPlot.Scales {
  */
 function catAxis(
   labels: () => string[],
-  opts: { maxLabels?: number; showTicks?: boolean; showAllLabels?: boolean; showGrid?: boolean } = {},
+  opts: {
+    maxLabels?: number;
+    showTicks?: boolean;
+    showAllLabels?: boolean;
+    showGrid?: boolean;
+  } = {},
 ): uPlot.Axis {
-  const maxLabels = opts.showAllLabels ? Infinity : (opts.maxLabels ?? 6)
-  const showTicks = opts.showTicks !== false
-  const showGrid = opts.showGrid !== false
+  const maxLabels = opts.showAllLabels ? Infinity : (opts.maxLabels ?? 6);
+  const showTicks = opts.showTicks !== false;
+  const showGrid = opts.showGrid !== false;
   const cap = () => {
-    const len = labels().length
-    return len <= maxLabels ? 1 : Math.ceil(len / maxLabels)
-  }
+    const len = labels().length;
+    return len <= maxLabels ? 1 : Math.ceil(len / maxLabels);
+  };
   // uPlot re-reads rotate, size and values on every draw, so all three follow the plot's width.
-  const slot = (self: uPlot) => (self?.width ?? 0) / Math.max(1, labels().length)
-  const deg = (self: uPlot) => tiltFor(labels(), slot(self))
+  const slot = (self: uPlot) =>
+    (self?.width ?? 0) / Math.max(1, labels().length);
+  const deg = (self: uPlot) => tiltFor(labels(), slot(self));
   return {
     stroke: AXIS_STROKE,
     grid: { show: showGrid, stroke: GRID_STROKE },
@@ -77,31 +90,39 @@ function catAxis(
     incrs: [1],
     rotate: (self: uPlot) => deg(self),
     size: (self: uPlot) => {
-      const d = deg(self)
-      return d === 0 ? FLAT_AXIS : axisRoom(labels(), d, BAND)
+      const d = deg(self);
+      return d === 0 ? FLAT_AXIS : axisRoom(labels(), d, BAND);
     },
     gap: 6, // labels close to the axis
     values: (self: uPlot, splits: number[]) => {
-      const l = labels()
-      const every = cap()
-      const words = splits.map((v: number) => l[v] ?? '')
-      const shown = every === 1 ? words : splits.map((v: number, i: number) => (v % every === 0 ? words[i] : ''))
-      const xs = splits.map((v: number) => self.valToPos(v, 'x'))
-      return axisWords(shown, xs, slot(self), deg(self), BAND)
+      const l = labels();
+      const every = cap();
+      const words = splits.map((v: number) => l[v] ?? "");
+      const shown =
+        every === 1
+          ? words
+          : splits.map((v: number, i: number) =>
+              v % every === 0 ? words[i] : "",
+            );
+      const xs = splits.map((v: number) => self.valToPos(v, "x"));
+      return axisWords(shown, xs, slot(self), deg(self), BAND);
     },
-  }
+  };
 }
 
 // Price histogram axis: the tick labels are the bin EDGES (16k / 18k / 20k ...)
 // and each bar sits BETWEEN two consecutive edges. Custom `splits` places ticks/
 // labels at the boundaries (-0.5, 0.5, 1.5, ...), so the gridlines naturally fall
 // on the bar SIDES; `values` maps each boundary to its edge name.
-function histAxis(edges: () => string[], opts: { maxLabels?: number; showAllLabels?: boolean } = {}): uPlot.Axis {
-  const maxLabels = opts.showAllLabels ? Infinity : (opts.maxLabels ?? 10)
+function histAxis(
+  edges: () => string[],
+  opts: { maxLabels?: number; showAllLabels?: boolean } = {},
+): uPlot.Axis {
+  const maxLabels = opts.showAllLabels ? Infinity : (opts.maxLabels ?? 10);
   const stride = () => {
-    const n = edges().length
-    return n <= maxLabels ? 1 : Math.ceil(n / maxLabels)
-  }
+    const n = edges().length;
+    return n <= maxLabels ? 1 : Math.ceil(n / maxLabels);
+  };
   return {
     stroke: AXIS_STROKE,
     grid: { stroke: GRID_STROKE },
@@ -111,30 +132,49 @@ function histAxis(edges: () => string[], opts: { maxLabels?: number; showAllLabe
     space: 2,
     gap: 5, // labels close to the axis
     size: 34, // snug — vertical labels need ~20px + gap 5 + ticks 4
-    splits: (_self: uPlot, _axisIdx: number, _min: number, _max: number, _incr: number, _space: number) => {
-      const n = edges().length - 1 // number of bars
-      const arr: number[] = []
-      for (let i = 0; i <= n; i++) arr.push(i - 0.5)
-      return arr
+    splits: (
+      _self: uPlot,
+      _axisIdx: number,
+      _min: number,
+      _max: number,
+      _incr: number,
+      _space: number,
+    ) => {
+      const n = edges().length - 1; // number of bars
+      const arr: number[] = [];
+      for (let i = 0; i <= n; i++) arr.push(i - 0.5);
+      return arr;
     },
-    values: (_self: uPlot, splits: number[], _axisIdx: number, _foundSpace: number, _foundIncr: number) => {
-      const e = edges()
-      const s = stride()
+    values: (
+      _self: uPlot,
+      splits: number[],
+      _axisIdx: number,
+      _foundSpace: number,
+      _foundIncr: number,
+    ) => {
+      const e = edges();
+      const s = stride();
       return splits.map((v: number) => {
-        const idx = Math.round(v + 0.5)
-        return (s === 1 || idx % s === 0) ? (e[idx] ?? '') : ''
-      })
+        const idx = Math.round(v + 0.5);
+        return s === 1 || idx % s === 0 ? (e[idx] ?? "") : "";
+      });
     },
-  }
+  };
 }
 
 // The two monthly charts share one hover line. It lands on one pixel in both because both plot
 // areas start at the same x, which the y axis width sets.
-const Y_SIZE = 36
+const Y_SIZE = 36;
 
 // Shared y-axis (counts) — keeps the horizontal gridlines.
 function yAxis(): uPlot.Axis {
-  return { stroke: AXIS_STROKE, grid: { stroke: GRID_STROKE }, ticks: { ...TICKS }, font: AXIS_FONT, size: Y_SIZE }
+  return {
+    stroke: AXIS_STROKE,
+    grid: { stroke: GRID_STROKE },
+    ticks: { ...TICKS },
+    font: AXIS_FONT,
+    size: Y_SIZE,
+  };
 }
 
 // Y-axis for the monthly price line — labels in 千元 (integer thousand, e.g. 12k)
@@ -151,8 +191,10 @@ function yAxisK(): uPlot.Axis {
     incrs: [2000, 4000, 8000],
     size: Y_SIZE,
     values: (_self: uPlot, splits: number[]) =>
-      splits.map((v: number) => (v % 4000 === 0 ? `${Math.round(v / 1000)}k` : '')),
-  }
+      splits.map((v: number) =>
+        v % 4000 === 0 ? `${Math.round(v / 1000)}k` : "",
+      ),
+  };
 }
 
 // Vertical gridlines at the BAR SIDES (boundaries) — uPlot draws them at the bar
@@ -160,132 +202,200 @@ function yAxisK(): uPlot.Axis {
 // these ourselves at i-0.5 (between bars). Positions are device px (same space as
 // the canvas context, which uPlot renders at full device resolution).
 function drawBarGrid(u: uPlot) {
-  const ctx = u.ctx
-  const n = u.data[0]?.length ?? 0
-  if (!ctx || n === 0) return
-  const bb = u.bbox
-  ctx.save()
-  ctx.strokeStyle = GRID_STROKE
-  ctx.lineWidth = (typeof window !== 'undefined' ? window.devicePixelRatio : 1)
-  ctx.beginPath()
+  const ctx = u.ctx;
+  const n = u.data[0]?.length ?? 0;
+  if (!ctx || n === 0) return;
+  const bb = u.bbox;
+  ctx.save();
+  ctx.strokeStyle = GRID_STROKE;
+  ctx.lineWidth = typeof window !== "undefined" ? window.devicePixelRatio : 1;
+  ctx.beginPath();
   for (let i = 0; i <= n; i++) {
-    const x = u.valToPos(i - 0.5, 'x', true)
-    ctx.moveTo(x, bb.top)
-    ctx.lineTo(x, bb.top + bb.height)
+    const x = u.valToPos(i - 0.5, "x", true);
+    ctx.moveTo(x, bb.top);
+    ctx.lineTo(x, bb.top + bb.height);
   }
-  ctx.stroke()
-  ctx.restore()
+  ctx.stroke();
+  ctx.restore();
 }
 
 // Draw the COUNT above each bar (uPlot has no built-in data labels). Runs in the
 // `draw` hook — after series/axes — so the numbers sit on top of the bars.
 function drawBarLabels(u: uPlot) {
-  const ctx = u.ctx
-  const xs = u.data[0]
-  const ys = u.data[1]
-  if (!ctx || !xs || !ys || xs.length !== ys.length) return
-  const pr = typeof window !== 'undefined' ? window.devicePixelRatio : 1
-  ctx.save()
-  ctx.font = `${8 * pr}px ui-sans-serif, system-ui, sans-serif`
-  ctx.fillStyle = AXIS_STROKE
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'bottom'
+  const ctx = u.ctx;
+  const xs = u.data[0];
+  const ys = u.data[1];
+  if (!ctx || !xs || !ys || xs.length !== ys.length) return;
+  const pr = typeof window !== "undefined" ? window.devicePixelRatio : 1;
+  ctx.save();
+  ctx.font = `${8 * pr}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.fillStyle = AXIS_STROKE;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
   for (let i = 0; i < ys.length; i++) {
-    const x = u.valToPos(xs[i] as number, 'x', true)
-    const y = u.valToPos(ys[i] as number, 'y', true) - 3 * pr
-    ctx.fillText(String(ys[i]), x, y)
+    const x = u.valToPos(xs[i] as number, "x", true);
+    const y = u.valToPos(ys[i] as number, "y", true) - 3 * pr;
+    ctx.fillText(String(ys[i]), x, y);
   }
-  ctx.restore()
+  ctx.restore();
 }
 
 // Amount label — 千元, one decimal (xx.xk).
 export function fmtK(v: number): string {
-  return `${(v / 1000).toFixed(1)}k`
+  return `${(v / 1000).toFixed(1)}k`;
 }
 
 // hex "#rrggbb" -> rgba with a given alpha (for semi-transparent area fills).
 function withAlpha(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r},${g},${b},${alpha})`
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 // The hooks that every bar chart shares: gridlines at the sides of the bars, and a count label above
 // each bar.
 function barChartHooks(): uPlot.Hooks.Arrays {
-  return { draw: [drawBarGrid, drawBarLabels] }
+  return { draw: [drawBarGrid, drawBarLabels] };
 }
 
 // Histogram (价格分布): count labels only (its native grid already sits on the
 // bar sides via the boundary splits).
 function histHooks(): uPlot.Hooks.Arrays {
-  return { draw: [drawBarLabels] }
+  return { draw: [drawBarLabels] };
 }
 
-// `data`/`series`/`axes` are GETTERS so SolidUplot's `setData` effect tracks them
-// (passing snapshots froze the chart at first render — it never re-drew on filter
-// change). `scales`/`hooks` are static.
-function chart(
-  data: () => AlignedData,
-  series: () => uPlot.Series[],
-  axes: () => uPlot.Axis[],
-  scales: () => uPlot.Scales,
-  hooks?: () => uPlot.Hooks.Arrays,
-  onCursorMove?: (params: { cursor: { idx: number }; u: uPlot }) => void,
-  onMouseLeave?: () => void,
-  plugins?: unknown[],
-  onReady?: (u: uPlot) => void,
-) {
+// `data`/`series`/`axes` stay accessors: SolidUplot tracks what its own JSX reads, so a filter
+// change redraws the chart. A snapshot would freeze it at the first answer.
+function Chart(props: {
+  data: () => AlignedData;
+  series: () => uPlot.Series[];
+  axes: () => uPlot.Axis[];
+  scales: () => uPlot.Scales;
+  hooks?: () => uPlot.Hooks.Arrays;
+  /** The slot under the cursor, or null once the cursor has left the plot. */
+  onHover?: (idx: number | null) => void;
+  plugins?: UplotPluginFactory[];
+  onReady?: (u: uPlot) => void;
+}) {
   return (
-    <div class="w-full" style={{ height: `${STAT_CHART_H}px` }} onMouseLeave={onMouseLeave}>
+    <div
+      class="w-full"
+      style={{ height: `${STAT_CHART_H}px` }}
+      onMouseLeave={() => props.onHover?.(null)}
+    >
       <SolidUplot
         autoResize
-        data={data()}
-        series={series()}
-        axes={axes()}
-        scales={scales()}
-        hooks={hooks?.()}
-        plugins={plugins as any}
-        onCursorMove={onCursorMove}
-        onCreate={(u) => onReady?.(u)}
+        data={props.data()}
+        series={props.series()}
+        axes={props.axes()}
+        scales={props.scales()}
+        hooks={props.hooks?.()}
+        plugins={props.plugins}
+        onCursorMove={(p) =>
+          props.onHover?.(p.cursor.idx >= 0 ? p.cursor.idx : null)
+        }
+        onCreate={(u) => props.onReady?.(u)}
         padding={[4, 8, 0, 0]} // minimal top margin + a bit more room on the right
       />
     </div>
-  )
+  );
 }
 
 // A bar chart: gridlines at the sides of the bars, the count above each bar, every label or an
 // adaptive stride, optional ticks, and optional labels tilted 45°.
 export function StatBarChart(props: {
-  labels: string[]; values: number[]; color: string; maxLabels?: number; showTicks?: boolean; showAllLabels?: boolean; onHover?: (idx: number | null) => void; onReady?: (u: uPlot) => void
+  labels: string[];
+  values: number[];
+  color: string;
+  maxLabels?: number;
+  showTicks?: boolean;
+  showAllLabels?: boolean;
+  onHover?: (idx: number | null) => void;
+  onReady?: (u: uPlot) => void;
 }) {
-  const data = (): AlignedData => [props.labels.map((_, i) => i), props.values]
+  const data = (): AlignedData => [props.labels.map((_, i) => i), props.values];
   const series = (): uPlot.Series[] => [
     {},
-    { label: tr('stats.axisCount'), stroke: props.color, fill: props.color, paths: barPaths(), points: { show: false } },
-  ]
+    {
+      label: tr("stats.axisCount"),
+      stroke: props.color,
+      fill: props.color,
+      paths: barPaths(),
+      points: { show: false },
+    },
+  ];
+  /* eslint-disable solid/reactivity -- the axis reads the labels when uPlot draws, not here */
   const axes = (): uPlot.Axis[] => [
-    catAxis(() => props.labels, { maxLabels: props.maxLabels, showTicks: props.showTicks, showAllLabels: props.showAllLabels, showGrid: false }),
+    catAxis(() => props.labels, {
+      maxLabels: props.maxLabels,
+      showTicks: props.showTicks,
+      showAllLabels: props.showAllLabels,
+      showGrid: false,
+    }),
     yAxis(),
-  ]
-  return chart(data, series, axes, xScales, barChartHooks, (p) => props.onHover?.(p.cursor.idx >= 0 ? p.cursor.idx : null), () => props.onHover?.(null), [cursor()], props.onReady)
+  ];
+  /* eslint-enable solid/reactivity */
+  return (
+    <Chart
+      data={data}
+      series={series}
+      axes={axes}
+      scales={xScales}
+      hooks={barChartHooks}
+      onHover={props.onHover}
+      plugins={[cursor()]}
+      onReady={props.onReady}
+    />
+  );
 }
 
 // The price histogram: one label at each gridline, with a bar standing between two labels, and the
 // count above each bar. `edges` holds the bin boundaries, one more than the number of bars, and
 // `values` holds the counts.
 export function StatHistChart(props: {
-  edges: string[]; values: number[]; color: string; maxLabels?: number; showAllLabels?: boolean; onHover?: (idx: number | null) => void
+  edges: string[];
+  values: number[];
+  color: string;
+  maxLabels?: number;
+  showAllLabels?: boolean;
+  onHover?: (idx: number | null) => void;
 }) {
-  const n = () => Math.max(0, props.edges.length - 1)
-  const data = (): AlignedData => [Array.from({ length: n() }, (_, i) => i), props.values]
+  const n = () => Math.max(0, props.edges.length - 1);
+  const data = (): AlignedData => [
+    Array.from({ length: n() }, (_, i) => i),
+    props.values,
+  ];
   const series = (): uPlot.Series[] => [
     {},
-    { label: tr('stats.axisCount'), stroke: props.color, fill: props.color, paths: barPaths(), points: { show: false } },
-  ]
-  const axes = (): uPlot.Axis[] => [histAxis(() => props.edges, { maxLabels: props.maxLabels, showAllLabels: props.showAllLabels }), yAxis()]
-  return chart(data, series, axes, xScales, histHooks, (p) => props.onHover?.(p.cursor.idx >= 0 ? p.cursor.idx : null), () => props.onHover?.(null), [cursor()])
+    {
+      label: tr("stats.axisCount"),
+      stroke: props.color,
+      fill: props.color,
+      paths: barPaths(),
+      points: { show: false },
+    },
+  ];
+  /* eslint-disable solid/reactivity -- the axis reads the edges when uPlot draws, not here */
+  const axes = (): uPlot.Axis[] => [
+    histAxis(() => props.edges, {
+      maxLabels: props.maxLabels,
+      showAllLabels: props.showAllLabels,
+    }),
+    yAxis(),
+  ];
+  /* eslint-enable solid/reactivity */
+  return (
+    <Chart
+      data={data}
+      series={series}
+      axes={axes}
+      scales={xScales}
+      hooks={histHooks}
+      onHover={props.onHover}
+      plugins={[cursor()]}
+    />
+  );
 }
 
 // The line and area chart, with a y-axis counted in thousands of yuan, an adaptive stride, and
@@ -293,29 +403,40 @@ export function StatHistChart(props: {
 // Instead `onHover` reports the index of the point under the cursor, or null, so the parent can
 // refresh the summary line for this section, and `onMouseLeave` resets it to null.
 export function StatLineChart(props: {
-  labels: string[]
+  labels: string[];
   /** A null marks a month with nothing to plot, and the line has a gap there. */
-  values: (number | null)[]
-  color: string
-  maxLabels?: number
-  onHover?: (idx: number | null) => void
-  onReady?: (u: uPlot) => void
+  values: (number | null)[];
+  color: string;
+  maxLabels?: number;
+  onHover?: (idx: number | null) => void;
+  onReady?: (u: uPlot) => void;
 }) {
-  const data = (): AlignedData => [props.labels.map((_, i) => i), props.values]
+  const data = (): AlignedData => [props.labels.map((_, i) => i), props.values];
   const series = (): uPlot.Series[] => [
     {},
-    { label: tr('stats.axisAvg'), stroke: props.color, fill: withAlpha(props.color, 0.15), width: 2, points: { show: true } },
-  ]
-  const axes = (): uPlot.Axis[] => [catAxis(() => props.labels, { maxLabels: props.maxLabels }), yAxisK()]
-  return chart(
-    data,
-    series,
-    axes,
-    xScales,
-    undefined,
-    (p) => props.onHover?.(p.cursor.idx >= 0 ? p.cursor.idx : null),
-    () => props.onHover?.(null),
-    [cursor()],
-    props.onReady,
-  )
+    {
+      label: tr("stats.axisAvg"),
+      stroke: props.color,
+      fill: withAlpha(props.color, 0.15),
+      width: 2,
+      points: { show: true },
+    },
+  ];
+  /* eslint-disable solid/reactivity -- the axis reads the labels when uPlot draws, not here */
+  const axes = (): uPlot.Axis[] => [
+    catAxis(() => props.labels, { maxLabels: props.maxLabels }),
+    yAxisK(),
+  ];
+  /* eslint-enable solid/reactivity */
+  return (
+    <Chart
+      data={data}
+      series={series}
+      axes={axes}
+      scales={xScales}
+      onHover={props.onHover}
+      plugins={[cursor()]}
+      onReady={props.onReady}
+    />
+  );
 }

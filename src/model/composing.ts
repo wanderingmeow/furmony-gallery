@@ -5,8 +5,8 @@
 // space, and a finished query can hold plain spaces too, so this marker covers iOS only:
 // the input gate holds back the syllables from other engines by state.
 
-const COMPOSING_SPACE = '\u2006'
+const COMPOSING_SPACE = "\u2006";
 
 export function hasUncommittedText(text: string): boolean {
-  return text.includes(COMPOSING_SPACE)
+  return text.includes(COMPOSING_SPACE);
 }

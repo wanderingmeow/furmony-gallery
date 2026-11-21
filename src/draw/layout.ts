@@ -4,68 +4,78 @@
 
 // The source covers are 921x597. ListingCard draws them at this ratio, and the waterfall sizes a row
 // from it without waiting for any image.
-export const THUMB_ASPECT = 921 / 597
+export const THUMB_ASPECT = 921 / 597;
 
 // Everything a card draws around its cover: the frame, the artist row, the text block. None of it
 // depends on width, so one number serves every column count.
-const CARD_FRAME = 1 + 6 + 28.5 + 56 + 6 + 1 // CARD_BASE borders and p-1.5, CARD_ARTIST, CARD_BODY
+const CARD_FRAME = 1 + 6 + 28.5 + 56 + 6 + 1; // CARD_BASE borders and p-1.5, CARD_ARTIST, CARD_BODY
 
 // The row math divides the card's own width by THUMB_ASPECT, while the cover is drawn 26px narrower -
 // both borders, both card paddings, both cover paddings - so that much picture never appears.
-export const CARD_EXTRA_HEIGHT = CARD_FRAME - 26 / THUMB_ASPECT
+export const CARD_EXTRA_HEIGHT = CARD_FRAME - 26 / THUMB_ASPECT;
 
 // ---- waterfall ----
 // Padding around the grid, the gap between cards, the narrowest card the grid accepts,
 // the smallest column count, and the rows rendered outside the window so a fast scroll
 // shows cards instead of blanks.
-export const VIEW_PAD = 16
-export const GAP = 16
-export const MIN_CARD = 236
-export const MIN_COLS = 2
-export const OVERSCAN_ROWS = 6
+export const VIEW_PAD = 16;
+export const GAP = 16;
+export const MIN_CARD = 236;
+export const MIN_COLS = 2;
+export const OVERSCAN_ROWS = 6;
 
 /**
  * Columns the grid uses: as many MIN_CARD-wide cards as fit, never fewer than MIN_COLS.
  * A width of 0 means nothing has been measured yet, and that case is a phone.
  */
 export function waterfallCols(viewportWidth: number): number {
-  if (viewportWidth <= 0) return MIN_COLS
-  return Math.max(MIN_COLS, Math.floor((viewportWidth - 2 * VIEW_PAD) / MIN_CARD))
+  if (viewportWidth <= 0) return MIN_COLS;
+  return Math.max(
+    MIN_COLS,
+    Math.floor((viewportWidth - 2 * VIEW_PAD) / MIN_CARD),
+  );
 }
 
 /**
  * Card width at n columns. Fractional on purpose: the grid places cards by px, and a
  * whole-px width would leave a sliver of padding at the right edge.
  */
-export function waterfallCardWidth(viewportWidth: number, cols: number): number {
-  return (viewportWidth - 2 * VIEW_PAD - GAP * (cols - 1)) / cols
+export function waterfallCardWidth(
+  viewportWidth: number,
+  cols: number,
+): number {
+  return (viewportWidth - 2 * VIEW_PAD - GAP * (cols - 1)) / cols;
 }
 
 export function waterfallCardHeight(cardWidth: number): number {
-  return cardWidth / THUMB_ASPECT + CARD_EXTRA_HEIGHT
+  return cardWidth / THUMB_ASPECT + CARD_EXTRA_HEIGHT;
 }
 
 /** The pitch between two rows: a card plus the gap below it. */
 export function waterfallRowHeight(cardWidth: number): number {
-  return waterfallCardHeight(cardWidth) + GAP
+  return waterfallCardHeight(cardWidth) + GAP;
 }
 
 /**
  * The rows a placeholder list draws: every row that starts above the fold, so the last one may show
  * only its top. The real list ends the same way, leaving no empty band above the fold.
  */
-export function skeletonRows(viewportHeight: number, topPad: number, rowHeight: number): number {
-  return Math.max(1, Math.ceil((viewportHeight - topPad) / rowHeight))
+export function skeletonRows(
+  viewportHeight: number,
+  topPad: number,
+  rowHeight: number,
+): number {
+  return Math.max(1, Math.ceil((viewportHeight - topPad) / rowHeight));
 }
 
 /** The row an item sits in. A negative index (nothing found) means the first row. */
 export function rowOfIndex(index: number, cols: number): number {
-  return Math.floor(Math.max(0, index) / cols)
+  return Math.floor(Math.max(0, index) / cols);
 }
 
 /** The first item of a row, clamped to the last item that exists. */
 export function indexOfRow(row: number, cols: number, count: number): number {
-  return Math.min(row * cols, count - 1)
+  return Math.min(row * cols, count - 1);
 }
 
 /** The rows a virtual list paints: the ones the window covers, plus `overscan` on each side.
@@ -76,53 +86,62 @@ export function indexOfRow(row: number, cols: number, count: number): number {
  *  gives an empty window or the tail of the list, never a negative height or a NaN transform.
  */
 export function renderWindow(args: {
-  scrollTop: number
-  viewport: number
-  rowHeight: number
-  rowCount: number
-  overscan: number
+  scrollTop: number;
+  viewport: number;
+  rowHeight: number;
+  rowCount: number;
+  overscan: number;
 }): { firstRow: number; start: number; end: number } {
-  const rows = whole(args.rowCount)
-  const pitch = atLeastZero(args.rowHeight)
-  if (rows === 0 || pitch === 0) return { firstRow: 0, start: 0, end: 0 }
-  const y = atLeastZero(args.scrollTop)
-  const first = Math.min(rows, Math.floor(y / pitch))
-  const last = Math.min(rows, Math.ceil((y + atLeastZero(args.viewport)) / pitch))
-  return { firstRow: first, start: Math.max(0, first - whole(args.overscan)), end: Math.min(rows, last + whole(args.overscan)) }
+  const rows = whole(args.rowCount);
+  const pitch = atLeastZero(args.rowHeight);
+  if (rows === 0 || pitch === 0) return { firstRow: 0, start: 0, end: 0 };
+  const y = atLeastZero(args.scrollTop);
+  const first = Math.min(rows, Math.floor(y / pitch));
+  const last = Math.min(
+    rows,
+    Math.ceil((y + atLeastZero(args.viewport)) / pitch),
+  );
+  return {
+    firstRow: first,
+    start: Math.max(0, first - whole(args.overscan)),
+    end: Math.min(rows, last + whole(args.overscan)),
+  };
 }
 
 /** A count the layout may divide by: nothing fractional, negative, or missing. */
-const whole = (n: number): number => (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0)
+const whole = (n: number): number =>
+  Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
 
 /** A length the layout may divide by: a row height is fractional, so only its sign is fixed. */
-const atLeastZero = (n: number): number => (Number.isFinite(n) ? Math.max(0, n) : 0)
+const atLeastZero = (n: number): number =>
+  Number.isFinite(n) ? Math.max(0, n) : 0;
 
 // ---- detail ----
 // Horizontal padding of the sheet body. The related row bleeds out by this amount and back in again,
 // so Detail and that row share one number.
-export const DETAIL_PAD_X = 16
+export const DETAIL_PAD_X = 16;
 
 // Tailwind's sm breakpoint: the width at which the card's classes start standing in from the edges
 // and stop growing, and the width at which a screen has room for two columns.
-const SM = 640
+const SM = 640;
 
 // The panel's two columns, as one literal: Tailwind reads these numbers off the source, and a string
 // assembled at runtime never reaches the stylesheet, leaving the table an implicit column as wide as
 // it likes. The table gets half the room, capped at 420 so its lines stay readable, and never less
 // than 260 - 24 of card padding, a 60px label column, a 12 gap, 164 of values.
 export const PANEL_GRID =
-  'grid grid-cols-[minmax(0,1fr)_minmax(260px,min(50%,420px))] grid-rows-[minmax(0,1fr)] gap-6'
+  "grid grid-cols-[minmax(0,1fr)_minmax(260px,min(50%,420px))] grid-rows-[minmax(0,1fr)] gap-6";
 
 // The widest a panel gets. Past this the table's lines stretch past comfortable reading, and the
 // list behind needs air.
-export const SPREAD_MAX_W = 1080
+export const SPREAD_MAX_W = 1080;
 
 /** The detail's two shapes: a sheet is the phone's one-column card slid up from the bottom, a panel
  *  is the two-column view a landscape screen gets instead. */
-export type Shape = 'sheet' | 'panel'
+export type Shape = "sheet" | "panel";
 
 export function shapeAt(viewportW: number, viewportH: number): Shape {
-  return viewportW >= SM && viewportW >= viewportH ? 'panel' : 'sheet'
+  return viewportW >= SM && viewportW >= viewportH ? "panel" : "sheet";
 }
 
 /** The gap a panel leaves at every edge: it is what makes a panel read as a card on the page instead
@@ -130,204 +149,237 @@ export function shapeAt(viewportW: number, viewportH: number): Shape {
  *  not something a finger or a cursor aims at - then 12, 24, and 48 from 900 up.
  */
 export function sheetInset(viewportH: number): number {
-  if (viewportH < 480) return 0
-  if (viewportH < 700) return 12
-  return viewportH < 900 ? 24 : 48
+  if (viewportH < 480) return 0;
+  if (viewportH < 700) return 12;
+  return viewportH < 900 ? 24 : 48;
 }
 
-export type CardBox = { w: number; h: number }
+export type CardBox = { w: number; h: number };
 
 /** The bands at the sides of the screen, as the padding that keeps a card's content out of them. The
  *  card paints these itself; the bottom band belongs to the scroller below. */
-export const CARD_BAND_PAD = 'pl-[var(--safe-left)] pr-[var(--safe-right)]'
+export const CARD_BAND_PAD = "pl-[var(--safe-left)] pr-[var(--safe-right)]";
 
 /** The band at the bottom of the screen, as the padding of whatever scrolls: content runs on to the
  *  edge, and this is what lets the last row be scrolled clear of it. */
-export const SCROLL_BAND_PAD = 'pb-[var(--safe-bottom)] scroll-pb-[var(--safe-bottom)]'
+export const SCROLL_BAND_PAD =
+  "pb-[var(--safe-bottom)] scroll-pb-[var(--safe-bottom)]";
 
 /** The bands the screen itself takes at its four edges, in px. */
-export type Insets = { top: number; right: number; bottom: number; left: number }
+export type Insets = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
 
-const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 }
+const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
 /** The gap the card keeps at every edge of the window. The page behind it shows through here, which
  *  is what makes a panel read as a card on the page rather than a takeover, so it grows with the
  *  height there is to spare.
  */
 export function cardGap(viewportW: number, viewportH: number): number {
-  if (shapeAt(viewportW, viewportH) !== 'panel') return viewportW >= SM ? 24 : 0
-  return sheetInset(viewportH)
+  if (shapeAt(viewportW, viewportH) !== "panel")
+    return viewportW >= SM ? 24 : 0;
+  return sheetInset(viewportH);
 }
 
 /** The room the card has left for its own content: the window less `cardGap`, less the bands it pads
  *  away, never wider than 760 in a sheet or SPREAD_MAX_W in a panel.
  */
-export function sheetCardBox(viewportW: number, viewportH: number, safe: Insets = NO_INSETS): CardBox {
-  const panel = shapeAt(viewportW, viewportH) === 'panel'
-  const gap = cardGap(viewportW, viewportH)
+export function sheetCardBox(
+  viewportW: number,
+  viewportH: number,
+  safe: Insets = NO_INSETS,
+): CardBox {
+  const panel = shapeAt(viewportW, viewportH) === "panel";
+  const gap = cardGap(viewportW, viewportH);
   return {
-    w: Math.min(viewportW - 2 * gap - safe.left - safe.right, panel ? SPREAD_MAX_W : 760),
+    w: Math.min(
+      viewportW - 2 * gap - safe.left - safe.right,
+      panel ? SPREAD_MAX_W : 760,
+    ),
     h: viewportH - 2 * gap - safe.bottom,
-  }
+  };
 }
 
 /** The detail's box model, one row per shape, so the whole of it is read in one place: who pads the
  *  body, who pads a column, how the action bar and the related strip meet the edges. */
-export const BOX: Record<Shape, {
-  bodyPad: string
-  colPad: string
-  /** A sheet's bar stands outside the scroller, so it keeps the bottom band itself. */
-  barPad: string
-  stripBleed: number
-}> = {
+export const BOX: Record<
+  Shape,
+  {
+    bodyPad: string;
+    colPad: string;
+    /** A sheet's bar stands outside the scroller, so it keeps the bottom band itself. */
+    barPad: string;
+    stripBleed: number;
+  }
+> = {
   // The body pads all four sides, so the strip and the bar pay that side padding back to reach the
   // card's edge.
   sheet: {
-    bodyPad: 'pt-16 pb-4', colPad: '', stripBleed: DETAIL_PAD_X,
-    barPad: 'px-4 pb-[max(0.75rem,var(--safe-bottom))]',
+    bodyPad: "pt-16 pb-4",
+    colPad: "",
+    stripBleed: DETAIL_PAD_X,
+    barPad: "px-4 pb-[max(0.75rem,var(--safe-bottom))]",
   },
   // The body pads the sides only, and both columns carry the same top and bottom, which keeps them
   // level when the panel opens.
   panel: {
-    bodyPad: '', colPad: 'pt-16 pb-4', stripBleed: 0,
-    barPad: 'pb-3',
+    bodyPad: "",
+    colPad: "pt-16 pb-4",
+    stripBleed: 0,
+    barPad: "pb-3",
   },
-}
+};
 
 // The parts of the first screen that never move. 64 of clearance above the art and 16 under it cost
 // the same in both shapes: pt-16 + pb-4 in a sheet, pt-16 + the column gap in a panel.
-const DETAIL_CHROME = 80
-const DETAIL_STRIP_H = 68 // mt-2 + the 60px thumbs
-const SHEET_BAR_H = 61 // py-3 + a 36px control + the border above it
+const DETAIL_CHROME = 80;
+const DETAIL_STRIP_H = 68; // mt-2 + the 60px thumbs
+const SHEET_BAR_H = 61; // py-3 + a 36px control + the border above it
 
 /** The body's box: a sheet's less its padding, a panel's entire, since a panel pads its columns. */
 export function detailBodyHeight(box: CardBox, shape: Shape): number {
-  return shape === 'panel' ? box.h : box.h - DETAIL_CHROME
+  return shape === "panel" ? box.h : box.h - DETAIL_CHROME;
 }
 
 // A sheet's art box stops at 1.1 times its own width, so a square picture fills it, and at the room
 // the screen has left once its padding, the thumbs and the bar are paid for, so the table stays on
 // the first screen. Under 120 the art is not worth looking at - the zoom is how you look at one that
 // small.
-const PIC_TALL = 1.1
-const PIC_MIN_H = 120
+const PIC_TALL = 1.1;
+const PIC_MIN_H = 120;
 
 /** Half the card: what the art is allowed to hold in a sheet. */
-const PIC_CAP = 0.5
+const PIC_CAP = 0.5;
 
 /** The height the art's box takes: a panel hands over its whole left column, a sheet fits the art to
  *  its card, keeps the bar's height outside the scroller, and stops at `PIC_CAP` of the card. A
  *  sheet is one column, so a taller cover leaves the table below the fold entirely. */
 export function detailPictureHeight(box: CardBox, shape: Shape): number {
-  const room = box.h - DETAIL_CHROME - DETAIL_STRIP_H - (shape === 'panel' ? 0 : SHEET_BAR_H)
-  if (shape === 'panel') return Math.max(PIC_MIN_H, room)
-  const fitted = Math.min(Math.max(PIC_MIN_H, (box.w - 2 * DETAIL_PAD_X) * PIC_TALL), Math.max(PIC_MIN_H, room))
-  return Math.min(fitted, box.h * PIC_CAP)
+  const room =
+    box.h -
+    DETAIL_CHROME -
+    DETAIL_STRIP_H -
+    (shape === "panel" ? 0 : SHEET_BAR_H);
+  if (shape === "panel") return Math.max(PIC_MIN_H, room);
+  const fitted = Math.min(
+    Math.max(PIC_MIN_H, (box.w - 2 * DETAIL_PAD_X) * PIC_TALL),
+    Math.max(PIC_MIN_H, room),
+  );
+  return Math.min(fitted, box.h * PIC_CAP);
 }
 
 // The strip under the info table. A card's width follows the width the strip has, so a view holds a
 // whole number of cards: the 194 target is what two cards get on a phone once the gaps are paid,
 // while a wider strip fits 3 or 4. One fixed width cannot do both.
-export const RELATED_CARD_TARGET = 194
-export const RELATED_CARD_GAP = 14
-export const RELATED_PER_VIEW_MIN = 2
-export const RELATED_PER_VIEW_MAX = 4
+export const RELATED_CARD_TARGET = 194;
+export const RELATED_CARD_GAP = 14;
+export const RELATED_PER_VIEW_MIN = 2;
+export const RELATED_PER_VIEW_MAX = 4;
 // Below this a cover stops being recognizable: the strip shows one full card, most of the next, and
 // scrolls. layout.test.ts names the widths where that happens.
-export const RELATED_CARD_MIN = 160
+export const RELATED_CARD_MIN = 160;
 
 /** How many cards fit: available width over the target, rounded, clamped to 2..4. */
 export function relatedPerView(avail: number): number {
-  return Math.min(RELATED_PER_VIEW_MAX, Math.max(RELATED_PER_VIEW_MIN, Math.round(avail / RELATED_CARD_TARGET)))
+  return Math.min(
+    RELATED_PER_VIEW_MAX,
+    Math.max(RELATED_PER_VIEW_MIN, Math.round(avail / RELATED_CARD_TARGET)),
+  );
 }
 
 /** Width per card at n cards. Floored, so rounding never reveals half a card. */
 export function relatedCardWidth(avail: number, n: number): number {
-  return Math.max(RELATED_CARD_MIN, Math.floor((avail - RELATED_CARD_GAP * (n - 1)) / n))
+  return Math.max(
+    RELATED_CARD_MIN,
+    Math.floor((avail - RELATED_CARD_GAP * (n - 1)) / n),
+  );
 }
 
 // The name and #ID line under a cover: 4px of padding plus a 20px line box, measured in
 // the browser at every card width.
-export const RELATED_CAPTION_H = 24
+export const RELATED_CAPTION_H = 24;
 
 export function relatedCardsHeight(cardWidth: number): number {
-  return cardWidth / THUMB_ASPECT + RELATED_CAPTION_H
+  return cardWidth / THUMB_ASPECT + RELATED_CAPTION_H;
 }
 
 // The progress bar under the related cards. A full-width bar looks like a divider between
 // sections, so the track stays short.
-export const RELATED_BAR_W = 120
-export const RELATED_BAR_H = 3
-export const RELATED_BAR_GAP = 14
+export const RELATED_BAR_W = 120;
+export const RELATED_BAR_H = 3;
+export const RELATED_BAR_GAP = 14;
 // Below this the thumb is hard to see.
-export const RELATED_BAR_MIN_THUMB = 24
+export const RELATED_BAR_MIN_THUMB = 24;
 // A bar that is being held is easier to keep hold of, so it runs thicker. The paint sits centered
 // inside the reserved box, so the sheet's height does not follow it.
-export const RELATED_BAR_H_HELD = 6
+export const RELATED_BAR_H_HELD = 6;
 // The area a finger can grab around the track. It is painted outside the box, so it costs no room.
-export const RELATED_BAR_HIT_X = 12
-export const RELATED_BAR_HIT_Y = 8
+export const RELATED_BAR_HIT_X = 12;
+export const RELATED_BAR_HIT_Y = 8;
 
 /** The empty states take this much room, so the sheet's height is the same whether the
  *  strip is empty or full. */
 export function relatedStripHeight(cardWidth: number): number {
-  return relatedCardsHeight(cardWidth) + RELATED_BAR_H + RELATED_BAR_GAP
+  return relatedCardsHeight(cardWidth) + RELATED_BAR_H + RELATED_BAR_GAP;
 }
 
 // ---- 上下两条边 ----
 
 /** The band's distance from the page edge. The corner's circles sit on the same 16px. */
-export const CHROME_EDGE = 16
+export const CHROME_EDGE = 16;
 
 /** The air between the picture's box and the plate's edge on all four sides. boxes.ts writes the
  *  same number as padding, and the drop zone's corner subtracts the plate's 1px border. */
-export const PICTURE_INSET = 12
+export const PICTURE_INSET = 12;
 /** The plate's own edge, twice over: once per side. */
-const PLATE_EDGE = 2
+const PLATE_EDGE = 2;
 
 /** The field's four shapes. */
-export const FIELD_REST = 48
-export const FIELD_TEXT = 60
+export const FIELD_REST = 48;
+export const FIELD_TEXT = 60;
 // the mark's centre is the plate's corner centre, so it reads as the corner's contents
-export const FIELD_LEAD = 60
+export const FIELD_LEAD = 60;
 /** The staged picture: a 72px picture with the inset all around it. */
-export const FIELD_PICTURE = 72 + PICTURE_INSET * 2 + PLATE_EDGE
+export const FIELD_PICTURE = 72 + PICTURE_INSET * 2 + PLATE_EDGE;
 /** The empty drop zone: 122px of target with the same inset. */
-export const FIELD_DROP = 122 + PICTURE_INSET * 2 + PLATE_EDGE
+export const FIELD_DROP = 122 + PICTURE_INSET * 2 + PLATE_EDGE;
 
 /** The air between the box and the first row. */
-export const CHROME_LIST_GAP = 8
+export const CHROME_LIST_GAP = 8;
 
 /** The room the box leaves for the corner's filter circle at every height: the circle and the 8px
  *  between them. */
-export const PLATE_AIR = `calc(var(--fab-size) + 0.5rem)`
+export const PLATE_AIR = `calc(var(--fab-size) + 0.5rem)`;
 
 /** Where the app stops being a phone: the same 640 the detail card detaches at. */
-export const CHROME_WIDE = 640
+export const CHROME_WIDE = 640;
 
 /** A fixed measure for an open box on a wide edge, instead of the whole edge. */
-export const FIELD_WIDE = 440
+export const FIELD_WIDE = 440;
 
 /** The room the box takes once it holds a picture and an answer under it - the height the user
  *  reads at, whether the answer arrived or the search broke. It does not follow the picture switch:
  *  a switch the user can flip must not move every row. The empty drop zone is the one state that
  *  hangs past it, over the row's own top padding. */
 export function chromeTop(safeTop: number): number {
-  return CHROME_EDGE + safeTop + FIELD_PICTURE + CHROME_LIST_GAP
+  return CHROME_EDGE + safeTop + FIELD_PICTURE + CHROME_LIST_GAP;
 }
 
 /** The tabs stand at the bottom edge, on the same air the band keeps at the top. */
-export const PILL_H = 56
+export const PILL_H = 56;
 
 /** What the last thing on the page keeps free below itself: the tabs and the air under them. */
-export const LIST_BOTTOM = CHROME_EDGE + PILL_H + GAP
-
+export const LIST_BOTTOM = CHROME_EDGE + PILL_H + GAP;
 
 // ---- row preview chip ----
 // The chip sits at the right edge while you scroll. It shows the day of the row at the top of
 // the window, or that row's price when the list is sorted by price.
-export const PREVIEW_H = 36
-export const PREVIEW_SCROLLBAR_GAP = 8
-export const PREVIEW_IDLE_MS = 700
+export const PREVIEW_H = 36;
+export const PREVIEW_SCROLLBAR_GAP = 8;
+export const PREVIEW_IDLE_MS = 700;
 // past the chip's own 300ms fade, so it leaves after the fade rather than partway through
-export const PREVIEW_FADE_MS = 400
+export const PREVIEW_FADE_MS = 400;

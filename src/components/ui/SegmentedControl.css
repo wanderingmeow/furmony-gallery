@@ -83,9 +83,11 @@
   /* -10px is the track's 8px of padding plus the glass border's 2px. */
   min-height: calc(var(--seg-h, var(--fab-size)) - 10px);
   padding: 0;
-  padding-inline: clamp(var(--seg-pad-min),
+  padding-inline: clamp(
+    var(--seg-pad-min),
     (100cqw - var(--seg-side) * 2 - var(--seg-labels) - 8px) / 8,
-    var(--seg-pad-max));
+    var(--seg-pad-max)
+  );
 }
 .seg-chip {
   position: absolute;
@@ -98,20 +100,24 @@
   border-radius: 9999px;
   background: #ffffff;
   /* The iOS curve for anything that follows a finger. */
-  transition: transform 0.24s var(--ease-chrome),
+  transition:
+    transform 0.24s var(--ease-chrome),
     width 0.24s var(--ease-chrome);
 }
 /* The page's main switch wears the accent. The shadow carries a little of it outward, which is what
    makes the chip read as painted. */
 .seg-accent .seg-chip {
   background: var(--color-accent);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14),
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.14),
     0 2px 6px color-mix(in oklab, var(--color-accent) 30%, transparent);
 }
 .seg-label {
   white-space: nowrap;
   color: var(--color-muted);
-  transition: color 0.2s ease, opacity 0.2s ease;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
 }
 /* 11px under a 12px label keeps the pair short. tabular-nums holds the column while the count
    changes. */
@@ -120,7 +126,9 @@
   line-height: 11px;
   font-variant-numeric: tabular-nums;
   color: var(--color-faint);
-  transition: color 0.2s ease, opacity 0.2s ease;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
 }
 .seg-item input:checked ~ .seg-label {
   color: var(--color-ink);
@@ -142,7 +150,7 @@
 }
 /* The line belongs to the item on its right, so it sits on that item's left edge. */
 .seg-item:not(.seg-first)::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 5px;
   bottom: 5px;

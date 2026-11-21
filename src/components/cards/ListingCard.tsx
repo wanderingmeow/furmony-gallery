@@ -1,20 +1,42 @@
-import { tr } from '../../i18n'
-import { listingName, listingPainterName, wordsPending } from '../../model/translatedText'
-import { createEffect, createMemo, createSignal, For, on, onCleanup, Show } from 'solid-js'
-import type { AdoptListing } from '../../model/types'
+import { tr } from "../../i18n";
 import {
-  colorDisplay, colorNames, formatPrice, isLocked, priceParts, raceDisplay,
-} from '../../model/domain'
-import { THUMB_ASPECT } from '../../draw/layout'
-import { isWishlisted } from '../../stores/wishlistStore'
-import { priceMode } from '../../stores/displayStore'
-import { onImageError, sizedUrl, stableImageUrl } from '../../data/image'
-import { LockedIcon } from '../ui/LockedIcon'
-import { SkelText } from '../ui/SkelText'
-import { WishlistButton } from '../ui/WishlistButton'
+  listingName,
+  listingPainterName,
+  wordsPending,
+} from "../../model/translatedText";
 import {
-  CARD_ARTIST, CARD_BASE, CARD_BODY, CARD_COVER, CARD_FOOT, CARD_NAME,
-} from '../ui/boxes'
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  on,
+  onCleanup,
+  Show,
+} from "solid-js";
+import type { AdoptListing } from "../../model/types";
+import {
+  colorDisplay,
+  colorNames,
+  formatPrice,
+  isLocked,
+  priceParts,
+  raceDisplay,
+} from "../../model/domain";
+import { THUMB_ASPECT } from "../../draw/layout";
+import { isWishlisted } from "../../stores/wishlistStore";
+import { priceMode } from "../../stores/displayStore";
+import { onImageError, sizedUrl, stableImageUrl } from "../../data/image";
+import { LockedIcon } from "../ui/LockedIcon";
+import { SkelText } from "../ui/SkelText";
+import { WishlistButton } from "../ui/WishlistButton";
+import {
+  CARD_ARTIST,
+  CARD_BASE,
+  CARD_BODY,
+  CARD_COVER,
+  CARD_FOOT,
+  CARD_NAME,
+} from "../ui/boxes";
 
 // One row of tags, cut at the card's edge. A card's height is what the row pitch in
 // draw/layout.ts counts on, so a long list of tags never pushes the card taller.
@@ -25,37 +47,55 @@ function Tags(props: { tags: string[] }) {
           mid-word. `max-w-full` caps it at the row and `truncate` ends it with an ellipsis, which
           says there is more to read. */}
       <For each={props.tags}>
-        {(t) => <span class="shrink-0 max-w-full px-1.5 h-[18px] leading-[18px] rounded-md bg-surface-2 text-[10px] text-ink truncate">{t}</span>}
+        {(t) => (
+          <span class="shrink-0 max-w-full px-1.5 h-[18px] leading-[18px] rounded-md bg-surface-2 text-[10px] text-ink truncate">
+            {t}
+          </span>
+        )}
       </For>
     </div>
-  )
+  );
 }
 
-export function ListingCard(props: { listing: AdoptListing; width: number; hold?: () => boolean }) {
-  const l = props.listing
-  const parts = createMemo(() => priceParts(l, priceMode()))
-  const id = l.adoptId
-  const locked = isLocked(l)
-  const wishlisted = createMemo(() => isWishlisted(id))
-  const artist = createMemo(() => listingPainterName(l) ?? tr('detail.painterNumbered', l.paintersId))
+export function ListingCard(props: {
+  listing: AdoptListing;
+  width: number;
+  hold?: () => boolean;
+}) {
+  // eslint-disable-next-line solid/reactivity -- <For> keys this card by listing id, so props never change
+  const l = props.listing;
+  const parts = createMemo(() => priceParts(l, priceMode()));
+  const id = l.adoptId;
+  const locked = isLocked(l);
+  const wishlisted = createMemo(() => isWishlisted(id));
+  const artist = createMemo(
+    () => listingPainterName(l) ?? tr("detail.painterNumbered", l.paintersId),
+  );
   // The chip words come from the species and color tables, so a card that is the same object
   // still changes when the language on screen does.
   const tags = createMemo(() => [
     ...(raceDisplay(l) ? [raceDisplay(l)!] : []),
     ...colorNames(l).map(colorDisplay),
-  ])
+  ]);
 
-  const [loaded, setLoaded] = createSignal(false)
+  const [loaded, setLoaded] = createSignal(false);
 
   // The address waits a frame so mounting a whole tab is not spent on picture requests, and
   // hold keeps it off while the page moves fast: the DOM is built, the picture waits.
-  let imgRef!: HTMLImageElement
-  createEffect(on(() => props.hold?.(), (held) => {
-    if (held) return
-    const url = sizedUrl(stableImageUrl(l.adoptPicture), 'card')
-    const raf = requestAnimationFrame(() => { if (url) imgRef.src = url })
-    onCleanup(() => cancelAnimationFrame(raf))
-  }))
+  let imgRef!: HTMLImageElement;
+  createEffect(
+    on(
+      () => props.hold?.(),
+      (held) => {
+        if (held) return;
+        const url = sizedUrl(stableImageUrl(l.adoptPicture), "card");
+        const raf = requestAnimationFrame(() => {
+          if (url) imgRef.src = url;
+        });
+        onCleanup(() => cancelAnimationFrame(raf));
+      },
+    ),
+  );
 
   return (
     <div
@@ -70,16 +110,26 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
       </div>
 
       <div class={CARD_COVER}>
-        <div class="relative card-img w-full rounded-lg bg-surface overflow-hidden" style={{ 'aspect-ratio': String(THUMB_ASPECT) }}>
+        <div
+          class="relative card-img w-full rounded-lg bg-surface overflow-hidden"
+          style={{ "aspect-ratio": String(THUMB_ASPECT) }}
+        >
           <img
             ref={imgRef}
-            alt={wordsPending() ? tr('common.listing') : listingName(l) ?? tr('common.listing')}
+            alt={
+              wordsPending()
+                ? tr("common.listing")
+                : (listingName(l) ?? tr("common.listing"))
+            }
             loading="eager"
             decoding="async"
             class="w-full h-full object-cover rounded-lg transition-opacity duration-300"
-            classList={{ 'opacity-0': !loaded() }}
+            classList={{ "opacity-0": !loaded() }}
             onLoad={() => setLoaded(true)}
-            onError={(e) => { setLoaded(true); onImageError(e) }}
+            onError={(e) => {
+              setLoaded(true);
+              onImageError(e);
+            }}
           />
         </div>
       </div>
@@ -87,7 +137,11 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
       <div class={CARD_BODY}>
         <div class={CARD_NAME}>
           <span class="text-sm font-medium truncate">
-            {wordsPending() ? <SkelText class="h-3.5 w-16" /> : listingName(l) ?? tr('common.unknown')}
+            {wordsPending() ? (
+              <SkelText class="h-3.5 w-16" />
+            ) : (
+              (listingName(l) ?? tr("common.unknown"))
+            )}
           </span>
           {/* The group carries ml-auto rather than the lock, because a card with no lock
               still needs something to push the heart to the right edge. */}
@@ -100,7 +154,10 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
               stop
               heartClass="tap-heart"
               class="heart-hit text-lg leading-none"
-              classList={{ 'text-red-500': wishlisted(), 'text-ink': !wishlisted() }}
+              classList={{
+                "text-red-500": wishlisted(),
+                "text-ink": !wishlisted(),
+              }}
             />
           </div>
         </div>
@@ -117,7 +174,9 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
             <Show when={parts()?.card}>
               {(card) => (
                 <span class="inline-flex items-baseline gap-1 text-sm font-bold text-accent-ink tabular-nums">
-                  <Show when={card().label}><span>{card().label}</span></Show>
+                  <Show when={card().label}>
+                    <span>{card().label}</span>
+                  </Show>
                   <span>{formatPrice(card().value)}</span>
                 </span>
               )}
@@ -126,5 +185,5 @@ export function ListingCard(props: { listing: AdoptListing; width: number; hold?
         </div>
       </div>
     </div>
-  )
+  );
 }

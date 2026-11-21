@@ -15,18 +15,42 @@
      language that ships another count needs new stops. */
   --animate-search-reel: search-reel 35s var(--ease-chrome) infinite;
   @keyframes search-reel {
-    0%, 12% { transform: translateY(0) }
-    14.29%, 26.29% { transform: translateY(-24px) }
-    28.57%, 40.57% { transform: translateY(-48px) }
-    42.86%, 54.86% { transform: translateY(-72px) }
-    57.14%, 69.14% { transform: translateY(-96px) }
-    71.43%, 83.43% { transform: translateY(-120px) }
-    85.71%, 97.71% { transform: translateY(-144px) }
-    100% { transform: translateY(-168px) }
+    0%,
+    12% {
+      transform: translateY(0);
+    }
+    14.29%,
+    26.29% {
+      transform: translateY(-24px);
+    }
+    28.57%,
+    40.57% {
+      transform: translateY(-48px);
+    }
+    42.86%,
+    54.86% {
+      transform: translateY(-72px);
+    }
+    57.14%,
+    69.14% {
+      transform: translateY(-96px);
+    }
+    71.43%,
+    83.43% {
+      transform: translateY(-120px);
+    }
+    85.71%,
+    97.71% {
+      transform: translateY(-144px);
+    }
+    100% {
+      transform: translateY(-168px);
+    }
   }
 }
 
-html, body {
+html,
+body {
   touch-action: pan-y;
   /* Scroll anchoring would fight the virtualized list, whose content shifts as rows mount. */
   overflow-anchor: none;
@@ -74,10 +98,14 @@ body[data-scroll-locked] {
   background: rgba(128, 128, 138, 0.18);
 }
 @keyframes sk-pulse {
-  50% { opacity: 0.55; }
+  50% {
+    opacity: 0.55;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sk-pulse { animation: none; }
+  .sk-pulse {
+    animation: none;
+  }
 }
 
 /* Reusable spinner: a ring with an accent top edge that turns. Size via w-/h-. */
@@ -125,7 +153,8 @@ body[data-scroll-locked] {
 @media (prefers-color-scheme: dark) {
   .glass {
     background: var(--chrome-glass);
-    -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(200%) brightness(1.12);
+    -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(200%)
+      brightness(1.12);
   }
   @supports (backdrop-filter: blur(0)) {
     .glass {
@@ -179,16 +208,24 @@ body[data-scroll-locked] {
 
 /* Backdrop fade for the detail overlay */
 @keyframes overlay-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .overlay-fade-in {
   animation: overlay-fade-in 0.25s ease;
 }
 
 @keyframes overlay-fade-out {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 .overlay-fade-out {
   animation: overlay-fade-out 0.28s ease-in;
@@ -200,8 +237,13 @@ body[data-scroll-locked] {
    color the mark already sits in - the chrome's mark and the picture row's are not the same color -
    so stopping on `animationiteration` hands it back without a jump. */
 @keyframes spark-pulse {
-  0%, 100% { color: currentColor; }
-  50% { color: var(--spark-on); }
+  0%,
+  100% {
+    color: currentColor;
+  }
+  50% {
+    color: var(--spark-on);
+  }
 }
 .spark-pulse {
   --spark-on: var(--color-accent);
@@ -256,7 +298,7 @@ body[data-scroll-locked] {
    plate; the press arrives on a taller band laid over it, and that band keeps its size.
    The band carries its own `data-press`: closing sets `data-open` false while the finger is still
    down, so a rule keyed on the live state would grow the circle in the middle of the way out. */
-[data-chrome='plate'] {
+[data-chrome="plate"] {
   /* The build adds iOS's -webkit- entry to a transition list only while the list holds no var(),
      so the filtered property is named both ways here. */
   transition:
@@ -275,14 +317,20 @@ body[data-scroll-locked] {
 
 /* The mark grows with its circle: a circle that grew on its own would read as a mark that shrank.
    The two share a centre, so the pair grows outward from one point. */
-[data-chrome='band'][data-open='false']:has([data-chrome='hit'][data-press='true']) [data-chrome='plate'],
-[data-chrome='band'][data-open='false']:has([data-chrome='hit'][data-press='true']) .chrome-mark {
+[data-chrome="band"][data-open="false"]:has(
+    [data-chrome="hit"][data-press="true"]
+  )
+  [data-chrome="plate"],
+[data-chrome="band"][data-open="false"]:has(
+    [data-chrome="hit"][data-press="true"]
+  )
+  .chrome-mark {
   transform: scale(1.18);
   transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-chrome='plate'],
+  [data-chrome="plate"],
   .chrome-mark {
     transition: none;
   }
@@ -290,12 +338,12 @@ body[data-scroll-locked] {
 
 /* The lift arrives with the box and goes with it, eased over the same 300ms as the growth: a circle
    that brightened in the frame the user touched it would read as a flicker. */
-[data-chrome='band'][data-open='true'] [data-chrome='plate'] {
+[data-chrome="band"][data-open="true"] [data-chrome="plate"] {
   -webkit-backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
 }
 
 @supports (backdrop-filter: blur(0)) {
-  [data-chrome='band'][data-open='true'] [data-chrome='plate'] {
+  [data-chrome="band"][data-open="true"] [data-chrome="plate"] {
     backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
   }
 }
@@ -314,7 +362,11 @@ body[data-scroll-locked] {
    glow. */
 .fab-circle,
 .sheet-fab {
-  box-shadow: var(--fab-shadow, 0 2px 6px rgba(0, 0, 0, 0.05), 0 8px 20px rgba(0, 0, 0, 0.07));
+  box-shadow: var(
+    --fab-shadow,
+    0 2px 6px rgba(0, 0, 0, 0.05),
+    0 8px 20px rgba(0, 0, 0, 0.07)
+  );
 }
 
 @media (prefers-color-scheme: dark) {
@@ -329,7 +381,7 @@ body[data-scroll-locked] {
    screens have no hover to give back, so the layer is not built there. */
 @media (hover: hover) and (pointer: fine) {
   .fab-circle::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
@@ -353,7 +405,13 @@ body[data-scroll-locked] {
    both dissolve rather than sliding out of a hard cut. With no animation the window stands still
    and there is nothing to dissolve, so the mask is dropped and the one line reads at full strength. */
 .search-reel-window {
-  --reel-edge: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  --reel-edge: linear-gradient(
+    to bottom,
+    transparent,
+    #000 18%,
+    #000 82%,
+    transparent
+  );
   -webkit-mask-image: var(--reel-edge);
 }
 
@@ -373,14 +431,14 @@ body[data-scroll-locked] {
 
 /* The open box hangs over the cards, so the shadow says "above them": deeper and softer, with the
    spread pulled in, rather than a band of gray across the top of the screen. */
-[data-chrome='band'][data-open='true'] [data-chrome='plate'] {
+[data-chrome="band"][data-open="true"] [data-chrome="plate"] {
   box-shadow:
     0 14px 34px -10px rgb(0 0 0 / 0.22),
     0 3px 10px -3px rgb(0 0 0 / 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
-  [data-chrome='band'][data-open='true'] [data-chrome='plate'] {
+  [data-chrome="band"][data-open="true"] [data-chrome="plate"] {
     box-shadow:
       0 16px 40px -10px rgb(0 0 0 / 0.6),
       0 3px 10px -3px rgb(0 0 0 / 0.45);
@@ -408,12 +466,16 @@ body[data-scroll-locked] {
    stops taking taps at once and keeps fading for the 300ms. */
 [data-chrome="acts"] {
   pointer-events: none;
-  transition: opacity 300ms var(--ease-chrome), visibility 0s 300ms;
+  transition:
+    opacity 300ms var(--ease-chrome),
+    visibility 0s 300ms;
 }
 
 [data-chrome="band"][data-open="true"] [data-chrome="acts"] {
   pointer-events: auto;
-  transition: opacity 300ms var(--ease-chrome) 300ms, visibility 0s 300ms;
+  transition:
+    opacity 300ms var(--ease-chrome) 300ms,
+    visibility 0s 300ms;
 }
 
 /* With no growth there is nothing arriving under the finger, so the circles simply appear. */
@@ -435,9 +497,12 @@ body[data-scroll-locked] {
   -webkit-mask: var(--chrome-leave) 0 100% / 100% 200% no-repeat;
   /* iOS animates the mask position only under the prefixed name, and the build stops adding that
      entry once the list holds var(). */
-  transition: -webkit-mask-position 300ms var(--ease-chrome), mask-position 300ms var(--ease-chrome),
+  transition:
+    -webkit-mask-position 300ms var(--ease-chrome),
+    mask-position 300ms var(--ease-chrome),
     opacity 300ms var(--ease-chrome),
-    transform 300ms var(--ease-chrome), visibility 300ms;
+    transform 300ms var(--ease-chrome),
+    visibility 300ms;
 }
 
 /* The unprefixed spelling stays in its own @supports block, the way `.glass` keeps its blur: the
@@ -463,7 +528,7 @@ body[data-scroll-locked] {
 
 /* A picture is the other search: while one is being staged the tabs are the wrong way out. They
    slide down off the edge they stand on and dissolve on the way. */
-[data-chrome='tabs'][data-picture='true'] [data-chrome='pill'] > .seg-row {
+[data-chrome="tabs"][data-picture="true"] [data-chrome="pill"] > .seg-row {
   -webkit-mask-position: 0 0;
   mask-position: 0 0;
   transform: translateY(0.75rem);
@@ -471,13 +536,13 @@ body[data-scroll-locked] {
   visibility: hidden;
 }
 
-[data-chrome='tabs'][data-picture='true'] [data-chrome='pill']::before {
+[data-chrome="tabs"][data-picture="true"] [data-chrome="pill"]::before {
   opacity: 0;
 }
 
 /* An open box is the user working inside the list, and the charts are a way out of it, so this
    circle gives its place to the funnel: it shrinks into the corner it stands in and dissolves. */
-[data-chrome='stats'] {
+[data-chrome="stats"] {
   transition:
     transform 300ms var(--ease-chrome),
     opacity 300ms var(--ease-chrome),
@@ -487,7 +552,7 @@ body[data-scroll-locked] {
 /* Only where the box has to take the corner's room: on a wide edge the box stands at a fixed measure
    and the two circles keep the rest, so the charts have nothing to give up. */
 @media (max-width: 639.98px) {
-  [data-chrome='band'][data-open='true'] [data-chrome='stats'] {
+  [data-chrome="band"][data-open="true"] [data-chrome="stats"] {
     transform: scale(0.75);
     opacity: 0;
     visibility: hidden;
@@ -503,12 +568,13 @@ body[data-scroll-locked] {
 @media (prefers-reduced-motion: reduce) {
   [data-chrome="pill"] > .seg-row,
   [data-chrome="pill"]::before,
-  [data-chrome='corner'] {
+  [data-chrome="corner"] {
     transition: none;
   }
 }
 .fab-glow {
-  --fab-shadow: 0 1px 3px color-mix(in oklab, var(--color-accent) 40%, transparent),
+  --fab-shadow:
+    0 1px 3px color-mix(in oklab, var(--color-accent) 40%, transparent),
     0 1px 2px -1px color-mix(in oklab, var(--color-accent) 40%, transparent);
 }
 
@@ -521,7 +587,7 @@ body[data-scroll-locked] {
 /* The ring sits against the button's inner edge: a band outside would make this circle wider than
    the ones under it. Only the read part is painted. */
 .float-progress::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: 9999px;
@@ -529,8 +595,16 @@ body[data-scroll-locked] {
     var(--color-accent) var(--float-btn-progress),
     transparent var(--float-btn-progress)
   );
-  -webkit-mask: radial-gradient(circle farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
-  mask: radial-gradient(circle farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  -webkit-mask: radial-gradient(
+    circle farthest-side,
+    transparent calc(100% - 3px),
+    #000 calc(100% - 3px)
+  );
+  mask: radial-gradient(
+    circle farthest-side,
+    transparent calc(100% - 3px),
+    #000 calc(100% - 3px)
+  );
   pointer-events: none;
 }
 

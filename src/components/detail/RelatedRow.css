@@ -3,7 +3,7 @@
 .bar-paint {
   transition: height 140ms ease-out;
 }
-.bar-paint[data-held='true'] {
+.bar-paint[data-held="true"] {
   transition: none;
 }
 @media (prefers-reduced-motion: reduce) {

@@ -4,20 +4,45 @@
 /* The heart's bounce: only transform and opacity move, so the compositor carries it while the grid
    is busy. The dip is the tap's feedback, so it runs first and the way back is slower. */
 @keyframes heart-pop {
-  0% { transform: scale(1); }
-  16% { transform: scale(0.7); }
-  82%, 100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  16% {
+    transform: scale(0.7);
+  }
+  82%,
+  100% {
+    transform: scale(1);
+  }
 }
 @keyframes heart-ripple {
-  from { transform: scale(0.3); opacity: 0.85; }
-  to { transform: scale(2.6); opacity: 0; }
+  from {
+    transform: scale(0.3);
+    opacity: 0.85;
+  }
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
 }
 /* A line turns to its own angle first, so the translateY that follows runs outward along it. The
    run starts 0.5em out, clear of the glyph's edge. */
 @keyframes heart-spark {
-  0% { transform: translate(-50%, -50%) rotate(var(--theta)) translateY(-0.5em) scaleY(0); opacity: 1; }
-  45% { transform: translate(-50%, -50%) rotate(var(--theta)) translateY(-1.15em) scaleY(1); opacity: 1; }
-  100% { transform: translate(-50%, -50%) rotate(var(--theta)) translateY(-1.6em) scaleY(0); opacity: 0; }
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--theta)) translateY(-0.5em)
+      scaleY(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(-50%, -50%) rotate(var(--theta)) translateY(-1.15em)
+      scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--theta)) translateY(-1.6em)
+      scaleY(0);
+    opacity: 0;
+  }
 }
 .heart-pop {
   animation: heart-pop 0.46s var(--ease-heart);
@@ -57,10 +82,12 @@
 /* The heart's glyph is 18px, which a thumb misses. `--hit` is the band that a tap still counts as,
    and the button carries the value: the band's own box (`.tap-heart`'s ::after) and the buzz label
    both read it from there. */
-.heart-hit { --hit: -10px -15px -8px -10px; }
+.heart-hit {
+  --hit: -10px -15px -8px -10px;
+}
 
 .tap-heart::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: var(--hit);
 }

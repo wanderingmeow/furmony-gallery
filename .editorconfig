@@ -1,0 +1,14 @@
+# Editor defaults for this tree. Prettier reads this file too, so the two agree by construction.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Two trailing spaces are Markdown's line break, and Prettier leaves prose as it is.
+[*.md]
+trim_trailing_whitespace = false
