@@ -13,6 +13,9 @@
   background: rgba(120, 120, 128, 0.16);
   /* The band it sits in passes clicks through to the page; the row takes them back. */
   pointer-events: auto;
+  /* The floor the script stops at, so the row and the size rule never disagree. */
+  --seg-type: 1;
+  --seg-type-min: 0.9;
 }
 
 /* The bottom pill's glass. The brightness lift is what keeps it reading as one object over both
@@ -45,10 +48,12 @@
 .seg-row.seg-glass {
   --seg-h: var(--seg-h-glass);
   --chip-inset: 0px;
+  /* 0.857 of the 14px this row rides is 12px: below that the count stops reading as a number. */
+  --seg-type-min: 0.857;
 }
-/* One number moves the whole pill: the type rides --seg-h, and the hint is an em share of it. */
+/* The type rides --seg-h and the hint is an em share of it, so --seg-type moves the whole pill. */
 .seg-row.seg-glass .seg-item {
-  font-size: calc(var(--seg-h) * 0.25);
+  font-size: calc(var(--seg-h) * 0.25 * var(--seg-type));
 }
 .seg-row.seg-glass .seg-hint {
   font-size: 0.8em;
@@ -70,7 +75,7 @@
   justify-content: center;
   border-radius: 9999px;
   padding: 5px 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--seg-type));
   font-weight: 500;
   -webkit-tap-highlight-color: transparent;
 }

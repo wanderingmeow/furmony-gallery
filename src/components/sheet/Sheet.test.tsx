@@ -252,3 +252,103 @@ describe("the panel on a landscape screen", () => {
     expect(frame().style.transform).not.toContain("translateY");
   });
 });
+
+// The switch is read where each animation starts, so the stub outlives the mount.
+const realMatchMedia = window.matchMedia;
+function reduceMotion(on: boolean): void {
+  window.matchMedia = ((q: string) => ({
+    matches: on && q.includes("reduced-motion"),
+    media: q,
+    addListener() {},
+    removeListener() {},
+    addEventListener() {},
+    removeEventListener() {},
+  })) as unknown as typeof window.matchMedia;
+}
+
+const scroller = () => document.querySelector("[data-sheet-scroll]")!;
+function drag(type: string, y: number): void {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.assign(event, {
+    touches: [{ identifier: 1, clientX: 200, clientY: y }],
+  });
+  scroller().dispatchEvent(event);
+}
+
+describe("the phone sheet under reduce motion", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    window.matchMedia = realMatchMedia;
+  });
+
+  it("fades in place instead of sliding up", () => {
+    dismissed = vi.fn();
+    reduceMotion(true);
+    mount(body);
+    expect(frame().style.transform).not.toContain("translateY");
+    expect(frame().style.transform).not.toContain("scale"); // growing would uncover the backdrop
+    expect(frame().style.padding).toBe("0px");
+    expect(frame().style.transition).toContain("opacity 180ms");
+  });
+
+  it("closes on the fade's clock, not the slide's", () => {
+    vi.useFakeTimers();
+    let left = 0;
+    const [open, setOpen] = createSignal(true);
+    reduceMotion(true);
+    mount(() => (
+      <Sheet
+        open={open}
+        onDismiss={() => {
+          left++;
+          setOpen(false);
+        }}
+      >
+        {(dismiss) => <Closable onDismiss={dismiss} />}
+      </Sheet>
+    ));
+    document.getElementById("close")!.click();
+    vi.advanceTimersByTime(259);
+    expect(left).toBe(0);
+    // 260ms: the fade plus the settle; the slide would still have 120ms to run.
+    vi.advanceTimersByTime(1);
+    expect(left).toBe(1);
+  });
+
+  it("keeps the finger on the transform, so a drag still moves the sheet", () => {
+    dismissed = vi.fn();
+    reduceMotion(true);
+    mount(body);
+    drag("touchstart", 100);
+    drag("touchmove", 400);
+    expect(frame().style.transform).toContain("translateY");
+    expect(frame().style.transition).toBe("none");
+  });
+
+  it("gives the close back to the fade once a bounce back has landed", () => {
+    vi.useFakeTimers();
+    let left = 0;
+    const [open, setOpen] = createSignal(true);
+    reduceMotion(true);
+    mount(() => (
+      <Sheet
+        open={open}
+        onDismiss={() => {
+          left++;
+          setOpen(false);
+        }}
+      >
+        {(dismiss) => <Closable onDismiss={dismiss} />}
+      </Sheet>
+    ));
+    drag("touchstart", 100);
+    drag("touchmove", 200); // too short a pull to close, so the sheet returns
+    drag("touchend", 200);
+    expect(frame().style.transition).toContain("transform 300ms");
+    vi.advanceTimersByTime(300);
+    document.getElementById("close")!.click();
+    expect(frame().style.transition).toContain("opacity 180ms");
+    vi.advanceTimersByTime(260);
+    expect(left).toBe(1);
+  });
+});

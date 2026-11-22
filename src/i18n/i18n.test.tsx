@@ -299,7 +299,7 @@ describe("a screen already open", () => {
       expect(icon().getAttribute("aria-label")).toBe("Locked");
       expect(icon().title).toBe("Locked");
       pick("ja");
-      expect(icon().getAttribute("aria-label")).toBe("ロック済み");
+      expect(icon().getAttribute("aria-label")).toBe("確定");
     } finally {
       dispose();
       host.remove();

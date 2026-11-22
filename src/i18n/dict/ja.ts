@@ -22,15 +22,17 @@ export const ja: Dict = {
     close: "閉じる",
     unknown: "不明",
     loading: "読み込み中…",
-    listing: "設定",
+    listing: "名前のない子",
     back: "戻る",
   },
 
   tab: {
     all: "すべて",
     unlocked: "空き",
-    locked: "ロック済み",
-    wish: "お気に入り",
+    // The pill gives every tab the width of the longest, so these stay short. 空き and 確定 are
+    // what a 里募集 post writes; いいね is what this community says for saving one.
+    locked: "確定",
+    wish: "いいね",
   },
 
   sort: {
@@ -45,7 +47,7 @@ export const ja: Dict = {
   },
 
   filter: {
-    tabGroup: "分類",
+    tabGroup: "子の分類",
     colors: "色",
     races: "種族",
     priceMode: "価格の表示",
@@ -55,12 +57,12 @@ export const ja: Dict = {
     sort: "並び順",
     enhanceNote:
       "意味と画像の検索は Embedding モデルで動きます。検索に使う文字と画像はサーバーに送られ、サーバーはデータを一切保持しません。",
-    socialOnly: "飼い主アカウント付きだけ",
+    socialOnly: "オーナーのSNS付きだけ",
     socialNote: (n: number) =>
-      `飼い主アカウントが分かるのは ${n} 件だけで、一覧はずいぶん短くなります。`,
+      `オーナーのSNSが分かるのは ${n} 件だけで、一覧はずいぶん短くなります。`,
     socialMissing:
-      "飼い主アカウントの情報を読み込めなかったため、この絞り込みは使えません。",
-    onlyUnlocked: "ロックなしだけ",
+      "オーナーのSNSの情報を読み込めなかったため、この絞り込みは使えません。",
+    onlyUnlocked: "空きだけを表示",
     priceRange: "価格の範囲",
     priceMin: "最低価格",
     priceMax: "最高価格",
@@ -70,17 +72,17 @@ export const ja: Dict = {
 
   price: {
     once: "一括払い",
-    installment: "12回分割",
+    installment: "12回払い",
     hidden: "非表示",
     noPrice: "価格なし",
   },
 
   detail: {
-    fields: "詳細情報",
+    fields: "商品情報",
     photoOf: (n: number, total: number) => `全 ${total} 枚中 ${n} 枚目`,
-    owner: "飼い主",
-    painter: "作家",
-    painterNumbered: (n: number) => `作家${n}`,
+    owner: "オーナー",
+    painter: "絵師",
+    painterNumbered: (n: number) => `絵師${n}`,
     race: "種族",
     color: "色",
     status: "状態",
@@ -90,24 +92,24 @@ export const ja: Dict = {
     created: "公開日",
     updated: "更新日",
     note: "備考",
-    description: "詳細説明",
+    description: "詳しい説明",
     translate: "この紹介を機械翻訳",
     showOriginal: "原文を見る",
     translatedNote: "機械翻訳",
-    lockedNow: "ロック中",
-    locked: "ロック済み",
+    lockedNow: "仮確定",
+    locked: "確定",
     unlocked: "空き",
     adopted: "譲渡済み",
-    unadopted: "未譲渡",
-    notFound: "その設定は見つかりません",
+    unadopted: "募集中",
+    notFound: "その子は見つかりません",
     goOfficial: "公式サイトへ",
   },
 
   card: {
-    wish: "お気に入り",
-    wished: "保存済み",
-    locked: "ロック済み",
-    downPayment: "頭金",
+    wish: "いいね",
+    wished: "いいね済み",
+    locked: "確定",
+    downPayment: "前金",
     monthly: "月々",
   },
 
@@ -127,7 +129,7 @@ export const ja: Dict = {
   },
 
   picture: {
-    find: "似たものを探す",
+    find: "似た画像を探す",
     failed: "検索できませんでした",
     unreadable: "この画像を読み込めません",
     heic: "このブラウザでは HEIC 写真を開けません",
@@ -141,8 +143,8 @@ export const ja: Dict = {
     dropHint: "画像をドラッグ、貼り付け、またはタップして選択",
     later: "あとでまた試す",
     matchTitle: "画像で探した結果",
-    question: "どれちゃんかな？アップロードすれば分かる",
-    hint: "イベントの写真も設計案もどうぞ",
+    question: "この子は誰？画像を上げれば分かります",
+    hint: "イベント写真もデザイン案も歓迎",
   },
 
   zoom: {
@@ -152,37 +154,37 @@ export const ja: Dict = {
   },
 
   related: {
-    title: "似た設定",
-    loading: "似た設定を読み込み中",
+    title: "似た子",
+    loading: "似た子を読み込み中",
     onlyUnlockedShort: "空きだけ",
-    noneUnlocked: "空きでよく似た設定はありません",
+    noneUnlocked: "募集中の似た子はありません",
     open: (id: number, name: string) => `#${id} ${name} を見る`,
   },
 
   notify: {
-    locked: "ロック済み",
-    unlocked: "ロックを解除",
+    locked: "確定",
+    unlocked: "募集再開",
     priceUp: "↑ 値上げ",
     priceDown: "↓ 値下げ",
-    dismiss: "無視",
+    dismiss: "後で",
     expand: (n: number) => `通知を ${n} 件表示`,
     title: "変更の通知",
     collapse: "閉じる",
   },
 
   stats: {
-    lockState: "ロック状態",
+    lockState: "募集状況",
     onceDistribution: "一括払いの価格分布",
     colorDistribution: "色の分布",
     raceDistribution: "種族の分布",
-    monthAvg: "月別の新規設定の平均価格",
-    monthCount: "月別の新規設定の数",
+    monthAvg: "月別、新しい子の平均価格",
+    monthCount: "月別、新しい子の数",
     axisCount: "件数",
     axisAvg: "平均価格",
     count: (n: number) => `${n} 件`,
     times: (n: number) => `${n} 回`,
     totalTimes: (n: number) => `合計 ${n} 回登場`,
-    totalListings: (n: number) => `合計 ${n} 件の設定`,
+    totalListings: (n: number) => `子は合計 ${n} 件`,
     months: (n: number) => `合計 ${n} か月`,
     avgMedian: (avg: string, median: string) =>
       `平均 ${avg} | 中央値 ${median}`,
@@ -190,24 +192,24 @@ export const ja: Dict = {
       `${low}-${high}: ${count} 件`,
     monthLabel: (year: number, month: number) =>
       `${year}年${MONTHS[month - 1]}`,
-    noData: "資料がありません",
+    noData: "データがありません",
   },
 
   empty: {
-    fetchFailedTitle: "設定を読み込めませんでした",
+    fetchFailedTitle: "子の一覧を読み込めませんでした",
     fetchFailedAction: "何度か試しましたが、取得できませんでした",
-    noSocialTitle: "飼い主アカウントの設定が見つかりません",
-    noWishTitle: "まだお気に入りがありません",
+    noSocialTitle: "オーナーのSNSの子が見つかりません",
+    noWishTitle: "まだいいねがありません",
     pictureFailedTitle: "結果が見つかりません",
     pictureFailedAction: "別の画像を試すか、あとでもう一度",
-    pictureNoneTitle: "よく似たものはありません",
+    pictureNoneTitle: "よく似た画像はありません",
     pictureNoneAction: "別の画像を試してください",
-    enhanceFailedTitle: "強化検索が失敗しました",
-    enhanceFailedLine: "文字の一致でも結果はありません",
-    filtersTitle: "この絞り込みでは設定がありません",
-    queryTitle: (query: string) => `「${query}」に一致する設定はありません`,
+    enhanceFailedTitle: "強化検索は動きませんでした",
+    enhanceFailedLine: "キーワード検索でも結果はありません",
+    filtersTitle: "この絞り込みでは子がありません",
+    queryTitle: (query: string) => `「${query}」に合う子はありません`,
     queryLine: "別の言葉で試してください",
-    nothingTitle: "表示できる設定がありません",
+    nothingTitle: "表示できる子がありません",
     nothingAction: "あとでもう一度試すか、公式サイトへ",
     clearSearch: "検索をクリア",
     clearFilters: "絞り込みをクリア",
@@ -215,8 +217,9 @@ export const ja: Dict = {
   },
 
   info: {
-    /** The money paid first, which is the number a user decides on. */
-    downPayment: "頭金",
+    /** Two numbers on one page keep two words: 手付金 names `detail.deposit`, and 頭金 carries a
+     *  house-and-car loan flavour this shelf never means. */
+    downPayment: "前金",
     monthly: "月々",
     periods: (n: number) => `${n} 回`,
     total: (price: string) => `合計 ${price}`,
@@ -227,7 +230,7 @@ export const ja: Dict = {
 
   band: {
     copyright:
-      "すべての画像と文章の素材は Furmony（furmony.com）由来で、著作権は原作者にあります。このページは閲覧のためだけのもので、商業利用はしません。",
+      "すべての画像と文章の素材は Furmony（furmony.com）由来で、著作権は原作者様に帰属します。このページは閲覧のためだけのもので、商業利用はしません。",
     codeBefore: "コードは",
     license: "MIT ライセンス",
     codeAfter: "で公開されています",

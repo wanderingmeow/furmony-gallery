@@ -232,6 +232,15 @@ body[data-scroll-locked] {
   animation-fill-mode: forwards;
 }
 
+/* The sheet's fade under reduce motion runs 180ms (Sheet.tsx, FADE_MS); at 250ms and 280ms the
+   backdrop outlives it and leaves a dim over a list that is already fully visible. */
+@media (prefers-reduced-motion: reduce) {
+  .overlay-fade-in,
+  .overlay-fade-out {
+    animation-duration: 0.18s;
+  }
+}
+
 /* The sparkle while a search is in flight. A search answers in about 150ms and a fast typist
    overlaps them, so the pulse stays quick. Only the color moves, and both ends of the cycle are the
    color the mark already sits in - the chrome's mark and the picture row's are not the same color -

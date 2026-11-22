@@ -55,9 +55,17 @@ export function SegmentedControl<V extends string>(props: {
   // the pill asks for a ring; a row inside a panel takes 0 and its chip fills the tab
   const ring = () =>
     parseFloat(getComputedStyle(row).getPropertyValue("--chip-inset")) || 0;
+  const num = (name: string): number =>
+    parseFloat(getComputedStyle(row).getPropertyValue(name)) || 0;
+  // The track's 4px on each side, which the padding rule already counts out.
+  const TRACK_PAD = 8;
+  const containerOf = (el: HTMLElement): boolean =>
+    getComputedStyle(el).containerType.includes("inline");
   // Every tab is as wide as the widest, so the row charges the widest tab times the count and the
-  // rule that shares the air reads that number. A span's width does not depend on its padding, so
-  // the two cannot chase each other.
+  // rule that shares the air reads that number. Labels wear --seg-type, so the measurement divides
+  // it back out: the row publishes natural widths and never chases its own shrink.
+  let type = 1;
+
   const want = () => {
     const widths = props.items
       .map((s) => seen.get(s.value))
@@ -66,13 +74,34 @@ export function SegmentedControl<V extends string>(props: {
         Math.max(
           0,
           ...[...el.querySelectorAll<HTMLElement>(".seg-label, .seg-hint")].map(
-            (line) => line.scrollWidth,
+            (line) => line.scrollWidth / type,
           ),
         ),
       );
     const widest = Math.max(0, ...widths);
-    if (widest > 0 && widths.length > 0) {
-      row.style.setProperty("--seg-labels", `${widest * widths.length}px`);
+    if (widest <= 0 || widths.length === 0) return;
+    const labels = widest * widths.length;
+    row.style.setProperty("--seg-labels", `${labels}px`);
+    // The nearest inline-size container: the box the padding rule divides up, in 100cqw units.
+    let box: HTMLElement | null = row.parentElement;
+    while (box && !containerOf(box)) box = box.parentElement;
+    if (!box) return;
+    const cs = getComputedStyle(box);
+    const room =
+      box.clientWidth -
+      parseFloat(cs.paddingLeft) -
+      parseFloat(cs.paddingRight);
+    // The sides the pill never gets back, the track's ring, and the air each label edge keeps.
+    const give =
+      room - TRACK_PAD - 2 * num("--seg-side") - 8 * num("--seg-pad-min");
+    // The floor the type rule stops at too, so the next measurement divides the same number out.
+    const next = Math.min(
+      1,
+      Math.max(num("--seg-type-min") || 1, give / labels),
+    );
+    if (Math.abs(next - type) > 0.005) {
+      type = next;
+      row.style.setProperty("--seg-type", String(next));
     }
   };
   const measure = () => {

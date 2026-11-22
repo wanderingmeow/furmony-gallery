@@ -42,6 +42,7 @@ import { SheetFooterSlot } from "../ui/boxes";
 const SLIDE_MS = 300;
 // A sheet that sits in from every edge has no bottom to come up from, so it fades in and grows a
 // little instead. Shorter than the slide: a fade reads as slower than a move of the same length.
+// Under reduce motion a phone sheet uses this fade instead of the slide.
 const FADE_MS = 180;
 
 // Wait for the arrival to finish before the route changes. Moving earlier makes the sheet
@@ -130,7 +131,12 @@ export function Sheet(props: {
   const insets = () => `${cardGap(viewportW(), viewportH())}px`;
   const panel = () => shapeAt(viewportW(), viewportH()) === "panel";
   const inset = () => cardGap(viewportW(), viewportH());
-  const moveMs = () => (panel() ? FADE_MS : SLIDE_MS);
+  const reduced = () => prefersReducedMotion();
+  // A drag pulls the card by hand, and the fade branch has no transform to pull: the flag keeps the
+  // transform for the whole round trip, so a sheet in mid-air is not handed to the fade.
+  const [gestured, setGestured] = createSignal(false);
+  const fades = () => (panel() || reduced()) && !gestured();
+  const moveMs = () => (fades() ? FADE_MS : SLIDE_MS);
   // The box that a screen's bottom bar travels into. Appending the node on every open moves it
   // back into the sheet, and the bar inside it moves with it.
   const footerHost = document.createElement("div");
@@ -168,6 +174,8 @@ export function Sheet(props: {
     on(open, (shown) => {
       if (!shown) return;
       setClosing(false);
+      clearTimeout(returnTimer);
+      setGestured(false);
       setPos(1);
       requestAnimationFrame(() => {
         if (sheetEl) void sheetEl.offsetHeight;
@@ -180,14 +188,19 @@ export function Sheet(props: {
   // layer still has one slide to finish.
   const [shown, setShown] = createSignal(untrack(open));
   let exitTimer: number | undefined;
+  let returnTimer: number | undefined;
 
   function slideOut(settle: () => void) {
     setClosing(true);
     setPos(1);
     clearTimeout(exitTimer);
+    clearTimeout(returnTimer);
     exitTimer = setTimeout(settle, SETTLE_MS(moveMs()));
   }
-  onCleanup(() => clearTimeout(exitTimer));
+  onCleanup(() => {
+    clearTimeout(exitTimer);
+    clearTimeout(returnTimer);
+  });
 
   // ✕ or a fling: the route still points here, so it changes once the slide is over.
   function dismiss() {
@@ -266,6 +279,7 @@ export function Sheet(props: {
     if (startScrollTop > 0 || dy <= 0) return;
     e.preventDefault();
     setDragging(true);
+    setGestured(true);
     const h = sheetEl.offsetHeight || window.innerHeight;
     setPos(Math.min(Math.max(0, dy) / h, 1));
     samples.push({ t: performance.now(), y: e.touches[0].clientY });
@@ -277,13 +291,20 @@ export function Sheet(props: {
     setDragging(false);
     if (shouldDismiss(pos(), flingVelocity(samples, performance.now())))
       dismiss();
-    else setPos(0);
+    else settleBack();
+  }
+
+  // Once the bounce back lands, the sheet goes back to the fade.
+  function settleBack() {
+    setPos(0);
+    clearTimeout(returnTimer);
+    returnTimer = setTimeout(() => setGestured(false), SLIDE_MS);
   }
 
   function onCancel() {
     if (dragging()) {
       setDragging(false);
-      setPos(0);
+      settleBack();
     }
     samples.length = 0;
   }
@@ -306,12 +327,17 @@ export function Sheet(props: {
           }}
           class="absolute inset-0 flex items-center justify-center sm:px-6 sm:py-6"
           style={
-            panel()
+            fades()
               ? {
                   padding: insets(),
                   opacity: `${1 - pos()}`,
-                  transform: `scale(${1 - 0.03 * pos()})`,
-                  transition: `opacity ${FADE_MS}ms ${EASE}, transform ${FADE_MS}ms ${EASE}`,
+                  // Scaling a full-screen card would uncover the backdrop at its edges.
+                  ...(panel()
+                    ? {
+                        transform: `scale(${1 - 0.03 * pos()})`,
+                        transition: `opacity ${FADE_MS}ms ${EASE}, transform ${FADE_MS}ms ${EASE}`,
+                      }
+                    : { transition: `opacity ${FADE_MS}ms ${EASE}` }),
                 }
               : {
                   transform: `translateY(${pos() * 100}%)`,
