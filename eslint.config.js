@@ -11,6 +11,7 @@ export default tseslint.config(
   {
     ignores: [
       "dist/**",
+      "dist-mock/**",
       "dist-ssr/**",
       "coverage/**",
       "node_modules/**",

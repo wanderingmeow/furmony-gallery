@@ -1,0 +1,28 @@
+#!/bin/bash
+# The formatted result is added back: a hook that only complains gets routed around. A file with
+# unstaged edits stops the commit by name, because re-adding it would commit work nobody staged.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+prettier=node_modules/.bin/prettier
+# A missing devDependency is not a reason to stop a commit.
+if [ ! -x "$prettier" ]; then
+  echo "pre-commit: prettier is not installed. Run npm install, then commit again." >&2
+  exit 0
+fi
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$staged" ] && exit 0
+
+unstaged=$(git diff --name-only)
+if printf '%s\n' "$unstaged" | grep -Fxqf <(printf '%s\n' "$staged"); then
+  comm -12 <(printf '%s\n' "$staged" | sort) <(printf '%s\n' "$unstaged" | sort) |
+    sed 's/^/  /' >&2
+  echo "pre-commit: these files have unstaged edits, so nothing was formatted." >&2
+  echo "Stage them or stash them, then commit again." >&2
+  exit 1
+fi
+
+git diff --cached --name-only --diff-filter=ACMR -z |
+  xargs -0 "$prettier" --write --ignore-unknown --log-level silent
+git diff --cached --name-only --diff-filter=ACMR -z | xargs -0 git add --

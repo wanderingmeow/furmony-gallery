@@ -42,9 +42,15 @@ const languageScript = (): string => {
  * The promise is stored while it is still running, so an app that arrives early waits on the
  * download that already started. A body is read here because a response can only be read once, and
  * any failure answers `null`, which the app reads as no prefetch at all.
+ * `warm` is the lists this document should start downloading. A build that answers from the local
+ * copies warms nothing: those copies live inside the app's own modules, so asking the API would win
+ * the race and put live rows where the copies belong.
  */
-export function prefetchScript(): string {
-  const lists = (Object.keys(ENDPOINT_URL) as Endpoint[]).map((endpoint) => {
+export function prefetchScript(
+  warm: readonly Endpoint[] = Object.keys(ENDPOINT_URL) as Endpoint[],
+): string {
+  if (warm.length === 0) return "window.__furmonyPrefetch={};";
+  const lists = warm.map((endpoint) => {
     const start = JSON.stringify(pageUrl(endpoint, LIST_PAGE_SIZE));
     return `${JSON.stringify(listKey(endpoint))}:ask(${start})`;
   });

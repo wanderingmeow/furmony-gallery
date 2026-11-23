@@ -8,6 +8,7 @@
     "typecheck": "node node_modules/typescript-7/bin/tsc -b",
     "build": "npm run typecheck && vite build && cp dist/index.html dist/404.html",
     "preview": "vite preview",
+    "prepare": "git config core.hooksPath .githooks",
     "test": "vitest run",
     "format": "prettier . --write",
     "format:check": "prettier . --check",

@@ -22,9 +22,9 @@ const RETRY_WAIT_MS = [400, 1200];
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-// Dev/tests read saved copies from agent/*.json instead of the live site. Kept at this
-// bottom layer so retrying and merging behave the same in dev as in production; the bundler
-// strips the whole branch (and the copies) from release builds.
+// The dev server and any build made with `VITE_MOCK=1` read saved copies from agent/*.json instead of
+// the live site. Kept at this bottom layer so retrying and merging behave the same with the copies as
+// without them; a published build sets neither flag, so the branch and the copies leave together.
 async function fetchPage(
   endpoint: Endpoint,
   lang: string,
@@ -34,7 +34,7 @@ async function fetchPage(
 ): Promise<AdoptListResponse> {
   const url = pageUrl(endpoint, pageSize, pageNum);
 
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV || import.meta.env.VITE_MOCK) {
     // The archive is kept once per language the API can answer in, so a language switch has
     // something to land on with no network in the way. The file picked is the language this
     // request was asked in. Chinese is the plain name, and the tests read that name too.
@@ -101,7 +101,7 @@ export function missingPages(
 }
 
 // The API sends only 10 rows unless the request sets pageSize, so every request states its size.
-// `lang` runs through a whole load: pages the reader scrolls side by side have to be in one language.
+// `lang` runs through a whole load: pages the user scrolls side by side have to be in one language.
 async function fetchList(
   endpoint: Endpoint,
   lang: string,

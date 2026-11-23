@@ -6,6 +6,9 @@ import { defineConfig, loadEnv, type Plugin, type UserConfig } from "vite";
 import solid from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
 import { prefetchScript } from "./src/data/prefetch.ts";
+import { ENDPOINT_URL } from "./src/data/endpoints.ts";
+
+const ENDPOINTS = Object.keys(ENDPOINT_URL) as (keyof typeof ENDPOINT_URL)[];
 import { bootWatchScript } from "./src/bootWatch.ts";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -168,7 +171,8 @@ function appSheet(): Plugin {
  * A preconnect to the picture host does not help: the covers go out as a burst that opens its
  * sockets in parallel, and that host uses HTTP/1.1, where a preconnect warms one socket at a time.
  */
-function inlineBootScripts(): Plugin {
+/** `warmList` is false for a build that answers from the local copies, which must not ask the API. */
+function inlineBootScripts(warmList = true): Plugin {
   return {
     name: "inline-boot-scripts",
     apply: "build",
@@ -180,7 +184,7 @@ function inlineBootScripts(): Plugin {
         return html.replace(
           /<meta charset[^>]*>/,
           (tag) =>
-            `${tag}\n    <script>${bootWatchScript()}</script>\n    <script>${prefetchScript()}</script>`,
+            `${tag}\n    <script>${bootWatchScript()}</script>\n    <script>${prefetchScript(warmList ? ENDPOINTS : [])}</script>`,
         );
       },
     },
@@ -298,12 +302,18 @@ function holdUntilWarm(ceilingMs = 20_000): Plugin {
  */
 export function buildConfig(mode: string): UserConfig {
   const read = (name: string) => localValue(mode, name);
+  // The sample listings in `agent/` are gitignored copies of the live answer, so the bundle that
+  // reads them is a demo, not the published thing. `VITE_MOCK=1` has to be set for the build and the
+  // preview alike: build writes dist-mock and preview reads it, which keeps a demo bundle out of the
+  // directory the publish script reads. The dev server mocks without being told.
+  const mock = /^(1|true|yes)$/i.test(read("VITE_MOCK"));
+  const outDir = mock ? "dist-mock" : "dist";
   return {
     plugins: [
       holdUntilWarm(),
       solid(),
       tailwindcss(),
-      inlineBootScripts(),
+      inlineBootScripts(!mock),
       inlineBootSheet(),
       appSheet(),
       documentBudget(),
@@ -322,8 +332,13 @@ export function buildConfig(mode: string): UserConfig {
       "import.meta.env.VITE_TRANSLATE_KEY_B64": JSON.stringify(
         encoded(read, "TRANSLATE_KEY"),
       ),
+      "import.meta.env.VITE_MOCK": JSON.stringify(mock),
     },
     build: {
+      /* Safari reads Tailwind's range-syntax breakpoints only from 16.4 and drops the rest without
+         a word, so the target stays at the floor the app supports. */
+      cssTarget: ["safari16", "ios16"],
+      outDir,
       rollupOptions: {
         // three entries, three jobs: the html, the style the document carries inside it, and the
         // sheet the app waits for before it paints a single element

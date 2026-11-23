@@ -1,5 +1,6 @@
 # Build output. dist/404.html is a copy of the built document, not a source.
 dist
+dist-mock
 dist-ssr
 build
 coverage
