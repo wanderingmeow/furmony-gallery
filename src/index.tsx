@@ -10,9 +10,11 @@ if (import.meta.env.DEV) {
 }
 import App from "./App.tsx";
 import { watchAppSheet } from "./draw/appSheet";
+import { holdPinch } from "./draw/pinchLock";
 
-// Disable iOS Safari Double-Tap to Zoom
+// iOS reads a double tap as a zoom request, and the gesture lands between two taps on a card.
 document.ondblclick = (e) => e.preventDefault();
+holdPinch();
 
 // the app restores its own row, so Safari must not restore one on a history step
 history.scrollRestoration = "manual";

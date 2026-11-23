@@ -49,12 +49,36 @@
   }
 }
 
+/* Pinch is allowed only where the browser also obeys the meta's `maximum-scale`, which is what keeps
+   it from growing. An engine ignoring that cap answers `-webkit-touch-callout` and loses the keyword:
+   `touch-action` has no value for "shrink only". A desktop layout fits either way, because its scale
+   is chosen at layout time, not by a gesture. */
+:root {
+  --touch-page: pan-y pinch-zoom;
+  --touch-scroller: pan-x pan-y pinch-zoom;
+}
+
+@supports (-webkit-touch-callout: none) {
+  :root {
+    --touch-page: pan-y;
+    --touch-scroller: pan-x pan-y;
+  }
+}
+
 html,
 body {
-  touch-action: pan-y;
+  touch-action: var(--touch-page);
   /* Scroll anchoring would fight the virtualized list, whose content shifts as rows mount. */
   overflow-anchor: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* `touch-action` does not inherit, and the browser intersects a touch's ancestors only as far up as
+   the nearest scroll container - which `overflow: hidden` is, even when nothing can be scrolled. So a
+   box clipping more than it shows hands back a gesture the page ruled out, for touches landing on it.
+   Scrollers below take their own axes back and win here on specificity. */
+body * {
+  touch-action: inherit;
 }
 
 /* iOS ignores `overflow: hidden` for touch, and once the document pans it sends every later flick
@@ -117,12 +141,12 @@ body[data-scroll-locked] {
 }
 
 /* The waterfall scrolls the document, because the iOS status bar and the PC Home key scroll the
-   document's main scroller to top and nothing else. The page-level `pan-y` leaves vertical panning
-   and drops pinch; each scroller below takes its own axes back. */
+   document's main scroller to top and nothing else. The page level leaves one-finger panning vertical;
+   each scroller below takes its horizontal axis back. */
 [data-sheet-scroll],
 .overflow-y-auto,
 .overflow-x-auto {
-  touch-action: pan-x pan-y;
+  touch-action: var(--touch-scroller);
 }
 
 /* iOS Safari keeps scrolling the viewport once an inner scroller hits its edge. `contain` keeps the

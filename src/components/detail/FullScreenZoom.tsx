@@ -139,6 +139,8 @@ export function FullScreenZoom(props: {
   return (
     <div
       ref={container}
+      // draw/pinchLock.ts cancels a second finger everywhere else; panzoom reads its own.
+      data-pinch-ok=""
       class="fixed inset-0 z-[70] bg-black flex items-center justify-center"
     >
       <div ref={stage} class="relative w-full h-full">
