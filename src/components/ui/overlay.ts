@@ -1,4 +1,12 @@
-import { createEffect, createSignal, on, onCleanup, untrack } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+  onCleanup,
+  untrack,
+  type Accessor,
+} from "solid-js";
 import { scrollLock } from "../../draw/scrollLock";
 
 /** Dim alone leaves the page behind reading as content; the blur is what turns it into background. */
@@ -55,6 +63,27 @@ export function usePresence(open: () => boolean, ms: number) {
   onCleanup(() => clearTimeout(leave));
 
   return { shown, closing };
+}
+
+/** What a layer shows while it leaves. `usePresence` keeps a layer on screen for its own exit, and
+ *  the value it was drawn from is often cleared by then. Returning nothing then would blank the
+ *  layer mid-fade and shrink it to an empty box.
+ *
+ *  `whileLeaving` says when an empty read means the layer is leaving. While it is not leaving, an
+ *  empty read is the truth about the page, and it stays on screen. */
+export function heldLast<T>(
+  read: () => T | null | undefined,
+  whileLeaving: () => boolean = () => true,
+): Accessor<T | null | undefined> {
+  let last: T | undefined;
+  return createMemo(() => {
+    const now = read();
+    if (now !== undefined && now !== null) {
+      last = now;
+      return now;
+    }
+    return whileLeaving() ? last : now;
+  });
 }
 
 // Where a Tab can land, in the order the user meets it.

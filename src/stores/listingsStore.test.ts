@@ -1,25 +1,30 @@
 // What loadData() hands the screen, with the network and the cache held by mocks.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdoptListing } from "../model/types";
+import type { ListAnswer } from "../data/api";
+import { tr } from "../i18n";
 import { SELF_COMMISSION_PAINTER_ID } from "../model/domain";
 
 const readCache = vi.fn();
 const fetchAllListings = vi.fn();
 const mergeListings = vi.fn();
 const notifyListingChanges = vi.fn();
+const cleanStaleWishlist = vi.fn();
 
 vi.mock("../data/listingCache", () => ({
   readCache: () => readCache(),
-  mergeListings: (prev: AdoptListing[], next: AdoptListing[]) =>
-    mergeListings(prev, next),
+  mergeListings: (...args: unknown[]) =>
+    mergeListings(...(args as [AdoptListing[], AdoptListing[], string])),
 }));
 vi.mock("../data/api", () => ({ fetchAllListings: () => fetchAllListings() }));
-vi.mock("./wishlistStore", () => ({ cleanStaleWishlist: vi.fn() }));
+vi.mock("./wishlistStore", () => ({
+  cleanStaleWishlist: (ids: Set<number>) => cleanStaleWishlist(ids),
+}));
 vi.mock("./notificationStore", () => ({
   notifyListingChanges: (a: unknown, b: unknown) => notifyListingChanges(a, b),
 }));
 
-const { loadData, listings } = await import("./listingsStore");
+const { loadData, listings, loadError } = await import("./listingsStore");
 
 const row = (
   adoptId: number,
@@ -37,7 +42,9 @@ const selfTranslated = row(1, SELF_COMMISSION_PAINTER_ID, "Self commission");
 
 beforeEach(() => {
   readCache.mockReset().mockResolvedValue(null);
-  fetchAllListings.mockReset().mockResolvedValue([listedRow]);
+  fetchAllListings
+    .mockReset()
+    .mockResolvedValue({ rows: [listedRow], complete: true });
   mergeListings
     .mockReset()
     .mockResolvedValue({ updated: [listedRow], changed: true });
@@ -46,7 +53,10 @@ beforeEach(() => {
 
 describe("loadData", () => {
   it("keeps a self-commission piece out of the rows the page gets", async () => {
-    fetchAllListings.mockResolvedValue([selfRow, listedRow]);
+    fetchAllListings.mockResolvedValue({
+      rows: [selfRow, listedRow],
+      complete: true,
+    });
     mergeListings.mockResolvedValue({
       updated: [selfRow, listedRow],
       changed: true,
@@ -58,7 +68,10 @@ describe("loadData", () => {
   // The API translates painter names, so the words 「自设委托」 only arrive in Chinese. The id
   // behind them is what stays put across languages.
   it("drops a self-commission piece whose name came back in another language", async () => {
-    fetchAllListings.mockResolvedValue([selfTranslated, listedRow]);
+    fetchAllListings.mockResolvedValue({
+      rows: [selfTranslated, listedRow],
+      complete: true,
+    });
     mergeListings.mockResolvedValue({
       updated: [selfTranslated, listedRow],
       changed: true,
@@ -78,7 +91,10 @@ describe("loadData", () => {
   // the comparison on both sides.
   it("leaves self-commission pieces out of the change comparison", async () => {
     readCache.mockResolvedValue({ rows: [listedRow], lang: "zh" });
-    fetchAllListings.mockResolvedValue([listedRow, selfRow]);
+    fetchAllListings.mockResolvedValue({
+      rows: [listedRow, selfRow],
+      complete: true,
+    });
     mergeListings.mockResolvedValue({
       updated: [listedRow, selfRow],
       changed: true,
@@ -92,15 +108,17 @@ describe("loadData", () => {
   it("lets the newest load have the last word", async () => {
     const left = [row(2, 77, "Some artist")];
     const picked = [row(2, 77, "ある画家")];
-    let late: (rows: AdoptListing[]) => void = () => {};
+    let late: (answer: ListAnswer<AdoptListing>) => void = () => {};
     fetchAllListings
       .mockImplementationOnce(
         () =>
-          new Promise<AdoptListing[]>((resolve) => {
+          new Promise<ListAnswer<AdoptListing>>((resolve) => {
             late = resolve;
           }),
       )
-      .mockImplementationOnce(() => Promise.resolve(picked));
+      .mockImplementationOnce(() =>
+        Promise.resolve({ rows: picked, complete: true }),
+      );
     mergeListings.mockImplementation(
       (_prev: AdoptListing[], next: AdoptListing[]) =>
         Promise.resolve({ updated: next, changed: true }),
@@ -113,9 +131,38 @@ describe("loadData", () => {
     const names = () => listings().map((l) => l.harmonyPainterVo?.painterName);
     expect(names()).toEqual(["ある画家"]);
 
-    late(left);
+    late({ rows: left, complete: true });
     await first;
     expect(names()).toEqual(["ある画家"]);
     expect(notifyListingChanges).toHaveBeenCalledTimes(1);
+  });
+
+  // A list that never answered left its rows out, which is not proof that the site dropped them. So
+  // a half answer removes nothing the reader saved.
+  it("keeps the saved list whole when a list never answered", async () => {
+    fetchAllListings.mockResolvedValue({ rows: [listedRow], complete: false });
+    mergeListings.mockResolvedValue({ updated: [listedRow], changed: true });
+    await loadData();
+    expect(cleanStaleWishlist).not.toHaveBeenCalled();
+  });
+
+  it("removes a saved listing that a full answer no longer holds", async () => {
+    mergeListings.mockResolvedValue({ updated: [listedRow], changed: true });
+    await loadData();
+    expect(cleanStaleWishlist).toHaveBeenCalledWith(new Set([2]));
+  });
+
+  // Rows stay on screen, so a silent failure would look like a good load. The rows that list held
+  // are gone, and the reader is the one who has to be told.
+  it("reports a list that never answered as a failed list", async () => {
+    fetchAllListings.mockResolvedValue({ rows: [listedRow], complete: false });
+    mergeListings.mockResolvedValue({ updated: [listedRow], changed: true });
+    await loadData();
+    expect(loadError()?.title).toBe(tr("error.loadTitle"));
+  });
+
+  it("shows no dialog when every list answered", async () => {
+    await loadData();
+    expect(loadError()).toBeNull();
   });
 });

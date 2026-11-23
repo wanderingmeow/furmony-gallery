@@ -141,6 +141,7 @@ export async function mergeListings(
   newRows: AdoptListing[],
   lang: string,
   stillCurrent: () => boolean = () => true,
+  complete = true,
 ): Promise<{ updated: AdoptListing[]; changed: boolean }> {
   if (!stillCurrent()) return { updated: old, changed: false };
   const shape = (l: AdoptListing): string => fingerprint(untranslated(l));
@@ -170,7 +171,9 @@ export async function mergeListings(
     wordsMoved ||
     updated.some((l, i) => l !== old[i]);
 
-  if (changed) {
+  // Saving clears the table and writes it again, so this runs only on a load that answered in full.
+  // Half an answer would drop rows from the saved copy and from every later visit.
+  if (changed && complete) {
     await saveListings(updated, lang);
   }
 

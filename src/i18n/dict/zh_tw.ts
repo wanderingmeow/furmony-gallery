@@ -5,11 +5,13 @@ import type { Dict } from "./shape";
 export const zh_tw: Dict = {
   common: {
     retry: "重試",
+    ignore: "忽略",
     close: "關閉",
     unknown: "未知",
     loading: "載入中…",
     listing: "設定",
     back: "返回",
+    gotIt: "知道了",
   },
 
   tab: {
@@ -40,6 +42,7 @@ export const zh_tw: Dict = {
     priceMode: "價格顯示",
     enhance: "設定搜尋增強",
     reset: "重設",
+    restorePrompts: "恢復所有提示",
     language: "介面語言",
     enhanceNote:
       "語義與影像搜尋由 Embedding 模型驅動，會把搜尋的文字與圖片傳到伺服器，伺服器零資料保留。",
@@ -227,11 +230,21 @@ export const zh_tw: Dict = {
     xiaohongshu: "小紅書",
   },
 
+  storage: {
+    /** The notice after the first save, on a browser that deletes stored data without a visit. */
+    title: "Safari 會忘掉你收藏的設定",
+    fact: "Safari 會在你連續 7 天沒打開這個網站後，清掉它替你記著的東西。",
+    installIosLine: "添加到主螢幕，它就能保住自己的記憶。",
+    installMacLine: "把這個網站轉換成 App，它就能保住自己的記憶。",
+    keepLine: "在 Safari 中開啟這個頁面才可以添加。",
+    /** The other way out, the one that asks nothing of the browser. */
+    visitLine: "或者記得常來喔～",
+    appleGuide: "查看 Apple 的官方說明。",
+  },
+
   error: {
-    /** The banner at the top of the page: a title, then what to do about it. */
-    loadTitle: "載入失敗",
-    loadLine: "網路連線失敗，請檢查網路設定",
-    reloadTitle: "沒能刷新",
-    reloadLine: "頁面上還是上一次的內容",
+    /** The dialog a failed load opens: a title, then what to do about it. */
+    loadTitle: "列表獲取失敗",
+    loadLine: "螢幕上的內容可能不太全，再試試看",
   },
 };

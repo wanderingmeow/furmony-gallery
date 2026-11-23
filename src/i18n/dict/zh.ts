@@ -6,12 +6,14 @@
 export const zh = {
   common: {
     retry: "重试",
+    ignore: "忽略",
     close: "关闭",
     unknown: "未知",
     loading: "加载中…",
     /** What a listing is called when it has no name. */
     listing: "设定",
     back: "返回",
+    gotIt: "知道了",
   },
 
   tab: {
@@ -44,6 +46,7 @@ export const zh = {
     priceMode: "价格显示",
     enhance: "设定搜索增强",
     reset: "重置",
+    restorePrompts: "恢复所有提示",
     language: "界面语言",
     enhanceNote:
       "语义和图像搜索由 Embedding 模型驱动，把检索的文字和图片传到服务器，服务器零数据保留。",
@@ -243,11 +246,22 @@ export const zh = {
     xiaohongshu: "小红书",
   },
 
+  storage: {
+    /** The notice after the first save, on a browser that deletes stored data without a visit. */
+    title: "Safari 会忘掉你收藏的设定",
+    fact: "Safari 会在你连续 7 天没打开这个网站后，清掉它替你记着的东西。",
+    installIosLine: "添加到主屏幕，它就能保住自己的记忆。",
+    installMacLine: "把这个网站转换成 App，它就能保住自己的记忆。",
+    keepLine: "在 Safari 里打开这个页面才可以添加。",
+    /** The other way out, the one that asks nothing of the browser. */
+    visitLine: "或者记得常来哦～",
+    /** The link sits inside the sentence above and closes it, punctuation included. */
+    appleGuide: "看 Apple 的官方说明。",
+  },
+
   error: {
-    /** The banner at the top of the page: a title, then what to do about it. */
-    loadTitle: "载入失败",
-    loadLine: "网络连接失败，请检查网络设置",
-    reloadTitle: "没能刷新",
-    reloadLine: "页面上还是上一次的内容",
+    /** The dialog a failed load opens: a title, then what to do about it. */
+    loadTitle: "列表获取失败",
+    loadLine: "屏上的内容可能不太全，再试试看",
   },
 };

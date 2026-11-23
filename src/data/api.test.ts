@@ -15,9 +15,11 @@ describe.skipIf(!haveFixtures)(
   () => {
     it("appends the 新作登场 rows onto the main list with no duplicate ids", async () => {
       const { fetchAllListings } = await import("./api");
-      const rows = await fetchAllListings();
+      const { rows, complete } = await fetchAllListings();
+      // Both lists answer here, so this load is complete.
+      expect(complete).toBe(true);
 
-      const ids = rows.map((l) => l.adoptId);
+      const ids = rows.map((l: AdoptListing) => l.adoptId);
       expect(new Set(ids).size).toBe(ids.length); // every id appears exactly once
 
       // these three only exist on the 新作登场 endpoint — drop that request or the merge and
@@ -32,21 +34,50 @@ describe.skipIf(!haveTwFixtures)(
   () => {
     it("asks both lists in the language the load was given", async () => {
       const { fetchAllListings } = await import("./api");
-      const rows = await fetchAllListings(1, undefined, "zh_tw");
+      const { rows } = await fetchAllListings(1, undefined, "zh_tw");
 
       // 2868 only comes from the 新作登场 list, which is the second request of the load
       expect(
-        rows.find((l) => l.adoptId === 2868)?.harmonyPainterVo?.painterName,
+        rows.find((l: AdoptListing) => l.adoptId === 2868)?.harmonyPainterVo
+          ?.painterName,
       ).toBe("神秘組織");
       expect(
-        rows.find((l) => l.adoptId === 2867)?.harmonyPainterVo?.painterName,
+        rows.find((l: AdoptListing) => l.adoptId === 2867)?.harmonyPainterVo
+          ?.painterName,
       ).toBe("神秘組織");
     });
   },
 );
 
-// The API gives these two lists no fixed order, so one listing can come back with its colors
-// and its pictures swapped between two requests.
+// The API's own order for these two lists is not fixed - see api.ts.
+describe("listAnswer", () => {
+  // An empty list and a failed request have to arrive as different values, because the app rewrites
+  // saved data whenever it believes the site answered in full.
+  it("reads an empty list as an answer", async () => {
+    const { listAnswer } = await import("./api");
+    expect(
+      await listAnswer(
+        () => Promise.resolve([]),
+        () => {},
+      ),
+    ).toEqual({
+      rows: [],
+      complete: true,
+    });
+  });
+
+  it("keeps a failure apart from an empty list", async () => {
+    const { listAnswer } = await import("./api");
+    const misses: unknown[] = [];
+    const answer = await listAnswer(
+      () => Promise.reject(new Error("timeout")),
+      (e) => misses.push(e),
+    );
+    expect(answer).toEqual({ rows: [], complete: false });
+    expect(misses).toHaveLength(1);
+  });
+});
+
 describe("sortColorsAndPictures", () => {
   const row = (over: Partial<AdoptListing>): AdoptListing => ({
     adoptId: 1,

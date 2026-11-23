@@ -4,7 +4,7 @@ import type { Locale } from "../i18n";
 import { batch, createSignal } from "solid-js";
 import type { AdoptListing } from "../model/types";
 import { mergeListings, readCache } from "../data/listingCache";
-import { fetchAllListings } from "../data/api";
+import { fetchAllListings, type ListAnswer } from "../data/api";
 import { isSelfCommission } from "../model/domain";
 import { rememberWords } from "../model/translatedText";
 import { cleanStaleWishlist } from "./wishlistStore";
@@ -12,7 +12,7 @@ import { notifyListingChanges } from "./notificationStore";
 
 export const [listings, setListings] = createSignal<AdoptListing[]>([]);
 export const [isLoading, setIsLoading] = createSignal(false);
-/** A load that did not finish: what the banner at the top of the page says, in two lines. */
+/** A load that did not finish: the two lines the dialog opens with. */
 export interface LoadError {
   title: string;
   line: string;
@@ -21,6 +21,13 @@ export interface LoadError {
 export const [loadError, setLoadError] = createSignal<LoadError | null>(null);
 export const [fetchFailed, setFetchFailed] = createSignal(false); // retries exhausted → refresh button
 export const [dataReady, setDataReady] = createSignal(false); // cache or first data loaded → show page
+
+// One message for any list that did not come back. Which list failed does not change what the
+// reader does next.
+const listFailed = (): LoadError => ({
+  title: tr("error.loadTitle"),
+  line: tr("error.loadLine"),
+});
 
 /**
  * The rows the page is drawn from. Self-commission pieces are dropped here, where rows enter the
@@ -65,9 +72,9 @@ export async function loadData(): Promise<void> {
   setLoadError(null);
   setFetchFailed(false);
 
-  let newRows: AdoptListing[];
+  let answer: ListAnswer<AdoptListing>;
   try {
-    newRows = await fetchAllListings(
+    answer = await fetchAllListings(
       undefined,
       me.controller.signal,
       me.apiLang,
@@ -85,23 +92,17 @@ export async function loadData(): Promise<void> {
         setListings(pageRows(fallback.rows));
         setDataReady(true);
       } else {
-        setLoadError({
-          title: tr("error.loadTitle"),
-          line: tr("error.loadLine"),
-        });
+        setLoadError(listFailed());
       }
     } else {
       // Rows from the last successful request are still on screen, so this request was a refresh.
-      setLoadError({
-        title: tr("error.reloadTitle"),
-        line: tr("error.reloadLine"),
-      });
+      setLoadError(listFailed());
       setDataReady(true);
     }
     setIsLoading(false);
     // The screen is already on the language the reader picked, so an answer that never came leaves
     // the names on the rows in the language before it. `wordsPending` keeps those spaces
-    // placeholders, and the banner above offers the next try.
+    // placeholders, and the dialog offers the next try.
     return;
   }
 
@@ -111,15 +112,16 @@ export async function loadData(): Promise<void> {
   const oldRows = listings().length > 0 ? listings() : (cache?.rows ?? []);
   const { updated, changed } = await mergeListings(
     oldRows,
-    newRows,
+    answer.rows,
     me.apiLang,
     current,
+    answer.complete,
   );
   if (!current()) return;
   // The words and the rows land in the same turn, which is the moment a name stops waiting.
   batch(() => {
     if (changed) {
-      rememberWords(newRows, me.locale);
+      rememberWords(answer.rows, me.locale);
       setListings(pageRows(updated));
       // The notification diff. On a first visit oldRows is empty, so nothing is announced, and
       // that doubles as the "have we visited before" check: no extra flag is needed.
@@ -127,8 +129,11 @@ export async function loadData(): Promise<void> {
     }
     setDataReady(true);
   });
-  // clean stale wishlist entries (ids removed from the API)
-  cleanStaleWishlist(new Set(updated.map((l) => l.adoptId)));
+  // Hearts are pruned only by a full answer. A half answer shows the dialog instead, and the rows
+  // it left out stay starred.
+  if (answer.complete)
+    cleanStaleWishlist(new Set(updated.map((l) => l.adoptId)));
+  else setLoadError(listFailed());
 
   setIsLoading(false);
 }

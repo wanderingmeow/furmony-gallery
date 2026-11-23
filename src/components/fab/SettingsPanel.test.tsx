@@ -1,5 +1,5 @@
 // The panel the … circle opens: how the list reads. The order stands with the funnel, beside the
-// picks it works with, and nothing here takes a 重置.
+// picks it works with, and so does the 重置 that undoes them.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import { SettingsPanel } from "./SettingsPanel";
@@ -15,6 +15,18 @@ vi.mock("../../stores/semanticStore", () => ({
   searchConfigured: true,
   semanticActive: () => false,
   semanticOn: () => false,
+}));
+
+// The notice row reads both of these.
+let silenced = false;
+let saved: number[] = [];
+vi.mock("../../stores/persistenceStore", () => ({
+  promptsSilenced: () => silenced,
+  restorePrompts: (hasSavedList: boolean) =>
+    calls.push(`restorePrompts(${hasSavedList})`),
+}));
+vi.mock("../../stores/wishlistStore", () => ({
+  wishlist: () => new Map(saved.map((id) => [id, 0])),
 }));
 
 let dispose: (() => void) | undefined;
@@ -40,6 +52,8 @@ afterEach(() => {
   dispose?.();
   host?.remove();
   calls.length = 0;
+  silenced = false;
+  saved = [];
 });
 
 describe("SettingsPanel", () => {
@@ -60,9 +74,25 @@ describe("SettingsPanel", () => {
     expect(host.textContent).not.toContain("排序");
   });
 
-  it("offers no 重置: nothing here needs undoing after the fact", () => {
+  it("offers no 重置: the funnel owns the row that undoes its picks", () => {
     draw();
     expect(host.textContent).not.toContain("重置");
+  });
+
+  it("shows no 恢复所有提示 row while nothing is silenced", () => {
+    draw();
+    expect(host.textContent).not.toContain("恢复所有提示");
+  });
+
+  it("restores the notices, and passes whether the wishlist has entries", () => {
+    silenced = true;
+    saved = [1];
+    draw();
+    const row = [...host.querySelectorAll("button")].find((b) =>
+      (b.textContent ?? "").includes("恢复所有提示"),
+    );
+    row?.click();
+    expect(calls).toEqual(["restorePrompts(true)"]);
   });
 
   it("the 设定搜索增强 switch writes to the display store", () => {

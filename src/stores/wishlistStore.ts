@@ -1,5 +1,6 @@
-// src/stores/wishlistStore.ts — wishlist state + localStorage persistence.
+// The list the reader starred: each id with the moment it was starred, kept in localStorage.
 import { createSignal } from "solid-js";
+import { noteSavedList } from "./persistenceStore";
 import type { AdoptListing } from "../model/types";
 
 const WISH_KEY = "furmony_wishlist";
@@ -16,17 +17,19 @@ export function toggleWishlist(listing: AdoptListing): void {
   const id = listing.adoptId;
   const cur = wishlist();
   const next = new Map(cur);
-  if (cur.has(id)) {
-    next.delete(id);
-  } else {
+  const adding = !cur.has(id);
+  if (adding) {
     next.set(id, Date.now());
+  } else {
+    next.delete(id);
   }
   setWishlist(next);
   persistWishlist(next);
+  if (adding) noteSavedList();
 }
 
-// Drop wishlist entries whose id no longer exists in the fetched listings (they were
-// removed from the API). Called by the listings store after a successful load.
+// Removes saved ids that the site no longer holds. The listings store calls this only after a load
+// that answered in full - see `ListAnswer`.
 export function cleanStaleWishlist(validIds: Set<number>): boolean {
   const wl = wishlist();
   let cleaned = false;
@@ -48,7 +51,7 @@ function persistWishlist(w: Map<number, number>): void {
   try {
     localStorage.setItem(WISH_KEY, JSON.stringify(Object.fromEntries(w)));
   } catch {
-    /* ignore */
+    // Private mode and a full quota both throw here; the list on screen stays usable either way.
   }
 }
 
@@ -61,6 +64,6 @@ export function loadWishlist(): void {
     for (const k in obj) m.set(Number(k), obj[k]);
     setWishlist(m);
   } catch {
-    /* ignore */
+    // A saved copy that cannot be read as a list is treated as an empty list.
   }
 }

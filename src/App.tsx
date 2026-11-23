@@ -21,8 +21,10 @@ import type { LockFilter } from "./model/statistics";
 import { NotificationCenter } from "./components/ui/NotificationCenter";
 import { tr } from "./i18n";
 import { appSheetReady } from "./draw/appSheet";
-import { Alert } from "./components/ui/Alert";
 import { loadData, loadError, setLoadError } from "./stores/listingsStore";
+import { StorageWarning } from "./components/ui/StorageWarning";
+import { Dialog } from "./components/ui/Dialog";
+import { heldLast } from "./components/ui/overlay";
 
 const StatsLazy = lazy(() =>
   import("./routes/Stats").then((m) => ({ default: m.Stats })),
@@ -32,6 +34,8 @@ const DetailLazy = lazy(() =>
 );
 
 function Shell() {
+  // The dialog still shows its text while it fades out.
+  const heldError = heldLast(loadError);
   const navigate = useNavigate();
   const detailMatch = useMatch(() => detailPattern);
   const isDetailOpen = () => !!detailMatch();
@@ -80,37 +84,40 @@ function Shell() {
           </Suspense>
         )}
       </Sheet>
-      {/* One column for both, so the notification center and the banner stack instead of
-          overlapping. It waits for the sheet with everything else: none of these utilities travel
-          inside the document, so an early one would sit in the wrong corner until the sheet lands. */}
+      {/* The notification center's corner. It waits for the sheet with everything else: none of
+          these utilities travel inside the document, so an early one would sit in the wrong corner
+          until the sheet lands. */}
       <Show when={appSheetReady()}>
         <div
           class="fixed z-50 flex flex-col items-end gap-2 top-[calc(0.75rem+var(--safe-top))]
           right-[calc(1rem+var(--safe-right))]"
         >
           <NotificationCenter />
-          <Show when={loadError()}>
-            {(error) => (
-              <Alert
-                title={error().title}
-                line={error().line}
-                onClose={() => setLoadError(null)}
-                class="w-[min(20rem,calc(100vw-2rem))]"
-              >
-                {/* The banner names what failed. This is the way out of it. */}
-                <button
-                  class="rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-semibold whitespace-nowrap text-red-700 active:bg-red-100 dark:border-red-800 dark:bg-red-900 dark:text-red-200 dark:active:bg-red-800"
-                  onClick={() => {
-                    setLoadError(null);
-                    void loadData();
-                  }}
-                >
-                  {tr("common.retry")}
-                </button>
-              </Alert>
-            )}
-          </Show>
         </div>
+        <StorageWarning />
+        {/* What failed, and the way out of it. heldLast keeps the text up while this fades. */}
+        <Dialog
+          open={() => loadError() !== null}
+          onClose={() => setLoadError(null)}
+          title={heldError()?.title ?? ""}
+          actions={[
+            {
+              label: tr("common.retry"),
+              tone: "recommended",
+              onPress: () => {
+                setLoadError(null);
+                void loadData();
+              },
+            },
+            {
+              label: tr("common.ignore"),
+              tone: "second",
+              onPress: () => setLoadError(null),
+            },
+          ]}
+        >
+          <p>{heldError()?.line}</p>
+        </Dialog>
       </Show>
     </>
   );

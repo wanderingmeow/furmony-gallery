@@ -52,7 +52,7 @@ export function bootWatchScript(): string {
   }
   const paint = () => {
     const spinner = document.getElementById('boot-spinner')
-    // The spinner is the boot. Once the app has the screen, its own banner is the way out.
+    // The spinner is the boot. Once the app paints, the app's own dialog reports the failure.
     if (!spinner) return
     // A ring that keeps turning says work is happening, and nothing is.
     spinner.setAttribute('data-failed', '')

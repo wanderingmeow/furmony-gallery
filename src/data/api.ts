@@ -153,26 +153,51 @@ function addDebutRows(
   return [...mainRows, ...debutRows.filter((l) => !mainIds.has(l.adoptId))];
 }
 
-// A failing debut list is swallowed: a few rows aren't worth breaking the page for. Throwing
-// when the main list fails is deliberate - loadData() keeps the cached copy, so
-// saveListings() (clear + rewrite) never sees a half-complete list.
+/** What a load brought back: the rows, and whether every list answered. A list can be empty because
+ *  the site is empty, and that is worth merging. A list that never answered is a fact about the
+ *  request, and it does not show which rows are missing. */
+export interface ListAnswer<T> {
+  rows: T[];
+  complete: boolean;
+}
+
+/** One list's answer, with a failure kept apart from an empty list. */
+export async function listAnswer<T>(
+  load: () => Promise<T[]>,
+  onMiss: (error: unknown) => void,
+): Promise<ListAnswer<T>> {
+  try {
+    return { rows: await load(), complete: true };
+  } catch (e) {
+    onMiss(e);
+    return { rows: [], complete: false };
+  }
+}
+
+// Which list may go missing: the debut list adds a few rows to the page, so its failure is ignored
+// and recorded in the answer. The main list is the page, so its failure throws, and the store shows
+// the dialog.
 export async function fetchAllListings(
   attempts = ATTEMPTS_PER_LIST,
   signal?: AbortSignal,
   lang = apiLanguage(),
-): Promise<AdoptListing[]> {
-  const seriesPromise = withRetry(
-    attempts,
-    (s) => fetchList("series", lang, s),
-    signal,
-  ).catch((e) => {
-    console.warn("[api] new-works list failed; skipped for this merge", e);
-    return [] as AdoptListing[];
-  });
+): Promise<ListAnswer<AdoptListing>> {
+  const seriesPromise = listAnswer(
+    () => withRetry(attempts, (s) => fetchList("series", lang, s), signal),
+    (e) =>
+      console.warn(
+        "[api] new-works list failed; this load is half an answer",
+        e,
+      ),
+  );
   const mainRows = await withRetry(
     attempts,
     (s) => fetchList("primary", lang, s),
     signal,
   );
-  return addDebutRows(mainRows, await seriesPromise);
+  const series = await seriesPromise;
+  return {
+    rows: series.complete ? addDebutRows(mainRows, series.rows) : mainRows,
+    complete: series.complete,
+  };
 }

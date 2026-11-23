@@ -9,8 +9,8 @@ function makeListing(overrides: Partial<AdoptListing> = {}): AdoptListing {
   return { adoptId: 1, paintersId: 1, productId: 1, ...overrides };
 }
 
-// fresh module per test → module-level state is isolated; DB is a shared fake-indexeddb
-// global, so reset the table between tests
+// A fresh module per test keeps module-level state to itself. The fake-indexeddb database is
+// shared, so the table is emptied between tests.
 let mod: CacheModule;
 beforeEach(async () => {
   vi.resetModules();
@@ -123,8 +123,7 @@ describe("mergeListings (what the reader would see)", () => {
   });
 
   it("a reshuffled color list is the same row once the API order is settled", async () => {
-    // The API gives the color list no fixed order. api.ts sorts it on the way in; without that
-    // sort these rows would look changed on every visit.
+    // The API's own order for this list is not fixed - see api.ts.
     const { sortColorsAndPictures } = await import("./api");
     const row = (colors: number[]) =>
       sortColorsAndPictures({
@@ -169,7 +168,6 @@ describe("mergeListings (what the reader would see)", () => {
     await mod.saveListings(rows, "zh");
     const r = await mod.mergeListings(rows, [{ ...rows[0] }], "zh");
     expect(r.changed).toBe(false);
-    // table still intact (no rewrite happened)
     const loaded = await mod.loadListings("zh");
     expect(loaded!.map((l) => l.adoptId)).toEqual([1]);
   });
@@ -182,6 +180,27 @@ describe("mergeListings (what the reader would see)", () => {
     expect(r.changed).toBe(true);
     const loaded = await mod.loadListings("zh");
     expect(loaded!.map((l) => l.adoptId)).toEqual([1, 2]);
+  });
+
+  // Saving clears the table and writes it again, so half an answer would drop rows from every later
+  // visit, offline ones included.
+  it("leaves the table alone when a list never answered", async () => {
+    const a = signed(1, "aaa");
+    const debut = signed(2, "bbb");
+    await mod.saveListings([a, debut], "zh");
+    const r = await mod.mergeListings([a, debut], [a], "zh", () => true, false);
+    expect(r.updated.map((l) => l.adoptId)).toEqual([1]);
+    const kept = await mod.loadListings("zh");
+    expect(kept!.map((l) => l.adoptId)).toEqual([1, 2]);
+  });
+
+  it("lets a full answer drop a row the site no longer holds", async () => {
+    const a = signed(1, "aaa");
+    const debut = signed(2, "bbb");
+    await mod.saveListings([a, debut], "zh");
+    await mod.mergeListings([a, debut], [a], "zh", () => true, true);
+    const after = await mod.loadListings("zh");
+    expect(after!.map((l) => l.adoptId)).toEqual([1]);
   });
 });
 

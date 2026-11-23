@@ -19,11 +19,13 @@ const MONTHS = [
 export const ja: Dict = {
   common: {
     retry: "再試行",
+    ignore: "無視",
     close: "閉じる",
     unknown: "不明",
     loading: "読み込み中…",
     listing: "名前のない子",
     back: "戻る",
+    gotIt: "わかりました",
   },
 
   tab: {
@@ -56,6 +58,7 @@ export const ja: Dict = {
     priceMode: "価格の表示",
     enhance: "検索を強化",
     reset: "リセット",
+    restorePrompts: "通知をすべて元に戻す",
     language: "表示言語",
     enhanceNote:
       "意味と画像の検索は Embedding モデルで動きます。検索に使う文字と画像はサーバーに送られ、サーバーはデータを一切保持しません。",
@@ -250,11 +253,21 @@ export const ja: Dict = {
     xiaohongshu: "Xiaohongshu",
   },
 
+  storage: {
+    /** The notice after the first save, on a browser that deletes stored data without a visit. */
+    title: "Safari はいいねしたものを忘れてしまいます",
+    fact: "Safari は 7 日間開かなかったサイトについて、覚えておいてくれたものを消してしまいます。",
+    installIosLine: "ホーム画面に追加すると、記憶を保てます。",
+    installMacLine: "ウェブサイトをアプリにすると、記憶を保てます。",
+    keepLine: "追加するには Safari でこのページを開いてください。",
+    /** The other way out, the one that asks nothing of the browser. */
+    visitLine: "こまめに訪れてあげてくださいね。",
+    appleGuide: "Apple の手順を見る。",
+  },
+
   error: {
-    /** The banner at the top of the page: a title, then what to do about it. */
-    loadTitle: "読み込めませんでした",
-    loadLine: "通信に失敗しました。ネットワーク設定を確認してください。",
-    reloadTitle: "更新できませんでした",
-    reloadLine: "前回の内容を表示しています",
+    /** The dialog a failed load opens: a title, then what to do about it. */
+    loadTitle: "一覧の取得に失敗",
+    loadLine: "表示内容が不完全な可能性があります。もう一度お試しください。",
   },
 };

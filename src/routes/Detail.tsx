@@ -28,18 +28,18 @@ import { DetailBody } from "../components/detail/DetailBody";
 import { FullScreenZoom } from "../components/detail/FullScreenZoom";
 import { scrollSheetToTop } from "../components/sheet/sheetScroll";
 import { fitSheetCard } from "../components/sheet/sheetFit";
+import { heldLast } from "../components/ui/overlay";
 
 export function Detail(props: { onClose: () => void }) {
   const params = useParams();
   const location = useLocation<DetailEntry>();
-  // The sheet stays for one slide after the route is gone, and the id goes with it. Without
-  // the last listing, that slide would show "未找到该设定".
-  let lastSeen: AdoptListing | undefined;
-  const listing = createMemo(() => {
-    const found = listings().find((l) => l.adoptId === Number(params.id));
-    if (found) lastSeen = found;
-    return params.id ? found : lastSeen;
-  });
+  // The sheet stays for one slide after the route is gone, and the id goes with it. heldLast falls
+  // back only while the id is gone: an id that names no listing is a real miss, and the sheet has to
+  // say so.
+  const listing = heldLast<AdoptListing>(
+    () => listings().find((l) => l.adoptId === Number(params.id)),
+    () => !params.id,
+  );
 
   const [index, setIndex] = createSignal(0);
   const [full, setFull] = createSignal(false);

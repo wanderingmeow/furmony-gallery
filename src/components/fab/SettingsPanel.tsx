@@ -1,6 +1,6 @@
 // The panel the … circle opens: how the list reads, as opposed to what is in it. Every row here
 // hides no listing, which is why none of them counts toward the number on the funnel, and none of
-// them takes a 重置: nothing here needs undoing after the fact.
+// them takes the funnel's 重置: the picks here are worth keeping as they are.
 import { Show } from "solid-js";
 import {
   BulbOutlined,
@@ -22,6 +22,8 @@ import { SegmentedControl, type Segment } from "../ui/SegmentedControl";
 import { ChoiceGrid } from "../ui/ChoiceGrid";
 import { AntIcon } from "../ui/AntIcon";
 import { Switch } from "../ui/Switch";
+import { wishlist } from "../../stores/wishlistStore";
+import { promptsSilenced, restorePrompts } from "../../stores/persistenceStore";
 import { tr } from "../../i18n";
 import {
   LOCALES,
@@ -112,6 +114,24 @@ function LanguageBlock() {
   );
 }
 
+/** Forgets the month an answered telling is kept away. Red because it takes a choice away, the way
+ *  the filter row does; a browser that never silences anything never shows it. */
+function PromptRow() {
+  return (
+    <Show when={promptsSilenced()}>
+      <div class={PANEL_BLOCK}>
+        <button
+          class="w-full min-h-7 px-1.5 text-right text-xs font-semibold
+                 text-red-500 dark:text-red-400"
+          onClick={() => restorePrompts(wishlist().size > 0)}
+        >
+          {tr("filter.restorePrompts")}
+        </button>
+      </div>
+    </Show>
+  );
+}
+
 // It owns the padding and the scrolling, so the blocks run to the glass edge and `FabMenu` only has
 // to draw the box.
 export function SettingsPanel() {
@@ -124,6 +144,7 @@ export function SettingsPanel() {
         <SemanticBlock />
       </Show>
       <LanguageBlock />
+      <PromptRow />
     </div>
   );
 }

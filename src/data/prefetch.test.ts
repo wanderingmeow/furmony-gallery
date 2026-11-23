@@ -159,7 +159,9 @@ describe("api.ts picks up what the document started", () => {
       ),
     );
     const { fetchAllListings } = await import("./api");
-    expect((await fetchAllListings()).map((l) => l.adoptId)).toEqual([1, 2]);
+    expect((await fetchAllListings()).rows.map((l) => l.adoptId)).toEqual([
+      1, 2,
+    ]);
     for (const endpoint of endpoints)
       expect(takePrefetched(listKey(endpoint))).toBeUndefined();
   });

@@ -23,11 +23,13 @@ const countOf = (n: number, one: string, many = `${one}s`): string =>
 export const en: Dict = {
   common: {
     retry: "Retry",
+    ignore: "Ignore",
     close: "Close",
     unknown: "Unknown",
     loading: "Loading…",
     listing: "listing",
     back: "Back",
+    gotIt: "Got it",
   },
 
   tab: {
@@ -58,6 +60,7 @@ export const en: Dict = {
     priceMode: "Price display",
     enhance: "Enhanced search",
     reset: "Reset",
+    restorePrompts: "Restore all notices",
     language: "Language",
     enhanceNote:
       "Search by meaning and by picture runs on an embedding model. The words and pictures you search with go to the server, and the server keeps no data.",
@@ -255,11 +258,22 @@ export const en: Dict = {
     xiaohongshu: "Xiaohongshu",
   },
 
+  storage: {
+    /** The notice after the first save, on a browser that deletes stored data without a visit. */
+    title: "Safari forgets the listings you liked",
+    fact: "Safari forgets what it was holding for you once you have gone 7 days without opening the site.",
+    installIosLine: "Add it to the Home Screen and it keeps its memory.",
+    installMacLine: "Turn this website into an app and it keeps its memory.",
+    keepLine: "Open this page in Safari to add it.",
+    /** The other way out, the one that asks nothing of the browser. */
+    visitLine: "Or just keep coming back.",
+    // The leading space sets the link off from the sentence it closes.
+    appleGuide: " See Apple’s instructions.",
+  },
+
   error: {
-    /** The banner at the top of the page: a title, then what to do about it. */
-    loadTitle: "Did not load",
-    loadLine: "The connection failed. Check your network settings.",
-    reloadTitle: "The refresh failed",
-    reloadLine: "The page still shows the previous content.",
+    /** The dialog a failed load opens: a title, then what to do about it. */
+    loadTitle: "List fetch failed",
+    loadLine: "What's on screen may be incomplete. Try again.",
   },
 };
