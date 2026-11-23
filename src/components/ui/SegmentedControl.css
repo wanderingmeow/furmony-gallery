@@ -1,6 +1,14 @@
-/* 价格显示 in the filter panel and the stats lock filter wear this control, and so does the tab
-   pill at the bottom edge. */
+/* 价格显示 in the … panel and the stats lock filter wear this control, and so does the tab pill at
+   the bottom edge. */
 .seg-row {
+  /* What the row's own box costs the labels: the track's 4px on each side, plus the glass border.
+     The padding rule below and the seat arithmetic in SegmentedControl.tsx subtract the same number,
+     or the pill lands wider than the column it was measured against. */
+  --seg-frame: 8px;
+  /* The box the padding rule divides up. SegmentedControl.tsx overwrites this with the box it
+     measured: engines disagree about which box a query container's inline size is, legacy WebKit
+     answers with the border box, and this band wears the page's 1rem of padding on each side. */
+  --seg-room: 100vw;
   display: inline-grid;
   grid-auto-flow: column;
   /* So the chip is the same length wherever it lands. */
@@ -48,6 +56,7 @@
 .seg-row.seg-glass {
   --seg-h: var(--seg-h-glass);
   --chip-inset: 0px;
+  --seg-frame: 10px;
   /* 0.857 of the 14px this row rides is 12px: below that the count stops reading as a number. */
   --seg-type-min: 0.857;
 }
@@ -80,9 +89,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 /* The labels never give up a pixel, so the air inside each segment is what gives on a narrow
-   screen. The wrapper is the container and its own padding already clears the page edges; the clamp
-   pays for the corner column on both sides, because the pill is centred. */
+   screen, down to --seg-pad-min. The wrapper is the container and its own padding already clears the
+   page edges; the clamp pays for the corner column on both sides while the pill is centred and on
+   one side once it stands on the edge. */
 .seg-stacked {
+  --seg-reserve: calc(var(--seg-side) * 2);
   flex-direction: column;
   justify-content: center;
   /* -10px is the track's 8px of padding plus the glass border's 2px. */
@@ -90,9 +101,16 @@
   padding: 0;
   padding-inline: clamp(
     var(--seg-pad-min),
-    (100cqw - var(--seg-side) * 2 - var(--seg-labels) - 8px) / 8,
+    (
+        var(--seg-room) - var(--seg-reserve) - var(--seg-labels) -
+          var(--seg-frame)
+      ) /
+      8,
     var(--seg-pad-max)
   );
+}
+[data-seg-anchor="left"] .seg-stacked {
+  --seg-reserve: var(--seg-side);
 }
 .seg-chip {
   position: absolute;

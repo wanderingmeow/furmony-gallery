@@ -3,7 +3,12 @@
 import { createSignal } from "solid-js";
 import { afterEach, describe, expect, it } from "vitest";
 import { render } from "solid-js/web";
-import { SegmentedControl, type Segment } from "./SegmentedControl";
+import {
+  SegmentedControl,
+  type Segment,
+  missFor,
+  scaleFor,
+} from "./SegmentedControl";
 
 const ITEMS: Segment<string>[] = [
   { value: "a", label: "甲" },
@@ -63,6 +68,21 @@ describe("SegmentedControl", () => {
         .filter((i) => i.checked)
         .map((i) => i.value),
     ).toEqual(["b"]);
+  });
+
+  it("keeps the chosen segment chosen after measuring the labels", () => {
+    draw("b");
+    expect(
+      inputs()
+        .filter((i) => i.checked)
+        .map((i) => i.value),
+    ).toEqual(["b"]);
+  });
+
+  it("leaves no measuring probe in the row", () => {
+    draw("b");
+    expect(inputs()).toHaveLength(3);
+    expect(labels()).toHaveLength(3);
   });
 
   it("follows a value the caller changes from elsewhere", () => {
@@ -143,5 +163,74 @@ describe("SegmentedControl", () => {
     expect(row().textContent).toContain("7");
     setN(9);
     expect(row().textContent).toContain("9");
+  });
+});
+
+// The bottom pill's own floors, so these read the same arithmetic the row performs at runtime:
+// 4 tab labels at their natural width, a corner column of 64px, 6px of label air, 12px of type.
+const PILL = { labels: 196, side: 64, padMin: 6, typeMin: 0.857, border: 2 };
+const pill = (room: number) =>
+  scaleFor(
+    room,
+    PILL.labels,
+    PILL.side,
+    PILL.padMin,
+    PILL.typeMin,
+    PILL.border,
+  );
+/** What the row asks before it stands centred: whether the labels still fit at full size. */
+const missFull = (room: number, centred = true) =>
+  missFor(room, PILL.labels, PILL.side, PILL.padMin, 1, PILL.border, centred);
+const miss = (room: number, centred = true) =>
+  missFor(
+    room,
+    PILL.labels,
+    PILL.side,
+    PILL.padMin,
+    PILL.typeMin,
+    PILL.border,
+    centred,
+  );
+
+describe("scaleFor", () => {
+  it("keeps the labels full size where the band has room to spare", () => {
+    expect(pill(468)).toBe(1);
+  });
+
+  it("shrinks the type once the air inside each segment is down to its floor", () => {
+    expect(pill(361)).toBeCloseTo(175 / 196, 4);
+  });
+
+  it("stops at the type floor rather than read the counts smaller than a number", () => {
+    expect(pill(288)).toBe(0.857);
+  });
+
+  it("has no corner column to pay inside a panel", () => {
+    expect(scaleFor(300, 200, 0, 6, 0.9, 0)).toBe(1);
+  });
+});
+
+describe("missFor", () => {
+  it("leaves room in the centred band at an iPhone's width", () => {
+    expect(miss(361)).toBeLessThan(0);
+  });
+
+  it("misses the centred band on the narrowest screen, so the row gives up the centre", () => {
+    expect(miss(288)).toBeCloseTo(66, 0);
+  });
+
+  it("stands on the edge with the same labels nearly to spare", () => {
+    expect(miss(288, false)).toBeCloseTo(2, 0);
+  });
+
+  it("gives up the centre before it would pay for it with a smaller type", () => {
+    // 361 holds these labels at the type floor, and misses them at full size.
+    expect(miss(361)).toBeLessThan(0);
+    expect(missFull(361)).toBeGreaterThan(0);
+  });
+
+  it("keeps the centre where the labels fit at full size", () => {
+    expect(missFull(361, false)).toBeLessThan(0);
+    expect(missFull(468)).toBeLessThan(0);
   });
 });

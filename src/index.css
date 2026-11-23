@@ -105,11 +105,15 @@ body[data-scroll-locked] {
      measures it once it arrives; until then this guess carries the first paint. Too small clips the
      tabs in a wide language, too large leaves air on the line. */
   --seg-labels: 176px;
-  /* The room one side leaves for the corner column and the gap beside it, counted twice because the
-     pill is centred. */
-  --seg-side: 56px;
+  /* The corner column the back-to-top circle stands in: 64px = the circle's 48px (--fab-size) + 8px
+     of air + 8px where the circle's `0 6px 22px` and the pill's `--shadow-sm` are still dark enough
+     to read as an edge. Centred pays it twice, so every px here costs the pill two. A plain length:
+     SegmentedControl reads it with parseFloat. */
+  --seg-side: 64px;
   --seg-pad-max: 16px;
-  --seg-pad-min: 0px;
+  /* The least air a label keeps from the hairline that divides it from its neighbour. Past this the
+     row shrinks its type instead of closing the labels up. */
+  --seg-pad-min: 6px;
 }
 
 /* The placeholder bars: only the look lives here. The shapes come from ui/boxes, and the sizes
@@ -552,8 +556,7 @@ body[data-scroll-locked] {
     visibility 300ms;
 }
 
-/* The unprefixed spelling stays in its own @supports block, the way `.glass` keeps its blur: the
-   build strips it as redundant beside the prefixed one, and Android WebView only reads this one. */
+/* The unprefixed spelling stays in its own @supports block, the way `.glass` keeps its blur. */
 @supports (mask: linear-gradient(#000, #000)) {
   [data-chrome="pill"] > .seg-row {
     mask: var(--chrome-leave) 0 100% / 100% 200% no-repeat;
@@ -571,6 +574,12 @@ body[data-scroll-locked] {
 
 [data-chrome="pill"] .seg-row.seg-glass {
   box-shadow: none;
+}
+
+/* The labels, their air and the corner column do not always fit one line centred. When they do not,
+   the pill stands on the left edge of the band and pays for the column once instead of twice. */
+[data-chrome="pill"]:has(.seg-row[data-seg-anchor="left"]) {
+  margin-right: auto;
 }
 
 /* A picture is the other search: while one is being staged the tabs are the wrong way out. They
