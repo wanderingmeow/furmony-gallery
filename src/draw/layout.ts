@@ -129,16 +129,15 @@ const SM = 640;
 // desktop layout, and `cardGap` takes its last step there.
 export const TALL_WINDOW_H = 1400;
 
-// The strip of bare canvas left under a fitted card's content: enough to read as "nothing below
-// this", small enough never to be mistaken for the gap at the card's edge.
-export const SHEET_TAIL = 24;
-
 // The panel's two columns, as one literal: Tailwind reads these numbers off the source, and a string
 // assembled at runtime never reaches the stylesheet, leaving the table an implicit column as wide as
 // it likes. The table gets half the room, capped at 420 so its lines stay readable, and never less
 // than 260 - 24 of card padding, a 60px label column, a 12 gap, 164 of values.
+//
+// No row track is named: the row is the gallery column's height, because the table column is laid
+// out of that flow (see DetailBody) and so adds nothing to it.
 export const PANEL_GRID =
-  "grid grid-cols-[minmax(0,1fr)_minmax(260px,min(50%,420px))] grid-rows-[minmax(0,1fr)] gap-6";
+  "grid grid-cols-[minmax(0,1fr)_minmax(260px,min(50%,420px))] gap-6";
 
 // The widest a panel gets. Past this the table's lines stretch past comfortable reading, and the
 // list behind needs air.
@@ -250,11 +249,6 @@ export const BOX: Record<
 const DETAIL_CHROME = 80;
 const DETAIL_STRIP_H = 68; // mt-2 + the 60px thumbs
 const SHEET_BAR_H = 61; // py-3 + a 36px control + the border above it
-
-/** The body's box: a sheet's less its padding, a panel's entire, since a panel pads its columns. */
-export function detailBodyHeight(box: CardBox, shape: Shape): number {
-  return shape === "panel" ? box.h : box.h - DETAIL_CHROME;
-}
 
 // A sheet's art box stops at 1.1 times its own width, so a square picture fills it, and at the room
 // the screen has left once its padding, the thumbs and the bar are paid for, so the table stays on

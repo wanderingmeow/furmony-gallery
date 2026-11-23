@@ -11,6 +11,7 @@ import {
   untrack,
 } from "solid-js";
 import { tr } from "../../i18n";
+import { RemoteImg } from "../ui/RemoteImg";
 import { onImageError, preloadImage, imageReady } from "../../data/image";
 import { EASE } from "../../draw/anim";
 import {
@@ -29,8 +30,8 @@ export function Gallery(props: {
   /** The tallest picture this may take. Detail passes what the screen leaves; DEFAULT_MAX_H is the
    *  ceiling for a caller that does not. */
   maxH?: number;
-  /** The exact box the picture fills, centered in it. Wins over maxH. */
-  fillH?: number;
+  /** The picture settled at a different height, so the card around it has to measure again. */
+  onPicHeightChange?: () => void;
 }) {
   const count = () => props.images.length;
   const current = () => props.images[Math.min(props.index(), count() - 1)];
@@ -51,7 +52,6 @@ export function Gallery(props: {
   // The ceiling a caller may raise or lower with maxH.
   const DEFAULT_MAX_H = 400;
   const cap = () => props.maxH ?? DEFAULT_MAX_H;
-  const fill = () => props.fillH;
   // The height the picture animates to. 0 leaves it to the layout.
   const [hPx, setHPx] = createSignal(0);
   let wrapperEl!: HTMLDivElement;
@@ -155,30 +155,38 @@ export function Gallery(props: {
   const picHeight = () =>
     hPx() ? `${hPx()}px` : skeletonH ? `${skeletonH}px` : "auto";
 
-  // A panel hands over an exact box to fill; otherwise the picture's own height animates, and cap()
-  // keeps it from running past the first screen. That height sits on the picture, not on a wrapper:
-  // a wrapper could only reveal or clip, and a clip shows the wrapper reaching the target before the
-  // picture does.
-  const wrapperBox = () => (fill() ? { height: `${fill()}px` } : undefined);
-  const picBox = () =>
-    fill()
-      ? { height: "100%" }
-      : { height: picHeight(), "max-height": `${cap()}px` };
+  // The picture's own height animates, and cap() keeps it from running past the first screen. That
+  // height sits on the picture, not on a wrapper: a wrapper could only reveal or clip, and a clip
+  // shows the wrapper reaching the target before the picture does.
+  const picBox = () => ({ height: picHeight(), "max-height": `${cap()}px` });
 
-  // hPx holds pixels that one width produced, so a new width has to redo it: a phone turned back
-  // upright would otherwise keep the height the picture fitted at sideways.
+  // hPx holds pixels one width and one ceiling produced, so either moving redoes it. A refit is the
+  // layout answering the window rather than a picture arriving, so its height lands in the same frame:
+  // the card measured against it then reads where the content is, not where it is on its way to.
+  const [eased, setEased] = createSignal(true);
+  const refit = () => {
+    if (!settled || !picEl) return;
+    const h = fit(picEl);
+    // The same height is not a change: skipping it leaves the easing and the card around it alone.
+    if (h <= 0 || h === hPx()) return;
+    setEased(false);
+    setHPx(h);
+    requestAnimationFrame(() => setEased(true));
+  };
   let sizes: ResizeObserver | undefined;
   const watchWidth = (el: HTMLDivElement) => {
     wrapperEl = el;
     if (typeof ResizeObserver === "undefined") return;
-    sizes ??= new ResizeObserver(() => {
-      if (!settled || fill() || !picEl) return;
-      const h = fit(picEl);
-      if (h > 0) setHPx(h);
-    });
+    // One frame off the notification: the refit writes the height of an element inside the box being
+    // watched, and answering that in the same step is the loop Safari reports.
+    sizes ??= new ResizeObserver(() => requestAnimationFrame(refit));
     sizes.observe(el);
   };
   onCleanup(() => sizes?.disconnect());
+  createEffect(on(cap, refit));
+
+  // The card around this is as tall as the picture it holds, so a height change says so.
+  createEffect(on(hPx, () => props.onPicHeightChange?.()));
 
   return (
     <Switch fallback={<div class={`bg-surface-2 ${ART_PLACEHOLDER}`} />}>
@@ -186,23 +194,27 @@ export function Gallery(props: {
         <GallerySkeleton
           thumbs={props.images.length}
           maxH={cap()}
-          fillH={fill()}
           onHeight={(px) => (skeletonH = px)}
         />
       </Match>
       <Match when={count() > 0}>
         <div>
-          <div class="relative" ref={watchWidth} style={wrapperBox()}>
+          <div class="relative" ref={watchWidth}>
             <Show when={displayed()}>
-              <img
+              <RemoteImg
                 src={displayed()}
-                alt=""
-                ref={picEl}
+                ref={(el) => (picEl = el)}
                 class="w-full object-contain rounded-xl bg-surface"
                 style={{
                   ...picBox(),
-                  transition: `height 220ms ${EASE}, opacity 300ms`,
+                  transition: eased()
+                    ? `height 220ms ${EASE}, opacity 300ms`
+                    : "none",
                   opacity: mainLoaded() ? 1 : 0,
+                }}
+                onTransitionEnd={(e) => {
+                  // The card stands to this height, so it learns the height the slide arrived at.
+                  if (e.propertyName === "height") props.onPicHeightChange?.();
                 }}
                 onClick={() => props.onOpenFull()}
                 onLoad={(e) => {
@@ -218,9 +230,8 @@ export function Gallery(props: {
               />
             </Show>
             <Show when={incoming()}>
-              <img
+              <RemoteImg
                 src={incoming()!}
-                alt=""
                 class="absolute inset-0 w-full h-full object-contain rounded-xl bg-surface transition-opacity"
                 style={{
                   opacity: ready() ? 1 : 0,
@@ -271,13 +282,14 @@ export function Gallery(props: {
   );
 }
 
-/** The space the gallery takes while the first picture loads. The list already says how many
- *  pictures there are, so the thumbnail strip sits here too, and the height goes back out through
- *  onHeight so the first picture starts at it. */
+/** The space the gallery takes while the first picture loads: the tallest the first screen allows
+ *  rather than a size of its own, since the card is as tall as its content and a shorter placeholder
+ *  would have it grow when the picture arrives. The list already says how many pictures there are, so
+ *  the thumbnail strip sits here too, and the height goes back out through `onHeight` so the first
+ *  picture starts at it. */
 function GallerySkeleton(props: {
   thumbs: number;
   maxH: number;
-  fillH?: number;
   onHeight: (px: number) => void;
 }) {
   let bar!: HTMLDivElement;
@@ -287,11 +299,7 @@ function GallerySkeleton(props: {
       <div
         ref={bar}
         class={`${SK_FILL} ${ART_PLACEHOLDER}`}
-        style={
-          props.fillH
-            ? { height: `${props.fillH}px` }
-            : { "max-height": `${props.maxH}px` }
-        }
+        style={{ height: `${props.maxH}px` }}
       />
       <Show when={props.thumbs > 0}>
         <div class={DETAIL_THUMB_ROW}>

@@ -1,4 +1,5 @@
 import { tr } from "../../i18n";
+import { RemoteImg } from "../ui/RemoteImg";
 import { listingName, wordsPending } from "../../model/translatedText";
 import {
   createEffect,
@@ -472,8 +473,8 @@ function Card(props: {
             class="w-full h-full rounded-lg overflow-hidden transition-opacity duration-300"
             classList={{ "opacity-0": !loaded() }}
           >
-            <img
-              ref={imgRef}
+            <RemoteImg
+              ref={(el) => (imgRef = el)}
               alt={
                 wordsPending()
                   ? tr("common.listing")

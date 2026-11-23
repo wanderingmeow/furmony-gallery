@@ -106,8 +106,7 @@ body[data-scroll-locked] {
      tabs in a wide language, too large leaves air on the line. */
   --seg-labels: 176px;
   /* The corner column the back-to-top circle stands in: 64px = the circle's 48px (--fab-size) + 8px
-     of air + 8px where the circle's `0 6px 22px` and the pill's `--shadow-sm` are still dark enough
-     to read as an edge. Centred pays it twice, so every px here costs the pill two. A plain length:
+     of air + 8px where the circle's cast and the pill's are still dark enough to read as an edge. Centred pays it twice, so every px here costs the pill two. A plain length:
      SegmentedControl reads it with parseFloat. */
   --seg-side: 64px;
   --seg-pad-max: 16px;
@@ -290,6 +289,20 @@ body[data-scroll-locked] {
   transform: none;
 }
 
+/* A waterfall card is a button, so a keyboard leaves a focus ring on it: closing the sheet with Esc
+   hands it back to the card the click came from. Each engine draws its own in its own colour, and the
+   two draw together unless that one is turned off.
+   A shadow on the card rather than an outline on the button: the box that takes focus is square while
+   the card it holds is `rounded-xl`, and a shadow keeps to the radius on every engine, where an
+   outline does so only from Safari 16.4. The ring is drawn inside because the grid clips its contents
+   to the row block it painted (`contain: paint`), and the first row stands on that block's own edges. */
+.card-press:focus-visible {
+  outline: none;
+}
+.card-press:focus-visible > .press-face {
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+
 .press-fab:active {
   transform: scale(1.18);
   transition: none;
@@ -382,7 +395,9 @@ body[data-scroll-locked] {
    arrives. Ink over the fill: the accent circle keeps its hue and no circle changes its edge. Touch
    screens have no hover to give back, so the layer is not built there. */
 @media (hover: hover) and (pointer: fine) {
-  .fab-circle::after {
+  .fab-circle::after,
+  .sheet-fab::after,
+  [data-chrome="acts"] button::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -392,12 +407,50 @@ body[data-scroll-locked] {
     transition: opacity 150ms ease;
   }
 
-  .fab-circle:hover::after {
+  .fab-circle:hover::after,
+  .sheet-fab:hover::after,
+  [data-chrome="acts"] button:hover::after {
     opacity: 1;
   }
 
+  /* The circle opens from a band laid over it, and `:hover` does not pass from a band to a sibling:
+     reaching the mark never reached the circle, so the layer above never lit for it. The ask is made
+     on the band's behalf. A plate is `.fab-circle` only while it is a circle, so once it is the field
+     this lights nothing - and the ink rides the circle, which is the part a press swells. */
+  [data-chrome="band"]:has([data-chrome="hit"]:hover)
+    .fab-circle[data-chrome="plate"]::after {
+    opacity: 1;
+  }
+
+  /* Open, the mark is the field's third circle, so it takes the ink the other two take, at their
+     size (`w-10`), centred on the mark rather than filling the 60 the field leads with. A press
+     deepens it by the fill those two add - 10% over the 12% the pointer already gave. */
+  [data-open="true"] [data-chrome="hit"]::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 40px;
+    height: 40px;
+    translate: -50% -50%;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--color-ink) 12%, transparent);
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+
+  [data-open="true"] [data-chrome="hit"]:hover::after {
+    opacity: 1;
+  }
+
+  [data-open="true"] [data-chrome="hit"]:active::after {
+    background: color-mix(in oklab, var(--color-ink) 22%, transparent);
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .fab-circle::after {
+    .fab-circle::after,
+    .sheet-fab::after,
+    [data-chrome="acts"] button::after,
+    [data-open="true"] [data-chrome="hit"]::after {
       transition: none;
     }
   }
@@ -528,17 +581,17 @@ body[data-scroll-locked] {
   }
 }
 
+/* A floating object's cast, of the family the corner circles wear. The -8px spread keeps the reach
+   inside the air between the pill and the back-to-top circle. */
 [data-chrome="pill"]::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: 9999px;
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    0 6px 22px -8px rgb(0 0 0 / 0.3),
+    0 2px 6px -2px rgb(0 0 0 / 0.14);
   transition: opacity 300ms var(--ease-chrome);
-}
-
-[data-chrome="pill"] .seg-row.seg-glass {
-  box-shadow: none;
 }
 
 /* The labels, their air and the corner column do not always fit one line centred. When they do not,
@@ -590,7 +643,7 @@ body[data-scroll-locked] {
 
 @media (prefers-color-scheme: dark) {
   [data-chrome="pill"]::before {
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 6px 22px -8px rgb(0 0 0 / 0.6);
   }
 }
 

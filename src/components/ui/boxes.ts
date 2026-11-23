@@ -76,7 +76,7 @@ export const PLATE_REST_R = "calc(var(--fab-size) / 2)";
 
 /** Holds the centre of the left end: a 48 circle at rest, a 60 box once open. */
 export const CHROME_HIT = `absolute left-0 inset-y-0 w-[var(--field-lead)] grid place-items-center z-3
-  text-xl text-ink pointer-events-auto transition-[transform,opacity,width] duration-300
+  cursor-pointer text-xl text-ink pointer-events-auto transition-[transform,opacity,width] duration-300
   ease-chrome active:scale-[0.92] motion-reduce:transition-none`;
 
 /** The row is transparent to taps and its controls are not, so it can hold the plate's full height.

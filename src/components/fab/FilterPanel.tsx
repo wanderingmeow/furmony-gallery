@@ -38,6 +38,7 @@ import {
   type SortMode,
 } from "../../model/filter";
 import { AntIcon } from "../ui/AntIcon";
+import { CHEVRON } from "../ui/icons";
 import { Switch } from "../ui/Switch";
 import { SORT_BTN } from "../ui/boxes";
 import { tr } from "../../i18n";
@@ -95,30 +96,6 @@ const RACE_ICON: Record<string, string> = {
   神秘生物: "❓",
 };
 
-/** Ant's arrow glyphs leave more room on one side, so turning one 180° makes a folding row
- *  jump. This one is centerd in its own box. */
-function Chevron(props: { open: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 12 12"
-      width="10"
-      height="10"
-      aria-hidden="true"
-      class="transition-transform"
-      classList={{ "rotate-180": props.open }}
-    >
-      <path
-        d="M2.5 4.5 6 8 9.5 4.5"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.6"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
-  );
-}
-
 function toggleIn(cur: Set<string>, value: string): Set<string> {
   const next = new Set(cur);
   if (next.has(value)) next.delete(value);
@@ -165,7 +142,11 @@ function Section(props: {
         >
           {/* Set by eye: the arrow shares no baseline with the digit count beside it. */}
           <span class="relative top-[1px] flex items-center">
-            <Chevron open={open()} />
+            <AntIcon
+              icon={CHEVRON}
+              size={10}
+              class={`transition-transform ${open() ? "rotate-180" : ""}`}
+            />
           </span>
         </span>
       </button>
@@ -255,8 +236,6 @@ function SortBlock() {
           semanticActive() ? relevanceLabel() : sortModeLabel(sortMode()),
         )}
       </PanelHeader>
-      {/* A search answer is ordered by the service, so one dead button names that order: no
-          aria-pressed, because nothing here is on or off. */}
       {/* One row whether there are two buttons or one: a lone `<button>` resolves `width: auto` to
           its own content, so the sharing has to happen in the row. */}
       <Show
@@ -279,6 +258,8 @@ function SortBlock() {
         }
       >
         <div class={`mt-1 mb-2 ${UNDER_TEXT} flex`}>
+          {/* A search answer is ordered by the service, so one dead button names that order: no
+              aria-pressed, because nothing here is on or off. */}
           <SortBtn
             label={tr("sort.relevance")}
             on={() => true}

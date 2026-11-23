@@ -1,23 +1,11 @@
 import { For, Show } from "solid-js";
+import { AntIcon } from "./AntIcon";
+import { TICK } from "./icons";
 
 export interface Choice<V extends string> {
   value: V;
   label: string;
 }
-
-/** A tick, drawn thin so it does not compete with a 12px name. */
-const Tick = () => (
-  <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true">
-    <path
-      d="M2 6.2 4.7 9 10 3.2"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.7"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-  </svg>
-);
 
 /**
  * A grid of cells where exactly one is chosen, for names too long to sit in segments side by side.
@@ -65,7 +53,7 @@ export function ChoiceGrid<V extends string>(props: {
                 aria-hidden="true"
               >
                 <Show when={on()}>
-                  <Tick />
+                  <AntIcon icon={TICK} size={11} />
                 </Show>
               </span>
             </label>

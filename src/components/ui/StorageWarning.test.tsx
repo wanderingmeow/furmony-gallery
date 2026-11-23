@@ -84,6 +84,12 @@ describe("StorageWarning", () => {
     }
   });
 
+  test("the Apple guide link sends no referrer, like every other link out", () => {
+    raise("install", true, IPHONE_PAGE);
+    expect(link()?.getAttribute("rel")).toBe("noopener noreferrer");
+    setStorageRisk("none");
+  });
+
   test("the only button on the notice is 知道了", () => {
     raise("install", true, IPHONE_PAGE);
     const answers = [...(plate()?.querySelectorAll("button") ?? [])];

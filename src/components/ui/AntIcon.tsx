@@ -44,13 +44,30 @@ export function AntIcon(props: {
       : def.icon;
   });
   let el!: SVGSVGElement;
-  // Written as an attribute rather than bound to a function: an SVG attribute takes a string,
-  // and a function lands in the DOM as its own source text. An unreadable viewBox paints
-  // nothing at all.
+  // The glyph's own root attributes are the last word: a stroked glyph says `fill: none` and
+  // `stroke: currentColor` there, and a caller that hands over an accessor can swap to a glyph
+  // saying something else, so what the previous one painted comes off first. Written as
+  // attributes, never bound to a function: an SVG attribute takes a string, and a function lands
+  // in the DOM as its own source text. An unreadable viewBox paints nothing at all.
+  let painted: string[] = [];
   createEffect(
-    on(root, (icon) =>
-      el.setAttribute("viewBox", icon.attrs?.viewBox ?? FALLBACK_VIEW_BOX),
-    ),
+    on(root, (icon) => {
+      const attrs = icon.attrs ?? {};
+      for (const key of painted) if (!(key in attrs)) el.removeAttribute(key);
+      painted = Object.keys(attrs);
+      el.setAttribute("viewBox", attrs.viewBox ?? FALLBACK_VIEW_BOX);
+      for (const [key, value] of Object.entries(attrs)) {
+        // The box and the class belong to the element, not to the glyph.
+        if (
+          key === "viewBox" ||
+          key === "width" ||
+          key === "height" ||
+          key === "class"
+        )
+          continue;
+        el.setAttribute(key, value);
+      }
+    }),
   );
   return (
     <svg

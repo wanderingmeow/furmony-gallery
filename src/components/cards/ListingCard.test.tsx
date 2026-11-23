@@ -59,6 +59,11 @@ afterEach(() => {
 });
 
 describe("ListingCard picture", () => {
+  it("asks the cover host for no referrer", () => {
+    mount(() => <ListingCard listing={listing} width={240} />);
+    expect(picture().getAttribute("referrerpolicy")).toBe("no-referrer");
+  });
+
   it("holds the address while the page moves fast", async () => {
     const [hold] = createSignal(true);
     mount(() => <ListingCard listing={listing} width={240} hold={hold} />);

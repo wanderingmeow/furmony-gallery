@@ -6,7 +6,6 @@ import {
   RELATED_CARD_GAP,
   RELATED_CARD_MIN,
   VIEW_PAD,
-  detailBodyHeight,
   detailPictureHeight,
   indexOfRow,
   relatedCardWidth,
@@ -377,14 +376,5 @@ describe("the detail's shape and box", () => {
       w: 1080,
       h: 928,
     });
-  });
-
-  it("gives a panel the whole box, and a sheet the box less its padding", () => {
-    expect(detailBodyHeight(sheetCardBox(1133, 744), "panel")).toBe(696);
-    expect(detailBodyHeight(sheetCardBox(852, 393), "panel")).toBe(393);
-    expect(
-      detailBodyHeight(sheetCardBox(393, 852), "sheet"),
-      "a sheet keeps its padding",
-    ).toBe(772);
   });
 });

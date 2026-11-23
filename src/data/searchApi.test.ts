@@ -1,11 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   askPicture,
   askSettings,
-  endpointUsable,
   parsePicture,
   parseResponse,
-  pictureEndpoint,
 } from "./searchApi";
 
 describe("parseResponse", () => {
@@ -74,35 +72,6 @@ describe("askSettings", () => {
     await ask("紫金的龙", new AbortController().signal);
     await ask("紫金的龙", new AbortController().signal);
     expect(urls).toHaveLength(1);
-  });
-});
-
-describe("endpointUsable", () => {
-  // An address that is not shaped right means "this build was never configured", not
-  // "the service is broken".
-  it("only believes the path it knows how to ask", () => {
-    expect(endpointUsable("https://h.example/search")).toBe(true);
-    expect(endpointUsable("https://h.example/api")).toBe(false);
-    expect(endpointUsable("https://h.example")).toBe(false);
-    expect(endpointUsable("http://h.example/search")).toBe(false);
-    expect(endpointUsable("")).toBe(false);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-});
-
-describe("the picture endpoint", () => {
-  // The injected address is the sentence endpoint, so the picture path has to be found
-  // beside it rather than appended to it.
-  it("is the sibling of the address the build was given", () => {
-    expect(pictureEndpoint("https://h.example/search")).toBe(
-      "https://h.example/search-image",
-    );
-    expect(pictureEndpoint("https://h.example/api")).toBe(
-      "https://h.example/api/search-image",
-    );
   });
 });
 
@@ -307,7 +276,7 @@ async function freshApi() {
 
 describe("warmSearch", () => {
   it("makes one small request the first time the reader shows interest, and never again", async () => {
-    const { warmSearch, SEARCH_ENDPOINT } = await freshApi();
+    const { warmSearch, PING_ENDPOINT, SEARCH_ENDPOINT } = await freshApi();
     const seen: { url: string; mode?: string }[] = [];
     vi.stubGlobal("fetch", (input: unknown, init?: RequestInit) => {
       seen.push({ url: String(input), mode: init?.mode });
@@ -318,11 +287,10 @@ describe("warmSearch", () => {
     warmSearch();
 
     expect(seen).toHaveLength(1);
-    expect(seen[0].url.startsWith(SEARCH_ENDPOINT)).toBe(true);
-    // Opaque on purpose: the answer is thrown away, only the live connection is wanted.
+    expect(seen[0].url).toBe(PING_ENDPOINT);
+    // A search would spend one of the twenty sentences a minute and land in the rejected count.
+    expect(seen[0].url).not.toContain(SEARCH_ENDPOINT);
     expect(seen[0].mode).toBe("no-cors");
-    // One character: the service refuses this before it looks at anything, so no model runs.
-    expect(seen[0].url).toContain("q=.");
     vi.unstubAllGlobals();
   });
 

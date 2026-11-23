@@ -33,9 +33,9 @@ function localValue(mode: string, name: string): string {
 
 /**
  * A value the built files should not carry as plain text, in the form they ship it: base64. The
- * 设定搜索 address names a machine, and the 详细描述 key is public on the official site but is
- * still exactly what a secret scanner greps for. An encoded value in the environment wins, so a
- * machine can hold that form instead of the plain one.
+ * server address names a machine you run, and the Translate key is public on the official site
+ * but is still exactly what a secret scanner greps for. An encoded value in the environment wins, so
+ * a machine can hold that form instead of the plain one.
  */
 function encoded(read: (name: string) => string, name: string): string {
   const already = read(`${name}_B64`);
@@ -170,8 +170,9 @@ function appSheet(): Plugin {
  *
  * A preconnect to the picture host does not help: the covers go out as a burst that opens its
  * sockets in parallel, and that host uses HTTP/1.1, where a preconnect warms one socket at a time.
+ *
+ * `warmList` is false for a build that answers from the local copies, which must not ask the API.
  */
-/** `warmList` is false for a build that answers from the local copies, which must not ask the API. */
 function inlineBootScripts(warmList = true): Plugin {
   return {
     name: "inline-boot-scripts",
@@ -326,8 +327,8 @@ export function buildConfig(mode: string): UserConfig {
     // the server to a port nobody typed
     preview: { host: true, port: 5173, strictPort: true },
     define: {
-      "import.meta.env.VITE_SEARCH_URL_B64": JSON.stringify(
-        encoded(read, "SEARCH_URL"),
+      "import.meta.env.VITE_SERVER_ORIGIN_B64": JSON.stringify(
+        encoded(read, "SERVER_ORIGIN"),
       ),
       "import.meta.env.VITE_TRANSLATE_KEY_B64": JSON.stringify(
         encoded(read, "TRANSLATE_KEY"),

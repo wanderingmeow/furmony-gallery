@@ -21,13 +21,14 @@ import { QuestionOutlined } from "@ant-design/icons-svg";
 import { AntIcon } from "../components/ui/AntIcon";
 import { EmptyNote } from "../components/ui/EmptyState";
 import { SheetFab } from "../components/ui/SheetFab";
-import { SheetPulse } from "../components/sheet/SheetSkeleton";
+import { DetailPulse } from "../components/sheet/SheetSkeleton";
 import { SHEET_FAB_ROW } from "../components/ui/boxes";
-import { BOX, DETAIL_PAD_X } from "../draw/layout";
+import { BOX, DETAIL_PAD_X, shapeAt } from "../draw/layout";
 import { DetailBody } from "../components/detail/DetailBody";
 import { FullScreenZoom } from "../components/detail/FullScreenZoom";
 import { scrollSheetToTop } from "../components/sheet/sheetScroll";
-import { fitSheetCard } from "../components/sheet/sheetFit";
+import { fitSheetCard, type FitCause } from "../components/sheet/sheetFit";
+import { watchViewport } from "../components/ui/viewport";
 import { heldLast } from "../components/ui/overlay";
 
 export function Detail(props: { onClose: () => void }) {
@@ -107,16 +108,21 @@ export function Detail(props: { onClose: () => void }) {
   const zoomCount = () =>
     images().length || (listing()?.adoptHeadPicture ? 1 : 0);
 
-  // One measurement per listing, and only once there is a listing: the placeholder is not content.
+  // The card is as tall as its content, so each source that changes it measures again: a new listing
+  // and a new window here, the picture and the table settling through DetailBody.
   let root!: HTMLDivElement;
-  let fitted: string | undefined;
-  createEffect(() => {
-    const id = listing() ? params.id : undefined;
-    if (!id || id === fitted) return;
-    fitted = id;
-    // The height the content needs is only there one frame after it is on screen.
-    requestAnimationFrame(() => fitSheetCard(root));
-  });
+  const fit = (cause: FitCause = "content") => fitSheetCard(root, cause);
+  const { viewportW, viewportH } = watchViewport();
+  const shape = () => shapeAt(viewportW(), viewportH());
+  createEffect(
+    on([() => params.id, viewportW, viewportH], ([id]) => {
+      // No id means the sheet is sliding out: nothing new arrives to measure.
+      if (!id) return;
+      // Measured in the same task the content was written in: a frame of waiting is a frame the card
+      // paints at the wrong height.
+      fit("window");
+    }),
+  );
 
   // Esc closes the sheet. While the zoom is open it takes Esc, so a single press
   // closes one layer instead of both.
@@ -151,8 +157,11 @@ export function Detail(props: { onClose: () => void }) {
              placeholder the chunk arrived on. Only a list that has landed and does not hold the id
              is a missing listing. */
           !dataReady() || isLoading() ? (
-            <div class={`flex-1 min-h-0 ${BOX.sheet.bodyPad}`} style={padX()}>
-              <SheetPulse />
+            <div
+              class={`flex-1 min-h-0 ${BOX[shape()].bodyPad}`}
+              style={padX()}
+            >
+              <DetailPulse shape={shape()} />
             </div>
           ) : (
             <div class="flex flex-1 flex-col items-center justify-center gap-1.5 px-8 py-10 text-center">
@@ -171,6 +180,7 @@ export function Detail(props: { onClose: () => void }) {
             index={index}
             setIndex={setIndex}
             onOpenFull={() => setFull(true)}
+            onContentChange={() => fit()}
           />
         )}
       </Show>

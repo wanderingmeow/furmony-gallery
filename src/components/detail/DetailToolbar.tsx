@@ -1,5 +1,5 @@
 import { tr } from "../../i18n";
-import { Show, For, type JSX } from "solid-js";
+import { Show, For } from "solid-js";
 import { BOX, type Shape } from "../../draw/layout";
 import type { AdoptListing } from "../../model/types";
 import type { IconDefinition } from "@ant-design/icons-svg/lib/types";
@@ -9,7 +9,6 @@ import {
   XOutlined,
   BilibiliOutlined,
   TikTokOutlined,
-  LinkOutlined,
   ExportOutlined,
 } from "@ant-design/icons-svg";
 import { isLocked } from "../../model/domain";
@@ -21,14 +20,11 @@ import {
 } from "../../data/socials";
 import { AntIcon } from "../ui/AntIcon";
 import { WishlistButton } from "../ui/WishlistButton";
-import { XiaohongshuIcon } from "../ui/XiaohongshuIcon";
+import { XIAOHONGSHU } from "../ui/icons";
 
-// platform brand meta for the chips: rounded-square icon + brand color + label (outlined
-// glyphs). Xiaohongshu uses the custom XiaohongshuIcon component.
-// `custom` overrides the ant glyph when set.
+// Platform brand meta for the chips: a rounded square, the brand's ink, and its name.
 type ChipMeta = {
   icon: IconDefinition;
-  custom?: (props: { size?: number }) => JSX.Element;
   color: string;
   /** Read when the chip draws, so the name arrives in the language on screen. */
   label: () => string;
@@ -47,8 +43,7 @@ const PLATFORM_META: Record<PlatformKey, ChipMeta> = {
     label: () => tr("brand.douyin"),
   },
   xiaohongshu: {
-    icon: LinkOutlined,
-    custom: XiaohongshuIcon,
+    icon: XIAOHONGSHU,
     color: "#ff2442",
     label: () => tr("brand.xiaohongshu"),
   },
@@ -72,30 +67,23 @@ function SocialChips(props: { item: AdoptListing }) {
     <Show when={chips().length > 0}>
       <div class="flex items-center gap-2">
         <For each={chips()}>
-          {(c) => {
-            const Custom = c.meta.custom;
-            return (
-              <a
-                href={c.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={c.value}
-                aria-label={c.meta.label()}
-                class="press-host inline-flex"
+          {(c) => (
+            <a
+              href={c.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={c.value}
+              aria-label={c.meta.label()}
+              class="press-host inline-flex"
+            >
+              <span
+                class="press-face inline-flex items-center justify-center w-9 h-9 rounded-lg text-white"
+                style={{ background: c.meta.color }}
               >
-                <span
-                  class="press-face inline-flex items-center justify-center w-9 h-9 rounded-lg text-white"
-                  style={{ background: c.meta.color }}
-                >
-                  {Custom ? (
-                    <Custom size={18} />
-                  ) : (
-                    <AntIcon icon={c.meta.icon} size={18} />
-                  )}
-                </span>
-              </a>
-            );
-          }}
+                <AntIcon icon={c.meta.icon} size={18} />
+              </span>
+            </a>
+          )}
         </For>
       </div>
     </Show>

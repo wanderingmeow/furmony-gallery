@@ -1,15 +1,87 @@
 import { tr } from "../../i18n";
+import { For, Show } from "solid-js";
 import { CloseOutlined } from "@ant-design/icons-svg";
 import { AntIcon } from "../ui/AntIcon";
 import { SheetFab } from "../ui/SheetFab";
 import {
   ART_PLACEHOLDER,
+  DETAIL_THUMB,
+  DETAIL_THUMB_ROW,
   SHEET_FAB_BOX,
   SHEET_FAB_ROW,
   SHEET_HEADER_ROW,
   SHEET_TITLE,
 } from "../ui/boxes";
 import { SK_BOX } from "../ui/skeletonView";
+import {
+  BOX,
+  detailPictureHeight,
+  PANEL_GRID,
+  sheetCardBox,
+  type Shape,
+} from "../../draw/layout";
+import { watchViewport } from "../ui/viewport";
+
+/** The detail's own wait, in the shape its screen gets and standing at the height the gallery will
+ *  take: the card is as tall as its content, so a wait of another height moves the card the moment the
+ *  listing lands.
+ */
+export function DetailPulse(props: { shape: Shape }) {
+  const { viewportW, viewportH, safe } = watchViewport();
+  const box = () => BOX[props.shape];
+  const artH = () =>
+    detailPictureHeight(
+      sheetCardBox(viewportW(), viewportH(), safe()),
+      props.shape,
+    );
+  const art = (
+    <>
+      <div
+        class={`sk-bar ${ART_PLACEHOLDER}`}
+        style={{ height: `${artH()}px` }}
+      />
+      <div class={DETAIL_THUMB_ROW}>
+        <For each={[0, 1, 2]}>
+          {() => <div class={`sk-bar ${DETAIL_THUMB}`} />}
+        </For>
+      </div>
+    </>
+  );
+  const lines = (
+    <div class="flex flex-col gap-2.5">
+      <span class={`sk-bar h-4 w-3/5 rounded-md ${SK_BOX}`} />
+      <span class={`sk-bar h-4 w-full rounded-md ${SK_BOX}`} />
+      <span class={`sk-bar h-4 w-4/5 rounded-md ${SK_BOX}`} />
+      <span class={`sk-bar h-4 w-2/5 rounded-md ${SK_BOX}`} />
+    </div>
+  );
+  return (
+    <Show
+      when={props.shape === "panel"}
+      fallback={
+        <div class="sk-pulse flex flex-col gap-5">
+          {art}
+          {lines}
+        </div>
+      }
+    >
+      <div class={PANEL_GRID}>
+        <div class={`sk-pulse col-start-1 row-start-1 ${box().colPad}`}>
+          {art}
+        </div>
+        {/* The table column is out of the row's height here exactly as it is in the real body, so the
+            gallery alone decides how tall the wait stands. */}
+        <div class="col-start-2 row-start-1 relative">
+          <div
+            class={`sk-pulse absolute inset-0 overflow-hidden ${box().colPad}`}
+          >
+            {lines}
+          </div>
+        </div>
+      </div>
+    </Show>
+  );
+}
 
 /**
  * The body of a sheet whose screen has not arrived yet.

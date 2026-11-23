@@ -14,7 +14,6 @@ import {
 
 // The sheet Detail and Stats share: it comes up from the bottom, and a drag down closes it once the
 // content is at its top. `children` and `header` receive `dismiss`; `useSheetFooter` claims the foot.
-
 export function Sheet(props: {
   open: () => boolean;
   onDismiss: () => void;
@@ -134,7 +133,11 @@ function SheetCard(props: {
           // Scroll anchoring is off: rows above grow as they load, and on Safari anchoring also
           // undoes the scrollTop we write ourselves.
           style={{ "overflow-anchor": "none" }}
-          class={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden ${SCROLL_BAND_PAD}`}
+          // The bottom band only reaches this content when the card's bottom edge is the screen's,
+          // which is where the gap is 0. A card standing in from the window edge is already clear.
+          class={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden ${
+            props.pose.inset > 0 ? "" : SCROLL_BAND_PAD
+          }`}
         >
           {props.children(props.dismiss)}
         </div>

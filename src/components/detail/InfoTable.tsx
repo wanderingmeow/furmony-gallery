@@ -1,4 +1,5 @@
 import { tr } from "../../i18n";
+import { RemoteImg } from "../ui/RemoteImg";
 import {
   listingDescription,
   listingName,
@@ -284,9 +285,8 @@ export function InfoTable(props: { listing: AdoptListing }) {
                 fallback={<span class="w-6 h-6 rounded-full bg-surface-2" />}
               >
                 {(url) => (
-                  <img
+                  <RemoteImg
                     src={url()}
-                    alt=""
                     class="w-6 h-6 rounded-full object-cover"
                   />
                 )}

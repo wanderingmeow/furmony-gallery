@@ -1,4 +1,5 @@
 import { tr } from "../../i18n";
+import { RemoteImg } from "../ui/RemoteImg";
 import { createSignal, For, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { detailPath } from "../../router";
@@ -72,9 +73,8 @@ export function NotificationCenter() {
                       }
                     >
                       {(url) => (
-                        <img
+                        <RemoteImg
                           src={sizedUrl(stableImageUrl(url()), "badge")}
-                          alt=""
                           class="w-9 h-9 rounded-full object-cover shrink-0"
                           onError={onImageError}
                         />

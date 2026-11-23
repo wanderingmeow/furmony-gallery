@@ -1,12 +1,14 @@
 // The picture half of the field at the top edge: an empty drop zone, or the picture that was
 // searched with its word beside it.
 import { tr } from "../../i18n";
+import { RemoteImg } from "../ui/RemoteImg";
 import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
 import type { JSX } from "solid-js";
 import { PictureOutlined } from "@ant-design/icons-svg";
 import { picture, type PictureState } from "../../stores/semanticStore";
 import { type PictureError } from "../../data/searchApi";
 import { AntIcon } from "../ui/AntIcon";
+import { PAW_PRINT } from "../ui/icons";
 import { SparkMark } from "../ui/spark";
 import { CHROME_DROP_R, CHROME_PICT_STAGED } from "../ui/boxes";
 
@@ -58,7 +60,6 @@ function Chip(props: { onClick: () => void; children: JSX.Element }) {
 // draw/layout.ts sizes the field from PICTURE_INSET, so the empty box keeps the same air on all four
 // sides and its corner shares the plate's centre. A row that changed height on a pointer would move
 // the button under the thumb.
-
 const ROW = 72;
 const SLOT = 72;
 
@@ -83,9 +84,8 @@ function PreviewWithBox(props: { onClick: () => void }) {
             </div>
           }
         >
-          <img
+          <RemoteImg
             src={picture.preview()}
-            alt=""
             class="block max-h-[var(--pic-row)] max-w-full"
           />
           {/* Where the service looked, drawn back over the picture: any sentence about what a
@@ -179,7 +179,7 @@ function DropZone(props: { onPick: () => void; dragging: () => boolean }) {
       onClick={() => props.onPick()}
       title={tr("picture.dropHint")}
     >
-      <AntIcon icon={PictureOutlined} size={30} class="text-faint" />
+      <AntIcon icon={PAW_PRINT} size={30} class="text-faint" />
       {/* The two lines give the box its width back: a column flex item is as wide as its own text,
           so without this the hint runs past the frame and the plate cuts it off. */}
       <span class="flex w-full min-w-0 flex-col items-center gap-0.5 px-2 text-center">

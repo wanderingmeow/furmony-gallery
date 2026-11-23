@@ -8,6 +8,7 @@ import {
 } from "solid-js";
 import { onImageError } from "../../data/image";
 import { SK_FILL } from "./boxes";
+import { RemoteImg } from "./RemoteImg";
 
 type BoxProps = Omit<JSX.HTMLAttributes<HTMLDivElement>, "class">;
 
@@ -51,10 +52,9 @@ export function SkelImg(
       {...rest}
       class={`relative overflow-hidden ${own.box ?? ""} ${filled() ? "bg-surface-2" : SK_FILL}`}
     >
-      <img
-        ref={img}
+      <RemoteImg
+        ref={(el) => (img = el)}
         src={own.url}
-        alt=""
         loading="eager"
         decoding="async"
         class={`w-full h-full object-cover ${own.imgClass ?? ""}`}

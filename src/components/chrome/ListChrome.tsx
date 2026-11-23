@@ -22,7 +22,7 @@ import {
 import { warmSearch } from "../../data/searchApi";
 import { AntIcon } from "../ui/AntIcon";
 import { SparkMark } from "../ui/spark";
-import { BackspaceIcon } from "../ui/BackspaceIcon";
+import { BACKSPACE } from "../ui/icons";
 import {
   CHROME_ACTS,
   CHROME_ACTS_HOLD,
@@ -82,7 +82,7 @@ function Act(props: {
 }) {
   return (
     <button
-      class="w-10 h-10 shrink-0 grid place-items-center rounded-full
+      class="relative cursor-pointer w-10 h-10 shrink-0 grid place-items-center rounded-full
              transition-[background-color,color,transform] duration-150 active:scale-[0.92]
              motion-reduce:transition-none"
       classList={{
@@ -281,7 +281,7 @@ export function ListChrome() {
                       {/* A field with a query is text to take back, so the mark is the delete key. An
                           empty field has nothing to take, and the mark is the way out of the box. */}
                       {typed() ? (
-                        <BackspaceIcon size={20} />
+                        <AntIcon icon={BACKSPACE} size={20} />
                       ) : (
                         <AntIcon icon={CloseOutlined} size={18} />
                       )}

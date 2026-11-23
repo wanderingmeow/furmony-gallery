@@ -10,12 +10,11 @@ export default defineConfig({
   // Without these, Solid resolves through its ssr condition, where createEffect is a no-op:
   // the stores' effects silently never run and any test waiting on one waits forever.
   resolve: { conditions: ["development", "browser"] },
-  // A stand-in address, so the configured path is the one under test. The real one is
-  // injected at build time and never appears here; nothing fetches, because each test
-  // stubs fetch itself.
+  // A stand-in origin, so the path table is the thing under test. The real one is injected at
+  // build time and never appears here; nothing fetches, because each test stubs fetch itself.
   define: {
-    "import.meta.env.VITE_SEARCH_URL_B64": JSON.stringify(
-      Buffer.from("https://search.invalid/search").toString("base64"),
+    "import.meta.env.VITE_SERVER_ORIGIN_B64": JSON.stringify(
+      Buffer.from("https://search.invalid").toString("base64"),
     ),
     "import.meta.env.VITE_TRANSLATE_KEY_B64": JSON.stringify(
       Buffer.from("test-translate-key").toString("base64"),

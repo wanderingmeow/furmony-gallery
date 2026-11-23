@@ -1,6 +1,7 @@
 // The gallery opens in one of two ways, and `readyNow` is the switch.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
+import { createSignal } from "solid-js";
 import { Gallery } from "./Gallery";
 
 const { imageReady, preloadImage } = vi.hoisted(() => ({
@@ -14,8 +15,6 @@ vi.mock("../../data/image", async (importOriginal) => {
 });
 
 const URLS = ["https://bucket.test/one.png", "https://bucket.test/two.png"];
-// What a panel hands the art: a height to fill, and the ceiling a sheet would have used.
-const PANEL = { maxH: 240, fillH: 548 };
 
 const picture = (): HTMLImageElement =>
   ({
@@ -29,7 +28,7 @@ const job = (): { ready: Promise<HTMLImageElement>; cancel: () => void } => ({
   cancel: vi.fn(),
 });
 
-function mount(props: { maxH?: number; fillH?: number } = {}): {
+function mount(props: { maxH?: number } = {}): {
   host: HTMLElement;
   done: () => void;
 } {
@@ -99,27 +98,6 @@ describe("Gallery first picture", () => {
   });
 });
 
-describe("The box a panel hands to the art", () => {
-  it("fills the height it was given", () => {
-    imageReady.mockReturnValue(true);
-    const { host, done } = mount(PANEL);
-    const pic = mainPic(host)!;
-    expect(pic.parentElement!.style.height).toBe("548px");
-    expect(pic.style.height).toBe("100%");
-    // The ceiling has nothing left to say here: the box is the height, not a limit on it.
-    expect(pic.style.maxHeight).toBe("");
-    done();
-  });
-
-  it("holds the same box with the skeleton, so the first picture does not arrive smaller", () => {
-    const { host, done } = mount(PANEL);
-    const bar = skeletonBlock(host)!;
-    expect(bar.style.height).toBe("548px");
-    expect(bar.style.maxHeight).toBe("");
-    done();
-  });
-});
-
 describe("A container that changes width", () => {
   // The height the picture holds is pixels one width produced, so a new width must redo it.
   const watchers: (() => void)[] = [];
@@ -149,7 +127,7 @@ describe("A container that changes width", () => {
     });
   };
 
-  it("redoes the height when the container gets wider", () => {
+  it("redoes the height when the container gets wider", async () => {
     imageReady.mockReturnValue(true);
     stubObserver();
     const { host, done } = mount();
@@ -158,20 +136,39 @@ describe("A container that changes width", () => {
     withSource(pic, 1000, 500);
     pic.style.height = "242px"; // the height a sideways screen left behind
     watchers.at(-1)!();
-    // The source is 1000x500, so 300 of width stands 150 tall.
-    expect(pic.style.height).toBe("150px");
+    // The width observer is answered one frame later on purpose.
+    await vi.waitFor(() => expect(pic.style.height).toBe("150px"));
     done();
   });
 
-  it("leaves the height to the box a panel handed over", () => {
+  it("reaches back up when a taller window lifts the ceiling", async () => {
     imageReady.mockReturnValue(true);
     stubObserver();
-    const { host, done } = mount(PANEL);
+    let raise: (px: number) => void = () => {};
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const dispose = render(() => {
+      const [maxH, setMaxH] = createSignal(150);
+      raise = setMaxH;
+      return (
+        <Gallery
+          images={URLS}
+          index={() => 0}
+          setIndex={() => {}}
+          onOpenFull={() => {}}
+          maxH={maxH()}
+        />
+      );
+    }, host);
     const pic = mainPic(host)!;
-    widen(pic.parentElement!, 300);
+    widen(pic.parentElement!, 1000);
     withSource(pic, 1000, 500);
     watchers.at(-1)!();
-    expect(pic.style.height).toBe("100%");
-    done();
+    // A source of 1000x500 stands 500 tall at 1000 of width; the short ceiling holds it at 150.
+    await vi.waitFor(() => expect(pic.style.height).toBe("150px"));
+    raise(600);
+    await vi.waitFor(() => expect(pic.style.height).toBe("500px"));
+    dispose();
+    host.remove();
   });
 });

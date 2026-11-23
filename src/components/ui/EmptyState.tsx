@@ -9,7 +9,7 @@ import type { IconDefinition } from "@ant-design/icons-svg/lib/types";
 import { applyEmptyAction, emptyState } from "../../stores/derivedStore";
 import { emptyActionLabel, type EmptyIcon } from "../../model/emptyState";
 import { AntIcon } from "./AntIcon";
-import { SPARK } from "./spark";
+import { SPARK } from "./icons";
 
 const ICONS: Record<EmptyIcon, IconDefinition> = {
   heart: HeartOutlined,

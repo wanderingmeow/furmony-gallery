@@ -4,7 +4,6 @@ import type { AdoptListing } from "../../model/types";
 import {
   BOX,
   DETAIL_PAD_X,
-  detailBodyHeight,
   detailPictureHeight,
   PANEL_GRID,
   shapeAt,
@@ -31,6 +30,8 @@ export function DetailBody(props: {
   index: () => number;
   setIndex: (i: number) => void;
   onOpenFull: () => void;
+  /** Something inside grew or shrank, so the card around this measures again. */
+  onContentChange?: () => void;
 }) {
   const { viewportW, viewportH, safe } = watchViewport();
   const shape = (): Shape => shapeAt(viewportW(), viewportH());
@@ -51,14 +52,7 @@ export function DetailBody(props: {
           "padding-right": `${DETAIL_PAD_X}px`,
         }}
       >
-        <div
-          class={panel() ? PANEL_GRID : undefined}
-          style={
-            panel()
-              ? { height: `${detailBodyHeight(cardBox(), shape())}px` }
-              : undefined
-          }
-        >
+        <div class={panel() ? PANEL_GRID : undefined}>
           <div
             class={
               panel() ? `col-start-1 row-start-1 ${box().colPad}` : undefined
@@ -70,31 +64,36 @@ export function DetailBody(props: {
               setIndex={props.setIndex}
               onOpenFull={props.onOpenFull}
               maxH={picMaxH()}
-              fillH={panel() ? picMaxH() : undefined}
+              onPicHeightChange={props.onContentChange}
             />
           </div>
-          <div
-            class={
-              panel() ? "col-start-2 row-start-1 flex flex-col min-h-0" : "mt-4"
-            }
-          >
-            {/* The column scrolls on its own and the bar sits under it, so the picture stays put
-                while the table moves. The marker only exists here: the scroll lock reads it, and a
-                sheet has one scroller, its own. */}
+          {/* The table column is laid out inside a box pinned to this cell: the row is the gallery's
+              height, and a column still in flow would stretch that row to the whole table. Inside
+              the box the column is the scroller over a bar that stays put. */}
+          <div class={panel() ? "col-start-2 row-start-1 relative" : "mt-4"}>
             <div
-              data-sheet-col-scroll={panel() ? "" : undefined}
               class={
-                panel()
-                  ? `min-h-0 flex-1 overflow-y-auto overscroll-contain ${box().colPad}`
-                  : undefined
+                panel() ? "absolute inset-0 flex flex-col min-h-0" : undefined
               }
             >
-              <AnimatedHeight>
-                <InfoTable listing={props.listing} />
-              </AnimatedHeight>
-              <RelatedRow item={props.listing} shape={shape()} />
+              {/* The column scrolls on its own and the bar sits under it, so the picture stays put
+                while the table moves. The marker only exists here: the scroll lock reads it, and a
+                sheet has one scroller, its own. */}
+              <div
+                data-sheet-col-scroll={panel() ? "" : undefined}
+                class={
+                  panel()
+                    ? `min-h-0 flex-1 overflow-y-auto overscroll-contain ${box().colPad}`
+                    : undefined
+                }
+              >
+                <AnimatedHeight onHeightChange={props.onContentChange}>
+                  <InfoTable listing={props.listing} />
+                </AnimatedHeight>
+                <RelatedRow item={props.listing} shape={shape()} />
+              </div>
+              {panel() && <DetailToolbar item={props.listing} shape="panel" />}
             </div>
-            {panel() && <DetailToolbar item={props.listing} shape="panel" />}
           </div>
         </div>
       </div>

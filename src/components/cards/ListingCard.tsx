@@ -1,4 +1,5 @@
 import { tr } from "../../i18n";
+import { RemoteImg } from "../ui/RemoteImg";
 import {
   listingName,
   listingPainterName,
@@ -114,8 +115,8 @@ export function ListingCard(props: {
           class="relative card-img w-full rounded-lg bg-surface overflow-hidden"
           style={{ "aspect-ratio": String(THUMB_ASPECT) }}
         >
-          <img
-            ref={imgRef}
+          <RemoteImg
+            ref={(el) => (imgRef = el)}
             alt={
               wordsPending()
                 ? tr("common.listing")

@@ -17,6 +17,8 @@ import {
   persistSession,
 } from "../../stores/sessionStore";
 import { setOnFilterChange } from "../../stores/filterStore";
+import { detailPattern, statsPattern } from "../../router";
+import { useMatch } from "@solidjs/router";
 import {
   GAP,
   LIST_BOTTOM,
@@ -30,6 +32,11 @@ import {
   waterfallRowHeight,
 } from "../../draw/layout";
 import { SAVE_THROTTLE_MS, findIndex } from "../../draw/scrollRestore";
+import {
+  cardNeighbor,
+  scrollForCard,
+  type CardMove,
+} from "../../draw/cardKeys";
 import { createScrollMotion } from "../../draw/scrollMotion";
 import { ListingCard } from "./ListingCard";
 import { PreviewChip } from "./PreviewChip";
@@ -119,6 +126,53 @@ export function Waterfall(props: {
   );
   onCleanup(() => setOnFilterChange(null));
 
+  // The arrow keys walk the grid one row at a time: the card in the same column above or below.
+  // A sheet over the list keeps focus on the card it came from, so the walk asks whether the list is
+  // covered first, or the arrows move a grid nobody can see.
+  const detailOpen = useMatch(() => detailPattern);
+  const statsOpen = useMatch(() => statsPattern);
+  let grid!: HTMLDivElement;
+  const stepCard = (move: CardMove, from: number): boolean => {
+    const to = cardNeighbor(from, cols(), items().length, move);
+    if (to === null) return false; // the list ends here; the arrows scroll the page instead
+    const card = grid?.querySelector<HTMLElement>(`[data-card-index="${to}"]`);
+    if (!card) return false;
+    // The browser would align the card to the edge of the viewport, which is under the band.
+    card.focus({ preventScroll: true });
+    const target = scrollForCard({
+      rowTop: topPad() + Math.floor(to / cols()) * rowHeight(),
+      rowHeight: rowHeight(),
+      scrollY: window.scrollY,
+      viewport: viewportH(),
+      topPad: topPad(),
+      bottomPad: bottomPad(),
+    });
+    if (target !== window.scrollY) window.scrollTo(0, target);
+    return true;
+  };
+
+  const ARROWS: Record<string, CardMove> = {
+    ArrowDown: "down",
+    ArrowUp: "up",
+    ArrowRight: "right",
+    ArrowLeft: "left",
+  };
+
+  const onGridKey = (event: KeyboardEvent): void => {
+    const move = ARROWS[event.key];
+    if (!move) return;
+    if (detailOpen() || statsOpen()) return;
+    // Only a key raised inside the grid walks it.
+    const from =
+      event.target instanceof HTMLElement
+        ? event.target.closest<HTMLElement>("[data-card-index]")
+        : null;
+    if (!from) return;
+    const index = Number(from.dataset.cardIndex);
+    if (!Number.isInteger(index)) return;
+    if (stepCard(move, index)) event.preventDefault();
+  };
+
   return (
     <>
       {/* The empty state shares this column with the list and the band, so the column is what
@@ -130,6 +184,8 @@ export function Waterfall(props: {
             box does to its own shape moves these cards. */}
         <div
           class="relative w-full"
+          onKeyDown={onGridKey}
+          ref={grid}
           style={{
             height: `${contentHeight()}px`,
             "padding-top": `${topPad()}px`,
@@ -325,6 +381,7 @@ function VirtualCards(props: {
         <CardSlot
           listing={l}
           offset={() => i()}
+          index={() => first() + i()}
           cols={props.cols}
           cardWidth={props.cardWidth}
           rowHeight={props.rowHeight}
@@ -339,6 +396,7 @@ function VirtualCards(props: {
 function CardSlot(props: {
   listing: AdoptListing;
   offset: () => number;
+  index: () => number;
   cols: () => number;
   cardWidth: () => number;
   rowHeight: () => number;
@@ -357,7 +415,8 @@ function CardSlot(props: {
       }}
     >
       <button
-        class="press-host text-left"
+        class="press-host card-press text-left"
+        data-card-index={props.index()}
         onClick={() => props.onOpen(props.listing.adoptId)}
       >
         <ListingCard

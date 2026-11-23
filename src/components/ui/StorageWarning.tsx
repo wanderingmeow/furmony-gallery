@@ -36,7 +36,7 @@ export function StorageWarning() {
           class="text-accent underline decoration-2 underline-offset-4"
           href={storageGuide()}
           target="_blank"
-          rel="noopener"
+          rel="noopener noreferrer"
         >
           {tr("storage.appleGuide")}
         </a>

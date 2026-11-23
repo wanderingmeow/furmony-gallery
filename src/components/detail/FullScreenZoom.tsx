@@ -1,4 +1,5 @@
 import { tr } from "../../i18n";
+import { RemoteImg } from "../ui/RemoteImg";
 import {
   createEffect,
   createSignal,
@@ -144,16 +145,14 @@ export function FullScreenZoom(props: {
       class="fixed inset-0 z-[70] bg-black flex items-center justify-center"
     >
       <div ref={stage} class="relative w-full h-full">
-        <img
+        <RemoteImg
           src={props.imageUrl}
-          alt=""
           class="absolute inset-0 w-full h-full object-contain"
           onError={onImageError}
         />
         <Show when={sharp()}>
-          <img
+          <RemoteImg
             src={props.fullUrl}
-            alt=""
             class="absolute inset-0 w-full h-full object-contain"
           />
         </Show>
