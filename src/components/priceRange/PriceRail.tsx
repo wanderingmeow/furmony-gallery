@@ -20,6 +20,10 @@ export function PriceRail(props: {
   ends: PriceRange;
   /** Move one end to a step, and answer with the pair now held, or nothing when there is none. */
   onMove: (end: PriceEnd, index: number) => PriceRange | null;
+  /** A press begins and lets go, so the pair is written down once per gesture instead of once per
+      move. The keyboard is no gesture: each arrow lands on its own. */
+  onHold?: () => void;
+  onRelease?: () => void;
 }) {
   let row: HTMLDivElement | undefined;
   let lowEl: HTMLInputElement | undefined;
@@ -58,6 +62,11 @@ export function PriceRail(props: {
       setLastTaken(end);
       setPressing(true);
       setKeyed(null);
+      // Read the two here: the release below runs from the pointer's own callback, which is not a
+      // place the reactive read belongs in.
+      const hold = props.onHold;
+      const release = props.onRelease;
+      hold?.();
       // Without this, the panel scrolls to this row when the field takes the focus.
       el.focus({ preventScroll: true });
       const goTo = (x: number) =>
@@ -66,6 +75,7 @@ export function PriceRail(props: {
       holdPointer(strip, event.pointerId, goTo, () => {
         setPressed(null);
         setPressing(false);
+        release?.();
       });
       goTo(event.clientX);
     };

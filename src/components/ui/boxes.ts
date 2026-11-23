@@ -41,10 +41,16 @@ export const CHROME_TAB_BAR = `[container-type:inline-size]
    the glass never clips it. */
 export const CHROME_PILL = "relative";
 
-/** `flex-row-reverse` keeps the funnel on the edge as the charts give their width back. Where the
- *  edge is too narrow for both circles, index.css scales the charts away while the box is open. */
+/** `flex-row-reverse` puts the funnel on the edge and … on its left, where the edge gives that
+ *  circle back to the box. */
 export const CHROME_CORNER = `col-start-2 justify-self-end flex flex-row-reverse items-center gap-2
   pointer-events-auto`;
+
+/** The charts stand beside the search circle, so they stand in by the circle's own width plus the
+ *  gap the corner pays. An open box is the user working inside the list, so index.css shrinks this
+ *  circle away while one is open. */
+export const CHROME_STATS = `col-start-1 justify-self-start flex items-center
+  pl-[calc(var(--fab-size)+0.5rem)] pointer-events-auto`;
 
 /** --field-h and --chrome-acts arrive inline: two classes writing one custom property would be
  *  settled by stylesheet order. A circle centres on the bar; a box starts at its top edge, so only

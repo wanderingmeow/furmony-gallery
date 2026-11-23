@@ -40,6 +40,7 @@ export const ja: Dict = {
     priceDesc: "価格が高い順",
     timeAsc: "古い順",
     timeDesc: "新着順",
+    relevance: "類似度",
     similarity: "類似度が高い順",
     price: "価格",
     time: "日時",
@@ -48,13 +49,14 @@ export const ja: Dict = {
 
   filter: {
     tabGroup: "子の分類",
+    title: "絞り込み",
+    more: "その他",
     colors: "色",
     races: "種族",
     priceMode: "価格の表示",
     enhance: "検索を強化",
     reset: "リセット",
     language: "表示言語",
-    sort: "並び順",
     enhanceNote:
       "意味と画像の検索は Embedding モデルで動きます。検索に使う文字と画像はサーバーに送られ、サーバーはデータを一切保持しません。",
     socialOnly: "オーナーのSNS付きだけ",

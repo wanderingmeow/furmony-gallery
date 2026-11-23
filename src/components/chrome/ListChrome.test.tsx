@@ -5,7 +5,7 @@ import { tr } from "../../i18n";
 import { ListChrome } from "./ListChrome";
 import { searchText, setSearchText } from "../../stores/filterStore";
 
-// the corner's charts circle calls useNavigate
+// the band's charts circle calls useNavigate
 vi.mock("@solidjs/router", () => ({ useNavigate: () => () => {} }));
 
 let host!: HTMLDivElement;
@@ -157,5 +157,25 @@ describe("the press on the circle that opens the box", () => {
     pressed();
     hit().dispatchEvent(new MouseEvent("pointerleave", { bubbles: true }));
     expect(hit().dataset.press).toBe("false");
+  });
+});
+
+describe("the charts beside the search circle", () => {
+  const stats = () =>
+    host.querySelector('[data-chrome="stats"]') as HTMLElement;
+  const corner = () =>
+    host.querySelector('[data-chrome="corner"]') as HTMLElement;
+
+  it("stands at the band's left end, the corner at its right", () => {
+    mountEmpty();
+    expect(stats().className).toContain("col-start-1");
+    expect(corner().className).toContain("col-start-2");
+  });
+
+  it("carries the way out to the charts", () => {
+    mountEmpty();
+    expect(
+      stats().querySelector(`button[aria-label="${tr("chrome.stats")}"]`),
+    ).toBeTruthy();
   });
 });

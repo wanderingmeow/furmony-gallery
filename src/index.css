@@ -462,6 +462,20 @@ body[data-scroll-locked] {
   }
 }
 
+/* A hint wider than the field dissolves at the right edge: the question is still a question either
+   way, and a line keeps that under the caret, where the browser stops truncating its own placeholder.
+   The last 28px go to clear, about two characters of the field's 16px type. */
+.search-hint-fade {
+  --hint-edge: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  -webkit-mask-image: var(--hint-edge);
+}
+
+@supports (mask-image: linear-gradient(#000, #000)) {
+  .search-hint-fade {
+    mask-image: var(--hint-edge);
+  }
+}
+
 /* The open box hangs over the cards, so the shadow says "above them": deeper and softer, with the
    spread pulled in, rather than a band of gray across the top of the screen. */
 [data-chrome="band"][data-open="true"] [data-chrome="plate"] {
@@ -573,19 +587,27 @@ body[data-scroll-locked] {
   opacity: 0;
 }
 
-/* An open box is the user working inside the list, and the charts are a way out of it, so this
-   circle gives its place to the funnel: it shrinks into the corner it stands in and dissolves. */
-[data-chrome="stats"] {
+/* An open box is the user working inside the list. The charts sit beside the field and the … circle
+   sits behind it, so both shrink into the edge they stand in and dissolve. */
+[data-chrome="stats"],
+[data-chrome="more"] {
   transition:
     transform 300ms var(--ease-chrome),
     opacity 300ms var(--ease-chrome),
     visibility 300ms;
 }
 
+[data-chrome="band"][data-open="true"] [data-chrome="stats"] {
+  transform: scale(0.75);
+  opacity: 0;
+  visibility: hidden;
+}
+
 /* Only where the box has to take the corner's room: on a wide edge the box stands at a fixed measure
-   and the two circles keep the rest, so the charts have nothing to give up. */
+   and the corner keeps the rest, so … has nothing to give up. The funnel answers at every width,
+   because a search and a filter are one question. */
 @media (max-width: 639.98px) {
-  [data-chrome="band"][data-open="true"] [data-chrome="stats"] {
+  [data-chrome="band"][data-open="true"] [data-chrome="more"] {
     transform: scale(0.75);
     opacity: 0;
     visibility: hidden;
@@ -601,7 +623,8 @@ body[data-scroll-locked] {
 @media (prefers-reduced-motion: reduce) {
   [data-chrome="pill"] > .seg-row,
   [data-chrome="pill"]::before,
-  [data-chrome="corner"] {
+  [data-chrome="stats"],
+  [data-chrome="more"] {
     transition: none;
   }
 }

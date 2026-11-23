@@ -44,6 +44,8 @@ vi.mock("../../stores/filterStore", () => ({
   setPriceRange: (v: PriceRange | null) => {
     calls.push(v ? `price:${v[0]}-${v[1]}` : "price:null");
   },
+  holdPriceBand: () => calls.push("hold"),
+  releasePriceBand: () => calls.push("release"),
 }));
 
 // One empty bar above the top. A band that this list cannot hold sits there.
@@ -79,6 +81,55 @@ function draw(priced = true, emptyBar = false): void {
   document.body.appendChild(host);
   dispose = render(() => <PriceRangeBlock />, host);
 }
+
+// A row 244px wide, so a third of the way along it is the second edge.
+const ROW = { left: 100, width: 244 };
+const xAt = (share: number): number => ROW.left + 11 + (ROW.width - 22) * share;
+
+/** The seek strip over the low end, with the row's geometry a real row would have. */
+function pressStrip(): (share: number) => void {
+  const slide = host.querySelector<HTMLElement>(".pr-slide");
+  if (slide)
+    slide.getBoundingClientRect = () =>
+      ({
+        left: ROW.left,
+        width: ROW.width,
+        x: ROW.left,
+        y: 0,
+        top: 0,
+        bottom: 26,
+        right: ROW.left + ROW.width,
+        height: 26,
+      }) as DOMRect;
+  const strip = host.querySelector<HTMLElement>(".pr-seek-low");
+  if (!strip) throw new Error("no seek strip");
+  return (share) => {
+    strip.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        clientX: xAt(share),
+        pointerId: 1,
+      }),
+    );
+    return share;
+  };
+}
+const moveTo = (share: number): void => {
+  host.querySelector<HTMLElement>(".pr-seek-low")!.dispatchEvent(
+    new PointerEvent("pointermove", {
+      bubbles: true,
+      clientX: xAt(share),
+      pointerId: 1,
+    }),
+  );
+};
+const letGo = (): void => {
+  host
+    .querySelector<HTMLElement>(".pr-seek-low")!
+    .dispatchEvent(
+      new PointerEvent("pointerup", { bubbles: true, pointerId: 1 }),
+    );
+};
 
 const thumbs = () =>
   Array.from(host.querySelectorAll<HTMLInputElement>('input[type="range"]'));
@@ -143,6 +194,33 @@ describe("PriceRangeBlock", () => {
     facts.on = true;
     draw();
     drag(0, 3);
+    expect(calls).toEqual(["price:24000-26000"]);
+  });
+
+  // The pair worth storing is the one the finger left, not the ones it passed through.
+  it("holds the stored pair down for the length of a drag", () => {
+    draw();
+    pressStrip()(0);
+    moveTo(1 / 3);
+    moveTo(2 / 3);
+    expect(calls.filter((c) => c === "hold")).toHaveLength(1);
+    expect(calls).not.toContain("release");
+    letGo();
+    expect(calls[calls.length - 1]).toBe("release");
+  });
+
+  it("lets the stored pair go when the block goes away mid-drag", () => {
+    draw();
+    pressStrip()(0);
+    dispose?.();
+    expect(calls[calls.length - 1]).toBe("release");
+    dispose = undefined;
+  });
+
+  // An arrow key is already one committed move: nothing streams past it.
+  it("holds nothing for a thumb moved by keyboard", () => {
+    draw();
+    drag(0, 2);
     expect(calls).toEqual(["price:24000-26000"]);
   });
 

@@ -31,9 +31,11 @@ const ON_EDGE: JSX.CSSProperties = {
 const POPUP_GAP = 8;
 const POPUP_AIR = 8;
 
-/** The box is the chrome and the height the screen allows. The panel inside owns the padding and
- *  the scrolling, so the content reaches the glass edge. */
-const POPUP_BOX = `fixed z-40 glass rounded-xl shadow-xl border border-black/10
+/** The box is the chrome and the height the screen allows; the panel inside owns the padding and the
+ *  scrolling, so the content reaches the glass edge.
+ *  Portalled to the body, so its level is the page's own: 40 the chrome it hangs from, 45 the
+ *  back-to-top circle, 46 a box the user is working inside, 60 a sheet, 70 a dialog. */
+const POPUP_BOX = `fixed z-[46] glass rounded-xl shadow-xl border border-black/10
                    clip-no-scroll flex flex-col`;
 
 // A row can sit a fraction of a pixel short of its own end, so the last pixel reads as the end.

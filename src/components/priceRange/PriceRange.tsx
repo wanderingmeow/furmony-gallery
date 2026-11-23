@@ -3,11 +3,16 @@
 //
 // The grid holds its shape while the block is on screen, so nothing moves under a thumb that is
 // mid-drag. A pair that reaches past this tab sits in one empty bar beyond the end.
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, onCleanup, Show } from "solid-js";
 import { DollarOutlined } from "@ant-design/icons-svg";
 import { price } from "../../stores/derivedStore";
 import { tr } from "../../i18n";
-import { priceRange, setPriceRange } from "../../stores/filterStore";
+import {
+  holdPriceBand,
+  priceRange,
+  releasePriceBand,
+  setPriceRange,
+} from "../../stores/filterStore";
 import {
   barInside,
   edgeOf,
@@ -59,6 +64,10 @@ export function PriceRangeBlock() {
     return next;
   };
 
+  // A panel that goes away mid-drag would otherwise leave the write held, and every later filter
+  // change would reach the list but never the disk.
+  onCleanup(releasePriceBand);
+
   // A list with no price in it has no grid to draw, so the whole block stays out of the panel.
   return (
     <Show when={ends()}>
@@ -85,7 +94,13 @@ export function PriceRangeBlock() {
                 )}
               </For>
             </div>
-            <PriceRail steps={steps()} ends={ends()} onMove={moveTo} />
+            <PriceRail
+              steps={steps()}
+              ends={ends()}
+              onMove={moveTo}
+              onHold={holdPriceBand}
+              onRelease={releasePriceBand}
+            />
             <div class="pr-count mt-1 mb-2 text-center text-[11px] text-muted">
               {tr("filter.bandCount", price.on() ? price.count() : priced())}
             </div>

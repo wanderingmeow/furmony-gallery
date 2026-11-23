@@ -2,13 +2,8 @@
 // answer across the tabs, the 主人账号 switch, the price range, and what 重置 gives back.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { settled } from "../testSetup";
-import { requestedLocale, setLocale } from "../i18n";
-import {
-  priceMode,
-  semanticSearch,
-  setPriceMode,
-  setSemanticSearch,
-} from "./displayStore";
+import { setLocale } from "../i18n";
+import { priceMode, setPriceMode, setSemanticSearch } from "./displayStore";
 import {
   priceRange,
   setPriceRange,
@@ -44,11 +39,11 @@ const {
   availableRaces,
   emptyState,
   filteredListings,
+  filtersChanged,
   filtersOnCount,
   listFilterBase,
-  panelHasChanges,
   price,
-  resetPanel,
+  resetFilters,
   socialCount,
   socialsReady,
 } = await import("./derivedStore");
@@ -68,9 +63,12 @@ const locked = (id: number, price: number): AdoptListing => ({
 });
 
 beforeEach(() => {
-  // The panel's picks are module state, so each test starts from the page's own state. The mount
-  // call is what the panel does when it opens, and it decides whether to hold an empty bar.
-  resetPanel();
+  // The panels' picks are module state, so each test starts from the page's own state. The mount
+  // call is what the panel does when it opens, and it decides whether to hold an empty bar. The
+  // settings panel keeps no 重置, so the suite puts those rows back itself.
+  resetFilters();
+  setPriceMode("once");
+  setLocale("zh");
   picture.close();
   setTab("all");
   setSemanticSearch(true);
@@ -169,24 +167,25 @@ describe("the 主人账号 filter", () => {
     expect(filtersOnCount()).toBe(4);
   });
 
-  // 重置 gives back every row the panel offers, not only the ones the corner number counts. A
-  // changed order or price display hides no listing, so the number stays empty without them.
-  it("重置 returns every setting the panel holds", () => {
+  // 重置 gives back the rows of the panel it stands in. The settings behind … has no such row, so
+  // the display, the switch and the language outlive it.
+  it("重置 in the filter panel returns the picks and the order, and leaves the display", () => {
     setSortMode("priceAsc");
     setPriceMode("hidden");
-    setSemanticSearch(true);
-    setLocale("ja");
-    expect(panelHasChanges()).toBe(true);
+    setSelectedColors(new Set(["红"]));
+    expect(filtersChanged()).toBe(true);
 
-    resetPanel();
+    resetFilters();
     expect(filtersOnCount()).toBe(0);
     expect(sortMode()).toBe("timeDesc");
-    expect(priceMode()).toBe("once");
-    expect(semanticSearch()).toBe(false);
-    // The language goes back to the one the browser asked for, which is what the suite stands on.
-    expect(requestedLocale()).toBe("zh");
-    // With nothing changed, the row goes gray again.
-    expect(panelHasChanges()).toBe(false);
+    expect(priceMode()).toBe("hidden");
+  });
+
+  // The order hides no listing, so it moves the 重置 row and never the number on the funnel.
+  it("a changed order is a change to reset, not a filter to count", () => {
+    setSortMode("priceAsc");
+    expect(filtersChanged()).toBe(true);
+    expect(filtersOnCount()).toBe(0);
   });
 });
 
@@ -221,8 +220,8 @@ describe("the price range", () => {
   it("重置 hands the range back with the rest", () => {
     setListings([priced(1, 20000), priced(2, 60000)]);
     setPriceRange([20000, 22000]);
-    expect(panelHasChanges()).toBe(true);
-    resetPanel();
+    expect(filtersOnCount()).toBe(1);
+    resetFilters();
     expect(priceRange()).toBeNull();
     expect(listFilterBase().priceRange).toBeNull();
   });

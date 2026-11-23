@@ -1,30 +1,27 @@
-// The funnel's panel hangs below the circle, because the circle stands at the top edge.
+// The corner's two circles. The funnel owns the list - what is in it and in what order; … owns how
+// the list reads. The number on the funnel counts only what hides a listing.
 import {
-  BarChartOutlined,
   ClockCircleOutlined,
   DollarOutlined,
+  EllipsisOutlined,
   FilterFilled,
   FilterOutlined,
 } from "@ant-design/icons-svg";
 import type { IconDefinition } from "@ant-design/icons-svg/lib/types";
-import { useNavigate } from "@solidjs/router";
-import { statsPath } from "../../router";
 import { filtersOnCount } from "../../stores/derivedStore";
 import { semanticActive } from "../../stores/semanticStore";
 import { sortMode } from "../../stores/filterStore";
-import { AntIcon } from "../ui/AntIcon";
-import { SortMark } from "../ui/SortMark";
-import { FabCircle } from "./FabCircle";
-import { FabMenu } from "./FabMenu";
-import { FilterPanel } from "./FilterPanel";
 import {
   relevanceLabel,
   SORT_UP,
   sortModeLabel,
   type SortMode,
 } from "../../model/filter";
+import { SortMark } from "../ui/SortMark";
 import { tr } from "../../i18n";
-import { statsTitle } from "../../model/titles";
+import { FabMenu } from "./FabMenu";
+import { FilterPanel } from "./FilterPanel";
+import { SettingsPanel } from "./SettingsPanel";
 
 const SORT_GLYPH: Record<SortMode, IconDefinition> = {
   priceAsc: DollarOutlined,
@@ -34,8 +31,8 @@ const SORT_GLYPH: Record<SortMode, IconDefinition> = {
 };
 
 export function CornerActions() {
-  const navigate = useNavigate();
-  // a search answer is ranked by the service, so while one is on screen the face is the funnel
+  // A search answer is ranked by the service, so the order is not the circle's to show: the face
+  // gives way to the funnel, which is the other half of what the panel holds.
   const orderFace = () =>
     semanticActive() ? null : (
       <SortMark what={SORT_GLYPH[sortMode()]} up={SORT_UP[sortMode()]} />
@@ -48,6 +45,7 @@ export function CornerActions() {
 
   return (
     <>
+      {/* A search and a filter are one question, so the funnel stays whichever way the edge goes. */}
       <FabMenu
         drop
         label={orderLabel()}
@@ -58,17 +56,17 @@ export function CornerActions() {
       >
         <FilterPanel />
       </FabMenu>
-      {/* The charts are the way out of the list, and an open box is the user working inside it, so
-          this circle gives its place to the box where the edge is too narrow to hold both: see
-          `[data-chrome='stats']` in index.css. The funnel stays whichever way the edge goes, because
-          a search and a filter are one question. */}
-      <div data-chrome="stats">
-        <FabCircle
-          onClick={() => navigate(statsPath(), { scroll: false })}
-          title={statsTitle()}
+      {/* The rows behind … hide no listing, so an open search box takes this circle's room where the
+          edge is too narrow for both: see `[data-chrome='more']` in index.css. */}
+      <div data-chrome="more">
+        <FabMenu
+          drop
+          label={tr("filter.more")}
+          icon={() => EllipsisOutlined}
+          panelClass="w-72"
         >
-          <AntIcon icon={BarChartOutlined} size={22} />
-        </FabCircle>
+          <SettingsPanel />
+        </FabMenu>
       </div>
     </>
   );

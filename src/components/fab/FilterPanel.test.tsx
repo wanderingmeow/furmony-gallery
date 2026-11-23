@@ -1,5 +1,5 @@
-// The panel the corner button opens: what a press sends to the stores, and what the panel draws
-// from what the stores answer.
+// The panel the funnel opens: what a press sends to the stores, and what the panel draws from what
+// the stores answer. The rows that hide no listing live behind the … circle, in SettingsPanel.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import {
@@ -13,11 +13,11 @@ const facts = vi.hoisted(() => ({
   colors: new Set<string>(),
   races: new Set<string>(),
   sort: "timeDesc" as "timeDesc" | "timeAsc" | "priceAsc" | "priceDesc",
-  semantic: false,
   // The state behind the stores this panel reads and writes.
   filterOn: false,
   ready: true,
-  canReset: false,
+  semantic: false,
+  changed: false,
 }));
 
 const calls = vi.hoisted(() => [] as string[]);
@@ -25,8 +25,8 @@ const calls = vi.hoisted(() => [] as string[]);
 vi.mock("../../stores/derivedStore", () => ({
   availableColors: () => ["红", "蓝"],
   availableRaces: () => ["狼", "龙"],
-  panelHasChanges: () => facts.canReset,
-  resetPanel: () => calls.push("reset"),
+  filtersChanged: () => facts.changed,
+  resetFilters: () => calls.push("resetFilters"),
   socialCount: () => 87,
   socialFilterOn: () => facts.filterOn,
   socialsReady: () => facts.ready,
@@ -43,22 +43,17 @@ vi.mock("../../stores/filterStore", () => ({
     facts.races = new Set(v);
     calls.push(`races:${[...v].join(",")}`);
   },
+  setSocialOnly: (v: boolean) => calls.push(`socialOnly:${v}`),
   sortMode: () => facts.sort,
   setSortMode: (v: string) => {
     facts.sort = v as typeof facts.sort;
     calls.push(`sort:${v}`);
   },
-  setSocialOnly: (v: boolean) => calls.push(`socialOnly:${v}`),
-}));
-vi.mock("../../stores/displayStore", () => ({
-  priceMode: () => "once",
-  setPriceMode: (v: string) => calls.push(`price:${v}`),
-  setSemanticSearch: (v: boolean) => calls.push(`semantic:${v}`),
+  // The semantic store reads the query.
+  searchText: () => "",
 }));
 vi.mock("../../stores/semanticStore", () => ({
-  searchConfigured: true,
   semanticActive: () => facts.semantic,
-  semanticOn: () => false,
 }));
 // The price block draws a histogram and a slider from the derived store, and its own file tests
 // what it does with them.
@@ -76,23 +71,17 @@ function draw() {
   dispose = render(() => FilterPanel(), host);
 }
 
-const press = (text: string) => {
-  const button = Array.from(
+const button = (text: string) => {
+  const found = Array.from(
     host.querySelectorAll<HTMLButtonElement>("button"),
   ).find((b) => b.textContent?.trim() === text);
-  if (!button) throw new Error(`no button labeled ${text}`);
-  button.click();
+  if (!found) throw new Error(`no button labeled ${text}`);
+  return found;
 };
 
-const pressed = (text: string) =>
-  Array.from(host.querySelectorAll<HTMLButtonElement>("button"))
-    .find((b) => b.textContent?.trim() === text)
-    ?.getAttribute("aria-pressed");
+const press = (text: string) => button(text).click();
 
-const disabled = (text: string) =>
-  !!Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(
-    (b) => b.textContent?.trim() === text,
-  )?.disabled;
+const pressed = (text: string) => button(text).getAttribute("aria-pressed");
 
 /** The fold rows, as `title:true` or `title:false`. The count sits inside a row's text, so it is
  *  cut off to leave the title. */
@@ -148,13 +137,34 @@ afterEach(() => {
   facts.colors = new Set();
   facts.races = new Set();
   facts.sort = "timeDesc";
-  facts.semantic = false;
   facts.filterOn = false;
   facts.ready = true;
-  facts.canReset = false;
+  facts.semantic = false;
+  facts.changed = false;
 });
 
 describe("FilterPanel", () => {
+  it("reads top to bottom: order, colors, species, owner account, reset", () => {
+    draw();
+    const text = host.textContent ?? "";
+    const at = ["排序", "颜色", "物种", "只显示有主人账号的", "重置"].map((s) =>
+      text.indexOf(s),
+    );
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+  });
+
+  it("hides no display row: the language and the price display live behind …", () => {
+    draw();
+    expect(host.textContent).not.toContain("界面语言");
+    expect(host.textContent).not.toContain("价格显示");
+  });
+
+  it("names the order on screen in the 排序 header", () => {
+    draw();
+    expect(host.textContent).toContain("排序：时间从新到旧");
+  });
+
   it("marks the chip that matches the current order", () => {
     draw();
     expect(pressed("价格")).toBe("false");
@@ -180,13 +190,17 @@ describe("FilterPanel", () => {
     expect(calls).toContain("sort:timeAsc");
   });
 
-  it("grays the order buttons while a search answer is on screen", () => {
+  // One dead button naming the order, instead of two the user can press and nothing happens.
+  it("gives up to 相关性 while a search answer is on screen", () => {
     facts.semantic = true;
     draw();
-    expect(disabled("价格")).toBe(true);
-    expect(disabled("时间")).toBe(true);
-    press("价格");
-    expect(calls).toEqual([]);
+    expect(host.textContent).toContain("排序：按相似度从高到低");
+    const dead = button("相关性");
+    expect(dead.disabled).toBe(true);
+    expect(dead.className).toContain("text-faint");
+    expect(host.textContent).not.toContain("价格");
+    expect(host.textContent).not.toContain("时间");
+    expect(dead.getAttribute("aria-pressed")).toBe(null);
   });
 
   it("shows what a press would choose, not a direction, while a search answer is on screen", () => {
@@ -197,22 +211,6 @@ describe("FilterPanel", () => {
     facts.semantic = true;
     expect(priceIcon()).toBe(DollarOutlined);
     expect(timeIcon()).toBe(ClockCircleOutlined);
-  });
-
-  it("reads top to bottom: order, colors, species, price display, search switch", () => {
-    draw();
-    const text = host.textContent ?? "";
-    const at = [
-      "排序",
-      "颜色",
-      "物种",
-      "只显示有主人账号的",
-      "价格显示",
-      "设定搜索增强",
-      "重置",
-    ].map((s) => text.indexOf(s));
-    expect(at.every((i) => i >= 0)).toBe(true);
-    expect(at).toEqual([...at].sort((a, b) => a - b));
   });
 
   it("opens a section at the start only when it already holds a pick", () => {
@@ -259,12 +257,12 @@ describe("FilterPanel", () => {
     expect(reset().className).toContain("text-faint");
   });
 
-  it("重置 hands the clearing to the store", () => {
-    facts.canReset = true;
+  it("重置 hands only the rows of this panel back to the store", () => {
+    facts.changed = true;
     draw();
     expect(reset().disabled).toBe(false);
     reset().click();
-    expect(calls).toEqual(["reset"]);
+    expect(calls).toEqual(["resetFilters"]);
   });
 
   it("folds from the whole row, count included", () => {
@@ -283,6 +281,7 @@ describe("FilterPanel", () => {
     fold("颜色");
     chip("红");
     chip("红");
+    expect(pressed("红")).toBe("false");
     expect(folds()).toEqual(["颜色:true", "物种:false"]);
   });
 });

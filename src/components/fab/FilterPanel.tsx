@@ -1,15 +1,14 @@
+// The panel the funnel opens: what is in the list. Every row here hides listings, which is what the
+// number on the funnel counts.
 import { createSignal, For, Show, untrack } from "solid-js";
 import type { JSXElement } from "solid-js";
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
   BgColorsOutlined,
-  BulbOutlined,
   ClockCircleOutlined,
   DollarOutlined,
   ExperimentOutlined,
-  GlobalOutlined,
-  SettingOutlined,
   SortAscendingOutlined,
   UserOutlined,
 } from "@ant-design/icons-svg";
@@ -17,8 +16,8 @@ import type { IconDefinition } from "@ant-design/icons-svg/lib/types";
 import {
   availableColors,
   availableRaces,
-  panelHasChanges,
-  resetPanel,
+  filtersChanged,
+  resetFilters,
   socialCount,
   socialFilterOn,
   socialsReady,
@@ -28,40 +27,28 @@ import {
   setSelectedColors,
   selectedRaces,
   setSelectedRaces,
-  setSortMode,
   setSocialOnly,
+  setSortMode,
   sortMode,
 } from "../../stores/filterStore";
+import { semanticActive } from "../../stores/semanticStore";
 import {
-  priceMode,
-  setPriceMode,
-  setSemanticSearch,
-} from "../../stores/displayStore";
-import {
-  searchConfigured,
-  semanticActive,
-  semanticOn,
-} from "../../stores/semanticStore";
-import {
-  PRICE_MODES,
-  priceModeLabel,
-  type PriceMode,
-} from "../../model/domain";
-import type { SortMode } from "../../model/filter";
-import { SegmentedControl, type Segment } from "../ui/SegmentedControl";
-import { ChoiceGrid } from "../ui/ChoiceGrid";
+  relevanceLabel,
+  sortModeLabel,
+  type SortMode,
+} from "../../model/filter";
 import { AntIcon } from "../ui/AntIcon";
 import { Switch } from "../ui/Switch";
 import { SORT_BTN } from "../ui/boxes";
 import { tr } from "../../i18n";
-import {
-  LOCALES,
-  LOCALE_NAME,
-  requestedLocale,
-  setLocale,
-} from "../../i18n/locale";
 import { colorLabel, raceLabelByName } from "../../i18n/glossary";
-import { PANEL_BLOCK, PanelHeader, UNDER_NOTE, UNDER_TEXT } from "./panelParts";
+import {
+  PANEL_BLOCK,
+  PanelHeader,
+  ResetRow,
+  UNDER_NOTE,
+  UNDER_TEXT,
+} from "./panelParts";
 import { PriceRangeBlock } from "../priceRange";
 
 const COLOR_DOT: Record<string, string> = {
@@ -141,8 +128,7 @@ function toggleIn(cur: Set<string>, value: string): Set<string> {
 
 /**
  * A foldable list of choices. It starts shut when nothing is picked, and open when something is: the
- * color and species blocks hold enough chips to push the price display and the search switch past
- * the panel's edge.
+ * color and species blocks hold enough chips to push the row below past the panel's edge.
  */
 function Section(props: {
   title: string;
@@ -154,7 +140,7 @@ function Section(props: {
   /** The word for a value in the language on screen. */
   label?: (value: string) => string;
 }) {
-  // The fold is set once, from the picks at the moment the panel opens, and only the reader moves
+  // The fold is set once, from the picks at the moment the panel opens, and only the user moves
   // it after that. Following the picks live would close the section the instant its last pick is
   // cleared, under the finger that cleared it.
   const [open, setOpen] = createSignal(untrack(() => props.selected.size) > 0);
@@ -218,7 +204,7 @@ const togglePrice = (current: SortMode): SortMode =>
 const toggleTime = (current: SortMode): SortMode =>
   current === "timeDesc" ? "timeAsc" : "timeDesc";
 const inGroup = (group: "price" | "time") => sortMode().startsWith(group);
-// While a search answer is on screen the order is not ours to set, so no direction is shown.
+// A search answer holds the order, so the ¥ stays and its arrow goes.
 export const priceIcon = (): IconDefinition =>
   inGroup("price") && !semanticActive()
     ? sortMode() === "priceAsc"
@@ -234,24 +220,24 @@ export const timeIcon = (): IconDefinition =>
 
 function SortBtn(props: {
   label: string;
+  /** The direction this button stands for, read against the mode the panel is showing. */
   on: () => boolean;
-  icon: () => IconDefinition;
-  disabled: () => boolean;
-  onClick: () => void;
+  icon: IconDefinition | (() => IconDefinition);
+  /** The order is not the user's to set, so the button has nothing to do. */
+  dead?: boolean;
+  onClick?: () => void;
 }) {
-  // A search answer arrives ranked by how well it matches, and re-sorting it would undo that. The
-  // buttons stay in place and go dead: a block that vanishes makes the panel look broken.
   return (
     <button
       class={`${SORT_BTN} flex-1 px-2 text-sm flex items-center justify-center gap-1`}
       classList={{
-        "bg-accent/35 text-accent-soft": props.on() && !props.disabled(),
-        "bg-surface-2 text-ink": !props.on() && !props.disabled(),
-        "bg-surface-2 text-faint": props.disabled(),
+        "bg-accent/35 text-accent-soft": props.on() && !props.dead,
+        "bg-surface-2 text-ink": !props.on() && !props.dead,
+        "bg-surface-2 text-faint": !!props.dead,
       }}
-      aria-pressed={props.on() && !props.disabled()}
-      disabled={props.disabled()}
-      onClick={() => props.onClick()}
+      aria-pressed={props.dead ? undefined : props.on()}
+      disabled={!!props.dead}
+      onClick={() => props.onClick?.()}
     >
       <AntIcon icon={props.icon} /> {props.label}
     </button>
@@ -261,37 +247,53 @@ function SortBtn(props: {
 function SortBlock() {
   return (
     <>
+      {/* `sort.title` is the whole line, 排序：时间从新到旧: the order on screen is named here now
+          that no circle wears it. */}
       <PanelHeader icon={<AntIcon icon={SortAscendingOutlined} />}>
-        {tr("filter.sort")}
+        {tr(
+          "sort.title",
+          semanticActive() ? relevanceLabel() : sortModeLabel(sortMode()),
+        )}
       </PanelHeader>
-      <div class={`mt-1 mb-2 ${UNDER_TEXT} flex gap-2`}>
-        <SortBtn
-          label={tr("sort.price")}
-          on={() => inGroup("price")}
-          icon={priceIcon}
-          disabled={semanticActive}
-          onClick={() => setSortMode(togglePrice(sortMode()))}
-        />
-        <SortBtn
-          label={tr("sort.time")}
-          on={() => inGroup("time")}
-          icon={timeIcon}
-          disabled={semanticActive}
-          onClick={() => setSortMode(toggleTime(sortMode()))}
-        />
-      </div>
+      {/* A search answer is ordered by the service, so one dead button names that order: no
+          aria-pressed, because nothing here is on or off. */}
+      {/* One row whether there are two buttons or one: a lone `<button>` resolves `width: auto` to
+          its own content, so the sharing has to happen in the row. */}
+      <Show
+        when={semanticActive()}
+        fallback={
+          <div class={`mt-1 mb-2 ${UNDER_TEXT} flex gap-2`}>
+            <SortBtn
+              label={tr("sort.price")}
+              on={() => inGroup("price")}
+              icon={priceIcon}
+              onClick={() => setSortMode(togglePrice(sortMode()))}
+            />
+            <SortBtn
+              label={tr("sort.time")}
+              on={() => inGroup("time")}
+              icon={timeIcon}
+              onClick={() => setSortMode(toggleTime(sortMode()))}
+            />
+          </div>
+        }
+      >
+        <div class={`mt-1 mb-2 ${UNDER_TEXT} flex`}>
+          <SortBtn
+            label={tr("sort.relevance")}
+            on={() => true}
+            icon={ArrowDownOutlined}
+            dead
+          />
+        </div>
+      </Show>
     </>
   );
 }
 
-/**
- * The owner-account switch. Only a small share of the listings have an owner account, so the line
- * names the count before the reader cuts the list down to it.
- *
- * The switch reads `socialFilterOn` and writes `socialOnly`. The two differ when socials.json is
- * missing: the row is gray, the list is unfiltered, and a switch the reader left on is kept for the
- * case where the table does arrive.
- */
+/** The owner-account switch: only a small share of listings have one, so the line names the count
+ *  before the user cuts the list down to it. The switch reads `socialFilterOn` and writes `socialOnly`
+ *  - with socials.json missing the row is gray, the list unfiltered, and a switch left on is kept. */
 function OwnerBlock() {
   const note = () =>
     socialsReady()
@@ -317,110 +319,8 @@ function OwnerBlock() {
   );
 }
 
-const priceItems = (): Segment<PriceMode>[] =>
-  PRICE_MODES.map((m) => ({ value: m, label: priceModeLabel(m) }));
-
-function PriceModeBlock() {
-  return (
-    <div class={PANEL_BLOCK}>
-      <PanelHeader icon={<AntIcon icon={SettingOutlined} />}>
-        {tr("filter.priceMode")}
-      </PanelHeader>
-      {/* The indent lives outside the bordered box: that box has an edge, and the edge is
-          what lines up with the header's first letter. */}
-      <div class={`mt-1 mb-2 ${UNDER_TEXT}`}>
-        <SegmentedControl
-          label={tr("filter.priceMode")}
-          fill
-          value={priceMode}
-          onChange={setPriceMode}
-          items={priceItems()}
-        />
-      </div>
-    </div>
-  );
-}
-
-function SemanticBlock() {
-  return (
-    <div class={PANEL_BLOCK}>
-      <PanelHeader icon={<AntIcon icon={BulbOutlined} />}>
-        {tr("filter.enhance")}{" "}
-        <span class="text-[10px] px-1 rounded bg-blue-500/15 text-blue-600 dark:text-blue-300">
-          Beta
-        </span>
-        <div class="ml-auto">
-          <Switch
-            on={semanticOn()}
-            onChange={setSemanticSearch}
-            label={tr("filter.enhance")}
-          />
-        </div>
-      </PanelHeader>
-      {/* Where what the reader sends goes, said once at the switch: a tooltip does not
-          exist on a touch screen, and repeating it under every query would be noise. Every
-          clause is true of the service, so none of it is softened. */}
-      <div class={UNDER_NOTE}>
-        {/* One line, kept on one source line: JSX turns a break between Chinese characters into
-            a visible space, and there is no space to spare before （ZDR）. */}
-        <span class="block">{tr("filter.enhanceNote")}</span>
-      </div>
-    </div>
-  );
-}
-
-/**
- * The language of the interface and of the words the API returns translated. Four names in four
- * scripts have no room side by side, so they take two rows of two.
- */
-function LanguageBlock() {
-  const items = LOCALES.map((code) => ({
-    value: code,
-    label: LOCALE_NAME[code],
-  }));
-  return (
-    <div class={PANEL_BLOCK}>
-      <PanelHeader icon={<AntIcon icon={GlobalOutlined} />}>
-        {tr("filter.language")}
-      </PanelHeader>
-      <div class={`mt-1 mb-2 ${UNDER_TEXT}`}>
-        {/* The tick follows the pick, not the page: the reader just chose this, and the translated
-            words arrive a moment later. */}
-        <ChoiceGrid
-          label={tr("filter.language")}
-          columns={2}
-          value={requestedLocale}
-          onChange={setLocale}
-          items={items}
-        />
-      </div>
-    </div>
-  );
-}
-
-/**
- * 重置, in red because this is the row that takes things away. `resetPanel` says what it gives back.
- *
- *  The row stays and goes gray when there is nothing to take back. A row that arrived and left at
- *  the foot of the panel would push the note above it up and down while the reader worked.
- */
-function ResetRow() {
-  return (
-    <div class={PANEL_BLOCK}>
-      <button
-        class="w-full min-h-7 px-1.5 text-right text-xs font-semibold
-               text-red-500 dark:text-red-400 disabled:text-faint"
-        disabled={!panelHasChanges()}
-        onClick={resetPanel}
-      >
-        {tr("filter.reset")}
-      </button>
-    </div>
-  );
-}
-
-// The panel the corner button opens. It owns the padding and the scrolling, so the blocks run to the
-// glass edge and `FabMenu` only has to draw the box.
+// It owns the padding and the scrolling, so the blocks run to the glass edge and `FabMenu` only has
+// to draw the box.
 export function FilterPanel() {
   return (
     <div class="no-pick min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
@@ -451,14 +351,7 @@ export function FilterPanel() {
       />
       <OwnerBlock />
       <PriceRangeBlock />
-      <PriceModeBlock />
-      {/* A build without a search address hides the switch rather than offering a search that
-          quietly does nothing. */}
-      <Show when={searchConfigured}>
-        <SemanticBlock />
-      </Show>
-      <LanguageBlock />
-      <ResetRow />
+      <ResetRow changed={filtersChanged} onReset={resetFilters} />
     </div>
   );
 }

@@ -24,6 +24,7 @@ export const zh_tw: Dict = {
     priceDesc: "價格從高到低",
     timeAsc: "時間從舊到新",
     timeDesc: "時間從新到舊",
+    relevance: "相關性",
     similarity: "依相似度从高到低",
     price: "價格",
     time: "時間",
@@ -32,13 +33,14 @@ export const zh_tw: Dict = {
 
   filter: {
     tabGroup: "設定分類",
+    title: "篩選",
+    more: "更多",
     colors: "顏色",
     races: "物種",
     priceMode: "價格顯示",
     enhance: "設定搜尋增強",
     reset: "重設",
     language: "介面語言",
-    sort: "排序",
     enhanceNote:
       "語義與影像搜尋由 Embedding 模型驅動，會把搜尋的文字與圖片傳到伺服器，伺服器零資料保留。",
     socialOnly: "只顯示有主人帳號的",

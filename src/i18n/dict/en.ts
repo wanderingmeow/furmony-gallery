@@ -42,6 +42,7 @@ export const en: Dict = {
     priceDesc: "Price, high to low",
     timeAsc: "Oldest first",
     timeDesc: "Newest first",
+    relevance: "Relevance",
     similarity: "Most similar first",
     price: "Price",
     time: "Time",
@@ -50,13 +51,14 @@ export const en: Dict = {
 
   filter: {
     tabGroup: "Category",
+    title: "Filters",
+    more: "More",
     colors: "Colors",
     races: "Species",
     priceMode: "Price display",
     enhance: "Enhanced search",
     reset: "Reset",
     language: "Language",
-    sort: "Sort",
     enhanceNote:
       "Search by meaning and by picture runs on an embedding model. The words and pictures you search with go to the server, and the server keeps no data.",
     socialOnly: "Owner account only",

@@ -6,10 +6,12 @@ import {
   type JSX,
 } from "solid-js";
 import {
+  BarChartOutlined,
   CloseOutlined,
   PictureOutlined,
   SearchOutlined,
 } from "@ant-design/icons-svg";
+import { useNavigate } from "@solidjs/router";
 import { tr } from "../../i18n";
 import { searchText } from "../../stores/filterStore";
 import {
@@ -31,6 +33,7 @@ import {
   CHROME_HIT,
   CHROME_PLATE_BOX,
   CHROME_PLATE_REST,
+  CHROME_STATS,
   CHROME_TEXT_IN,
   CHROME_TEXT_OUT,
   CHROME_TAB_BAR,
@@ -46,6 +49,9 @@ import {
 } from "../ui/boxes";
 import { TabPill } from "./TabPill";
 import { CornerActions } from "../fab/CornerActions";
+import { FabCircle } from "../fab/FabCircle";
+import { statsPath } from "../../router";
+import { statsTitle } from "../../model/titles";
 import { SearchBar, type SearchBarApi } from "./SearchBar";
 import { PictureMode } from "./PictureSearch";
 import {
@@ -99,6 +105,7 @@ function Act(props: {
  *
  *  The field grows over the cards rather than pushing them down, so nothing here moves the page. */
 export function ListChrome() {
+  const navigate = useNavigate();
   const [held, setHeld] = createSignal(false);
   // The press belongs to the gesture that asked the box open, so it is settled when the finger goes
   // down: a press made while the box is open is on its way out and must not grow the circle.
@@ -212,6 +219,17 @@ export function ListChrome() {
       >
         <div class={CHROME_BAR_BOX}>
           <div class={CHROME_LINE}>
+            {/* The charts are the way out of the list, and an open box is the user working inside
+                it, so this circle gives its place to the field it sits beside. */}
+            <div class={CHROME_STATS} data-chrome="stats">
+              <FabCircle
+                onClick={() => navigate(statsPath(), { scroll: false })}
+                title={statsTitle()}
+              >
+                <AntIcon icon={BarChartOutlined} size={22} />
+              </FabCircle>
+            </div>
+
             <div class={CHROME_CORNER} data-chrome="corner">
               <CornerActions />
             </div>

@@ -11,7 +11,6 @@ import {
 import type { AdoptListing } from "../model/types";
 import { compute, hasSocial } from "../model/filter";
 import { colorNames, countedRaceName, isLocked } from "../model/domain";
-import { browserLocale, requestedLocale, setLocale } from "../i18n";
 import { COLOR_ORDER, inOrder, RACE_ORDER } from "../i18n/glossary";
 import type { PriceRange } from "../model/priceRange";
 import {
@@ -37,13 +36,6 @@ import {
   sortMode,
   tab,
 } from "./filterStore";
-import {
-  DEFAULT_PRICE_MODE,
-  priceMode,
-  semanticSearch,
-  setPriceMode,
-  setSemanticSearch,
-} from "./displayStore";
 import { wishlist } from "./wishlistStore";
 import { socialSearch } from "./socialsStore";
 import {
@@ -295,35 +287,20 @@ export function filtersOnCount(): number {
   );
 }
 
-/** Every row the panel offers, back to the state the page starts in: the order, the picks, the
- *  主人账号 switch, the price range, the price display, the search switch. The query stays,
- *  because the input carries its own ✕, and the tab stays, because it sits outside the panel. */
-export function resetPanel(): void {
+/** The rows the filter panel offers, back to the state the page starts in. The query stays, because
+ *  the input carries its own ✕, and the tab stays, because it sits outside either panel. */
+export function resetFilters(): void {
   batch(() => {
     setSortMode(DEFAULT_SORT);
     setSelectedColors(new Set());
     setSelectedRaces(new Set());
     setSocialOnly(false);
     setPriceRange(null);
-    setPriceMode(DEFAULT_PRICE_MODE);
-    setSemanticSearch(false);
-    setLocale(browserLocale());
   });
 }
 
-/** The three settings that change how the list reads but hide no listing: the order, the price
- *  display, the search switch. Because they hide nothing, the number on the corner stays empty
- *  while the reader is still one tap away from wanting them back. */
-function prefsChanged(): boolean {
-  return (
-    sortMode() !== DEFAULT_SORT ||
-    priceMode() !== DEFAULT_PRICE_MODE ||
-    semanticSearch() ||
-    requestedLocale() !== browserLocale()
-  );
-}
-
-/** Whether 重置 has anything to give back. */
-export function panelHasChanges(): boolean {
-  return filtersOnCount() > 0 || prefsChanged();
+/** Whether 重置 in the filter panel has anything to give back. The order counts here because its
+ *  row stands in that panel, and hides nothing, so it stays out of the number on the funnel. */
+export function filtersChanged(): boolean {
+  return filtersOnCount() > 0 || sortMode() !== DEFAULT_SORT;
 }

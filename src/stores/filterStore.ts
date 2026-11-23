@@ -10,7 +10,7 @@ import {
   type FilterTab,
   type SortMode,
 } from "../model/filter";
-import type { PriceRange } from "../model/priceRange";
+import { sameRange, type PriceRange } from "../model/priceRange";
 import { hasUncommittedText } from "../model/composing";
 import { isKnownColor, isKnownRaceName } from "../i18n/glossary";
 
@@ -29,7 +29,12 @@ const [selectedRaces, setSelectedRacesSignal] = createSignal<Set<string>>(
 const [searchText, setSearchTextSignal] = createSignal("");
 const [socialOnly, setSocialOnlySignal] = createSignal(false);
 // 价格区间. null is the whole list: the reader has not narrowed the price.
-const [priceRange, setPriceRangeSignal] = createSignal<PriceRange | null>(null);
+const [priceRange, setPriceRangeSignal] = createSignal<PriceRange | null>(
+  null,
+  {
+    equals: sameRange,
+  },
+);
 
 function persistFilters(): void {
   const f = {
@@ -64,6 +69,7 @@ function notify(kind: FilterChangeKind): void {
 
 // Each setter runs in one `batch()`, so the store change and the waterfall scroll reset
 // (notify → setScrollTop) share a single render pass.
+let bandHeld = false;
 export function setTab(v: FilterTab): void {
   batch(() => {
     setTabSignal(v);
@@ -111,12 +117,28 @@ export function setSocialOnly(v: boolean): void {
     notify("socialOnly");
   });
 }
+// The band compares by what it keeps, so a drag's repeated pair is neither a recompute nor a
+// reason to persist and jump the list back to the top.
 export function setPriceRange(v: PriceRange | null): void {
+  if (sameRange(priceRange(), v)) return;
   batch(() => {
     setPriceRangeSignal(v);
-    persistFilters();
+    // A gesture in progress writes the pair it leaves behind, not the ones it passed through.
+    if (!bandHeld) persistFilters();
     notify("priceRange");
   });
+}
+
+/** A drag has begun: the list follows the finger, the stored pair waits. */
+export function holdPriceBand(): void {
+  bandHeld = true;
+}
+
+/** The drag let go, or its control went away: this is the pair worth keeping. */
+export function releasePriceBand(): void {
+  if (!bandHeld) return;
+  bandHeld = false;
+  persistFilters();
 }
 
 export {

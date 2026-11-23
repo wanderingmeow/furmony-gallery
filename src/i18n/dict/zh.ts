@@ -26,6 +26,7 @@ export const zh = {
     priceDesc: "价格从高到低",
     timeAsc: "时间从旧到新",
     timeDesc: "时间从新到旧",
+    relevance: "相关性",
     similarity: "按相似度从高到低",
     /** The group a button belongs to, shown beside the arrow. */
     price: "价格",
@@ -36,13 +37,14 @@ export const zh = {
 
   filter: {
     tabGroup: "设定分类",
+    title: "筛选",
+    more: "更多",
     colors: "颜色",
     races: "物种",
     priceMode: "价格显示",
     enhance: "设定搜索增强",
     reset: "重置",
     language: "界面语言",
-    sort: "排序",
     enhanceNote:
       "语义和图像搜索由 Embedding 模型驱动，把检索的文字和图片传到服务器，服务器零数据保留。",
     socialOnly: "只显示有主人账号的",
@@ -110,8 +112,9 @@ export const zh = {
     placeholder: "搜索名称/描述/ID",
     /** With the enhancement on, the hint is a question the user can type as it is. */
     placeholderEnhanced: "爱吃肉的棒小龙",
-    /* 增强模式的例子，四个一行，在框里往上滚。分隔符两边留空格，译文里出现竖线也不会误伤。
-       每条都得是搜索真答得了的：它拿句子去比作品的名称和描述，不做画师查找。 */
+    /* Four of these scroll up the box at a time. The separator keeps a space on each side, so a
+       pipe in a translation cannot split a line. Each one has to be something the search answers:
+       it compares the sentence against names and descriptions, and never looks up an artist. */
     examples:
       "爱吃肉的棒小龙 | 雪地里的白狐狸 | 会发光的守夜龙 | 披着狼皮的羊 | 万圣节的捣蛋鬼 | 藻海里的实验体 | 提夜灯的守夜犬",
     clear: "清除搜索",

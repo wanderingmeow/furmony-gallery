@@ -172,18 +172,26 @@ describe("the search field", () => {
     const lines = host.querySelectorAll("[data-reel-line]");
     // every question, plus the first again where the loop restarts
     expect(lines).toHaveLength(8);
-    expect(box.getAttribute("placeholder")).toBe("");
   });
 
-  it("shows the plain hint when the enhanced search is off", () => {
-    expect(host.querySelector("[data-reel]")).toBe(null);
+  it("draws the plain hint as a line when the enhanced search is off", () => {
+    const hint = host.querySelector("[data-hint]");
+    expect(hint?.textContent).toContain("ID");
+    // the questions roll, so a plain search has no reel to show
+    expect(host.querySelectorAll("[data-reel-line]")).toHaveLength(0);
+    // one window for both, so both dissolve at the same edge
+    expect(hint?.className).toContain("search-hint-fade");
+  });
+
+  it("keeps the box's own placeholder for a screen reader, its ink given to the line", () => {
     expect(box.getAttribute("placeholder")).toContain("ID");
+    expect(box.className).toContain("placeholder:text-transparent");
   });
 
-  it("gives the reel back to the hint as soon as the user types", async () => {
+  it("gives the hint back as soon as the user types", async () => {
     setSemanticSearch(true);
     fireInput("蓝色的龙", "insertText");
-    expect(host.querySelector("[data-reel]")).toBe(null);
+    expect(host.querySelector("[data-hint]")).toBe(null);
     expect(box.getAttribute("placeholder")).toContain("爱吃肉的棒小龙");
     await settle();
     expect(searchText()).toBe("蓝色的龙");

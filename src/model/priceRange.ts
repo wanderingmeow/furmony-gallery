@@ -112,6 +112,13 @@ export function keepsByPrice(row: AdoptListing, range: PriceRange): boolean {
   return inPriceRange(displayPrice(row), range);
 }
 
+/** Whether two bands keep the same rows. A drag writes a new pair on every move, and a pair that
+ *  says the same thing twice is not a second change. */
+export const sameRange = (
+  a: PriceRange | null,
+  b: PriceRange | null,
+): boolean => a === b || (!!a && !!b && a[0] === b[0] && a[1] === b[1]);
+
 /** Whether the range still covers everything, which is the same as no range at all. */
 export function isFullRange(
   range: PriceRange | null,

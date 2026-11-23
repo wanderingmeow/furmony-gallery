@@ -115,9 +115,10 @@ export function SearchBar(props: {
         the field instead of falling through to the card behind. The row itself is transparent to
         taps, and the input's own box is one line tall.
 
-        A long question in a wide language does not fit the phone's field, and neither the examples
-        nor a typed query may run past the circles: both end in an ellipsis, the way a placeholder
-        the browser truncates does. */}
+        A long question in a wide language does not fit the phone's field. The hint is drawn as a line
+        of its own below, where it can dissolve at the edge; the browser truncates its own
+        placeholder only while it is not drawing a caret next to it, so the field would lose the
+        ending the moment the box has focus. A typed query is the browser's and keeps its ellipsis. */}
       <label class="flex min-w-0 flex-1 items-center self-stretch">
         <input
           ref={(node) => {
@@ -134,33 +135,45 @@ export function SearchBar(props: {
           }}
           onBlur={onBlur}
           onFocus={warmSearch}
-          placeholder={reelLines() ? "" : searchPlaceholder()}
+          // Ink given up, words kept: the line below draws the hint, and the attribute is what a
+          // screen reader reads.
+          placeholder={searchPlaceholder()}
           aria-label={tr("search.open")}
-          class="w-full min-w-0 overflow-hidden text-ellipsis bg-transparent outline-none text-base leading-6 text-ink placeholder:text-faint"
+          class="w-full min-w-0 overflow-hidden text-ellipsis bg-transparent outline-none text-base leading-6 text-ink placeholder:text-transparent"
         />
       </label>
-      <Show when={reelLines()}>
-        {(lines) => (
-          // one line tall, holding every question plus the first again where the loop restarts; its top
-          // and bottom edges fade so a line dissolves instead of sliding out of a hard cut, and a
-          // question wider than the field ends in an ellipsis
-          <div data-reel class={CHROME_REEL} aria-hidden="true">
-            <div class="search-reel-window h-6 overflow-hidden">
-              <div class="animate-search-reel text-base leading-6 text-faint whitespace-nowrap">
-                <For each={[...lines(), lines()[0]]}>
-                  {(line) => (
-                    <div
-                      data-reel-line
-                      class="h-6 overflow-hidden text-ellipsis"
-                    >
-                      {line}
-                    </div>
-                  )}
-                </For>
+      <Show when={shown().length === 0}>
+        {/* One window for both hints, so both dissolve at the same edge. */}
+        <div
+          data-hint
+          class={`${CHROME_REEL} search-hint-fade`}
+          aria-hidden="true"
+        >
+          <Show
+            when={reelLines()}
+            fallback={
+              <div class="text-base leading-6 text-faint whitespace-nowrap">
+                {searchPlaceholder()}
               </div>
-            </div>
-          </div>
-        )}
+            }
+          >
+            {(lines) => (
+              // one line tall, holding every question plus the first again where the loop restarts;
+              // its top and bottom edges fade so a line dissolves instead of sliding out of a hard cut
+              <div class="search-reel-window h-6 overflow-hidden">
+                <div class="animate-search-reel text-base leading-6 text-faint whitespace-nowrap">
+                  <For each={[...lines(), lines()[0]]}>
+                    {(line) => (
+                      <div data-reel-line class="h-6 overflow-hidden">
+                        {line}
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
+            )}
+          </Show>
+        </div>
       </Show>
     </>
   );
