@@ -125,6 +125,14 @@ export const DETAIL_PAD_X = 16;
 // and stop growing, and the width at which a screen has room for two columns.
 const SM = 640;
 
+// No tablet is this tall held upright - the tallest one reports 1366. Above the line the window is a
+// desktop layout, and `cardGap` takes its last step there.
+export const TALL_WINDOW_H = 1400;
+
+// The strip of bare canvas left under a fitted card's content: enough to read as "nothing below
+// this", small enough never to be mistaken for the gap at the card's edge.
+export const SHEET_TAIL = 24;
+
 // The panel's two columns, as one literal: Tailwind reads these numbers off the source, and a string
 // assembled at runtime never reaches the stylesheet, leaving the table an implicit column as wide as
 // it likes. The table gets half the room, capped at 420 so its lines stay readable, and never less
@@ -136,22 +144,26 @@ export const PANEL_GRID =
 // list behind needs air.
 export const SPREAD_MAX_W = 1080;
 
-/** The detail's two shapes: a sheet is the phone's one-column card slid up from the bottom, a panel
- *  is the two-column view a landscape screen gets instead. */
+/** The detail's two shapes: a sheet is the one-column card that comes up from the bottom, a panel is
+ *  the two-column view a window too short for one column gets instead. A tall window is not a panel:
+ *  a panel's columns stretch to whatever the card is, so it can only ever be as tall as the window,
+ *  while a sheet stands as tall as its content and floats in the room that is left. */
 export type Shape = "sheet" | "panel";
 
 export function shapeAt(viewportW: number, viewportH: number): Shape {
   return viewportW >= SM && viewportW >= viewportH ? "panel" : "sheet";
 }
 
-/** The gap a panel leaves at every edge: it is what makes a panel read as a card on the page instead
- *  of a takeover, so it grows with the height there is to spare. None under 480 - a band that thin is
- *  not something a finger or a cursor aims at - then 12, 24, and 48 from 900 up.
+/** The ladder `cardGap` walks: none under 480 - a band that thin is not something a finger or a
+ *  cursor aims at - then 12, 24, 48, and 96 from TALL_WINDOW_H up. The last step matches the side
+ *  room SPREAD_MAX_W already leaves a 1280-wide window: about 100px, so the four edges read as one
+ *  family instead of a card wedged in sideways.
  */
 export function sheetInset(viewportH: number): number {
   if (viewportH < 480) return 0;
   if (viewportH < 700) return 12;
-  return viewportH < 900 ? 24 : 48;
+  if (viewportH < 900) return 24;
+  return viewportH < TALL_WINDOW_H ? 48 : 96;
 }
 
 export type CardBox = { w: number; h: number };
@@ -175,14 +187,13 @@ export type Insets = {
 
 const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
-/** The gap the card keeps at every edge of the window. The page behind it shows through here, which
- *  is what makes a panel read as a card on the page rather than a takeover, so it grows with the
- *  height there is to spare.
+/** The gap the card keeps at every edge of the window. The page behind shows through here, which is
+ *  what makes the card read as sitting on the page rather than taking it over. A card that stands in
+ *  from the edges pays the same gap whichever shape it is in; one that fills the phone's width pays
+ *  nothing.
  */
 export function cardGap(viewportW: number, viewportH: number): number {
-  if (shapeAt(viewportW, viewportH) !== "panel")
-    return viewportW >= SM ? 24 : 0;
-  return sheetInset(viewportH);
+  return viewportW >= SM ? sheetInset(viewportH) : 0;
 }
 
 /** The room the card has left for its own content: the window less `cardGap`, less the bands it pads
@@ -254,6 +265,11 @@ const PIC_MIN_H = 120;
 
 /** Half the card: what the art is allowed to hold in a sheet. */
 const PIC_CAP = 0.5;
+// A panel's art stops at this share of its own card. The table column takes min(50%, 420), so the
+// art's column is about 60% of the card: 0.75 of the card is roughly 1.2 of that column, past which
+// a picture reads as a banner. A window taller than any tablet is where the height alone would do
+// this - the art otherwise takes every pixel the card has.
+const PIC_PANEL_MAX = 0.75;
 
 /** The height the art's box takes: a panel hands over its whole left column, a sheet fits the art to
  *  its card, keeps the bar's height outside the scroller, and stops at `PIC_CAP` of the card. A
@@ -264,7 +280,8 @@ export function detailPictureHeight(box: CardBox, shape: Shape): number {
     DETAIL_CHROME -
     DETAIL_STRIP_H -
     (shape === "panel" ? 0 : SHEET_BAR_H);
-  if (shape === "panel") return Math.max(PIC_MIN_H, room);
+  if (shape === "panel")
+    return Math.max(PIC_MIN_H, Math.min(room, box.w * PIC_PANEL_MAX));
   const fitted = Math.min(
     Math.max(PIC_MIN_H, (box.w - 2 * DETAIL_PAD_X) * PIC_TALL),
     Math.max(PIC_MIN_H, room),

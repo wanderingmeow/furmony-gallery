@@ -192,23 +192,33 @@ describe("the panel on a landscape screen", () => {
     mount(body, PANEL);
     expect(frame().style.padding).toBe("24px");
     expect(look().getPropertyValue("max-width")).toBe("1080px");
-    expect(look().height).toBe("100%");
     expect(frame().style.transform).not.toContain("translateY");
+    // An inset card is as tall as its content, so the window's height is only a ceiling.
+    expect(look().height).toContain("--sheet-cap");
+    expect((layer() as HTMLElement).hasAttribute("data-sheet-gapped")).toBe(
+      true,
+    );
   });
 
   it("keeps the slide and the phone sizes on a phone", () => {
     dismissed = vi.fn();
     mount(body);
-    expect(frame().style.padding).toBe("");
+    expect(frame().style.padding).toBe("0px");
     expect(look().getPropertyValue("max-width")).toBe("");
     expect(frame().style.transform).toContain("translateY");
+    expect((layer() as HTMLElement).hasAttribute("data-sheet-gapped")).toBe(
+      false,
+    );
   });
 
   it("keeps no gap and no rounded corner on a screen too short for one", () => {
     dismissed = vi.fn();
     mount(body, [852, 393]);
     expect(frame().style.padding).toBe("0px");
-    expect(look().getPropertyValue("border-radius")).toBe("0px");
+    // No marker, so the stylesheet keeps the card square at rest and lets the drag round it.
+    expect((layer() as HTMLElement).hasAttribute("data-sheet-gapped")).toBe(
+      false,
+    );
   });
 
   it("closes when a mouse clicks past its edge, once the fade has run", () => {
@@ -350,5 +360,46 @@ describe("the phone sheet under reduce motion", () => {
     expect(frame().style.transition).toContain("opacity 180ms");
     vi.advanceTimersByTime(260);
     expect(left).toBe(1);
+  });
+});
+
+describe("the drag that closes a phone sheet", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("moves the card by the fraction of its height the finger travelled", () => {
+    dismissed = vi.fn();
+    mount(body);
+    drag("touchstart", 100);
+    drag("touchmove", 300);
+    expect(frame().style.transform).toBe(`translateY(${(200 / 852) * 100}%)`);
+    expect(frame().style.transition).toBe("none");
+  });
+
+  it("closes on a pull past a third of the sheet, once the slide is over", () => {
+    vi.useFakeTimers();
+    dismissed = vi.fn();
+    mount(body);
+    drag("touchstart", 100);
+    drag("touchmove", 700);
+    drag("touchend", 700);
+    expect(dismissed).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(EXIT_MS);
+    expect(dismissed).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the scroll to the content while the content can still scroll", () => {
+    dismissed = vi.fn();
+    mount(body);
+    const before = frame().style.transform;
+    Object.defineProperty(scroller(), "scrollTop", {
+      value: 40,
+      configurable: true,
+    });
+    drag("touchstart", 100);
+    drag("touchmove", 700);
+    expect(frame().style.transform).toBe(before);
+    expect(dismissed).not.toHaveBeenCalled();
   });
 });

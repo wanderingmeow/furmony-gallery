@@ -26,7 +26,8 @@ import { SHEET_FAB_ROW } from "../components/ui/boxes";
 import { BOX, DETAIL_PAD_X } from "../draw/layout";
 import { DetailBody } from "../components/detail/DetailBody";
 import { FullScreenZoom } from "../components/detail/FullScreenZoom";
-import { scrollSheetToTop } from "../components/sheet/Sheet";
+import { scrollSheetToTop } from "../components/sheet/sheetScroll";
+import { fitSheetCard } from "../components/sheet/sheetFit";
 
 export function Detail(props: { onClose: () => void }) {
   const params = useParams();
@@ -106,6 +107,17 @@ export function Detail(props: { onClose: () => void }) {
   const zoomCount = () =>
     images().length || (listing()?.adoptHeadPicture ? 1 : 0);
 
+  // One measurement per listing, and only once there is a listing: the placeholder is not content.
+  let root!: HTMLDivElement;
+  let fitted: string | undefined;
+  createEffect(() => {
+    const id = listing() ? params.id : undefined;
+    if (!id || id === fitted) return;
+    fitted = id;
+    // The height the content needs is only there one frame after it is on screen.
+    requestAnimationFrame(() => fitSheetCard(root));
+  });
+
   // Esc closes the sheet. While the zoom is open it takes Esc, so a single press
   // closes one layer instead of both.
   onMount(() => {
@@ -117,7 +129,7 @@ export function Detail(props: { onClose: () => void }) {
   });
 
   return (
-    <div class="min-h-full w-full bg-canvas flex flex-col">
+    <div ref={root} class="w-full bg-canvas flex flex-col">
       {/* Detail has no header bar: these float over content that spans the sheet and scrolls
           under them. ✕ closes the sheet from any level. The ← appears only after a related
           tap, and it follows the same history entries the browser's back follows. */}

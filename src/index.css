@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "./theme.css";
-/* The three component sheets the entry graph used to pull into the document. The document carries
-   boot.css and nothing else, so a component that the entry reaches has to arrive on this sheet. */
+/* Component sheets the entry graph reaches. The document carries boot.css and nothing else, so a
+   component the entry reaches arrives on this sheet; one only a lazy chunk reaches imports its own. */
 @import "./components/ui/SegmentedControl.css";
 @import "./components/ui/WishlistHeart.css";
 @import "./components/priceRange/PriceRail.css";
@@ -232,41 +232,6 @@ body[data-scroll-locked] {
    frame. `contain` clips and scopes raster to this window. */
 .virtual-content {
   contain: layout paint;
-}
-
-/* Backdrop fade for the detail overlay */
-@keyframes overlay-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-.overlay-fade-in {
-  animation: overlay-fade-in 0.25s ease;
-}
-
-@keyframes overlay-fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-.overlay-fade-out {
-  animation: overlay-fade-out 0.28s ease-in;
-  animation-fill-mode: forwards;
-}
-
-/* The sheet's fade under reduce motion runs 180ms (Sheet.tsx, FADE_MS); at 250ms and 280ms the
-   backdrop outlives it and leaves a dim over a list that is already fully visible. */
-@media (prefers-reduced-motion: reduce) {
-  .overlay-fade-in,
-  .overlay-fade-out {
-    animation-duration: 0.18s;
-  }
 }
 
 /* The sparkle while a search is in flight. A search answers in about 150ms and a fast typist
@@ -673,15 +638,16 @@ body[data-scroll-locked] {
   pointer-events: none;
 }
 
-/* A full-bleed sheet rests square against the screen edge. Sheet.tsx writes --sheet-pull (0..1, how
-   far the drag has travelled), which rounds the top corners as the sheet detaches. From 640px it is
-   a centered card with one radius. */
+/* A full-bleed sheet rests square against the screen edge. sheetMotion.ts writes --sheet-pull (0..1,
+   how far the drag has travelled), which rounds the top corners as the sheet detaches. A card that
+   stands in from the edges carries data-sheet-gapped and rests at one radius on all four corners:
+   an inline radius would outrank this rule and freeze the drag. */
 .sheet-card {
   --sheet-corner: calc(var(--sheet-pull, 0) * 24px);
   border-radius: var(--sheet-corner) var(--sheet-corner) 0 0;
 }
 @media (min-width: 640px) {
-  .sheet-card {
+  .sheet-card[data-sheet-gapped] {
     border-radius: 1rem;
   }
 }

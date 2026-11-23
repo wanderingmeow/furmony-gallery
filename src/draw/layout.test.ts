@@ -287,8 +287,7 @@ describe("placeholder row math", () => {
 });
 
 describe("the detail's shape and box", () => {
-  // A screen splits when it is wide enough for two columns and wider than it is tall: a portrait
-  // screen already has the height one column needs, and a split column would tower over any art.
+  // The rule written on `Shape`, screen by screen.
   const screens: [string, number, number, Shape][] = [
     ["a phone held upright", 393, 852, "sheet"],
     ["an iPhone SE sideways", 667, 375, "panel"],
@@ -303,6 +302,8 @@ describe("the detail's shape and box", () => {
     ["one pixel taller than wide", 900, 901, "sheet"],
     ["the narrowest screen that splits", 640, 400, "panel"],
     ["one pixel narrower", 639, 400, "sheet"],
+    ["a phone asking for the desktop layout", 1280, 2600, "sheet"],
+    ["taller than any tablet, and still one column", 1024, 1400, "sheet"],
   ];
 
   it.each(screens)("%s", (_name, w, h, shape) => {
@@ -335,11 +336,11 @@ describe("the detail's shape and box", () => {
     expect(
       detailPictureHeight(sheetCardBox(744, 1133), "sheet"),
       "an iPad mini upright",
-    ).toBeCloseTo(542.5);
+    ).toBeCloseTo(518.5);
     expect(
       detailPictureHeight(sheetCardBox(1024, 1366), "sheet"),
       "an iPad Pro upright",
-    ).toBeCloseTo(659);
+    ).toBeCloseTo(635);
     // A panel is two columns: the art's column is what it is, and the table stands beside it.
     expect(
       detailPictureHeight(sheetCardBox(1366, 1024), "panel"),
@@ -359,13 +360,13 @@ describe("the detail's shape and box", () => {
       w: 393,
       h: 852,
     });
-    expect(sheetCardBox(744, 1133), "a sheet stands 24 in from sm up").toEqual({
-      w: 696,
-      h: 1085,
-    });
+    expect(
+      sheetCardBox(744, 1133),
+      "a wide sheet pays the same gap a panel pays",
+    ).toEqual({ w: 648, h: 1037 });
     expect(sheetCardBox(1024, 1366), "and stops at 760 wide").toEqual({
       w: 760,
-      h: 1318,
+      h: 1270,
     });
     expect(sheetCardBox(852, 393), "a screen this short keeps no gap").toEqual({
       w: 852,
