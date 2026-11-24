@@ -20,6 +20,7 @@
     "@dschz/solid-uplot": "^0.5.2",
     "@panzoom/panzoom": "^4.6.2",
     "@solid-primitives/i18n": "^2.2.1",
+    "@solid-primitives/state-machine": "0.1.1",
     "@solidjs/router": "^1.0.0",
     "@su-engineering/heic": "^0.3.0",
     "solid-js": "^1.9.17",

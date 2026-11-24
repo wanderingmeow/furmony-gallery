@@ -1,5 +1,7 @@
+import { createMachine } from "@solid-primitives/state-machine";
 import {
   createEffect,
+  createMemo,
   createSignal,
   For,
   Match,
@@ -9,6 +11,7 @@ import {
   Show,
   Switch,
   untrack,
+  type Accessor,
 } from "solid-js";
 import { tr } from "../../i18n";
 import { RemoteImg } from "../ui/RemoteImg";
@@ -21,6 +24,23 @@ import {
   SK_FILL,
 } from "../ui/boxes";
 import { SkelImg } from "../ui/SkelImg";
+
+/** A picture and the height it stands at. A height of 0 leaves it to the layout. */
+type Pic = { src: string; h: number };
+
+type GalleryFlow = {
+  /** The first picture has not settled. The skeleton holds the art box. */
+  skeleton: { value: null; to: "still" };
+  /** One picture is on screen with nothing in flight. */
+  still: { input: Pic; value: Pic; to: "loading" };
+  /** A newer picture is being fetched behind the one on screen. */
+  loading: { value: { src: Accessor<string> }; to: "fading" | "still" };
+  /** The newer picture is drawn over the one on screen and waits out its fade. */
+  fading: { input: Pic; value: Pic; to: "still" | "loading" };
+};
+
+// A frame past the overlay's own 200ms fade.
+const FADE_MS = 220;
 
 export function Gallery(props: {
   images: string[];
@@ -39,23 +59,8 @@ export function Gallery(props: {
   const count = () => props.images.length;
   const current = () => props.images[Math.min(props.index(), count() - 1)];
 
-  // A picture already in memory has a known height at the first layout, so the skeleton, the
-  // grow, and the fade have no wait to cover. These two reads are for the first picture only, so
-  // `untrack` keeps them from subscribing: the layers below follow the index.
-  const readyNow = untrack(() => !!current() && imageReady(current()));
-
-  // Two layers, so a switch never shows a blank frame: the old picture stays where it is, the
-  // next one loads behind it, then fades in and takes its place.
-  const [displayed, setDisplayed] = createSignal(untrack(current));
-  const [incoming, setIncoming] = createSignal<string | null>(null);
-  const [ready, setReady] = createSignal(false);
-  // the displayed picture fades in when it loads
-  const [mainLoaded, setMainLoaded] = createSignal(readyNow);
-
-  // The ceiling a caller may raise or lower with maxH.
   const DEFAULT_MAX_H = 400;
   const cap = () => props.maxH ?? DEFAULT_MAX_H;
-  // The height the picture animates to. 0 leaves it to the layout.
   const [hPx, setHPx] = createSignal(0);
   let wrapperEl!: HTMLDivElement;
   let picEl!: HTMLImageElement;
@@ -68,87 +73,101 @@ export function Gallery(props: {
       !!props.holdHeight,
     );
 
-  let cancelPending: (() => void) | null = null;
-  let targetH = 0;
+  // A picture already in memory needs no skeleton and no fade. The read is for the first picture
+  // only, so `untrack` keeps it from subscribing: the layers below follow the index.
+  const readyNow = untrack(() => !!current() && imageReady(current()));
 
-  // A transition has no start value while the height is auto, so one frame later that height
-  // becomes a number of pixels.
-  if (readyNow) {
-    onMount(() => {
-      // A held picture already stands at the screen's height.
-      if (props.holdHeight) return;
-      requestAnimationFrame(() => {
-        const h = picEl ? picEl.getBoundingClientRect().height : 0;
-        if (h > 0) setHPx(h);
-      });
-    });
-  }
+  // The picture on screen. Only the flow below moves it, so a switch never shows a blank frame.
+  const [shown, setShown] = createSignal(untrack(current));
+  // The element's own load, not the fetch behind it, is what lets a picture show.
+  const [drawn, setDrawn] = createSignal(readyNow);
 
-  // The skeleton stays until the first picture arrives. Later switches do not use it: the crossfade
-  // covers them, and a skeleton over a cached picture hides that picture.
-  const [loading, setLoading] = createSignal(count() > 0 && !readyNow);
-  let firstDone = readyNow;
-  let settled = readyNow;
+  const flow = createMachine<GalleryFlow>({
+    initial:
+      readyNow || count() === 0
+        ? { type: "still", input: { src: untrack(current), h: 0 } }
+        : "skeleton",
+    states: {
+      // A broken picture settles too: it fades in and shows what a broken picture shows.
+      skeleton(_, to) {
+        createEffect(
+          on(current, (src) => {
+            if (!src) return;
+            const job = preloadImage(src);
+            onCleanup(job.cancel);
+            void job.ready.then(() => to.still({ src, h: 0 }));
+          }),
+        );
+        return null;
+      },
+      still(input) {
+        setShown(input.src);
+        if (input.h > 0) setHPx(input.h);
+        return input;
+      },
+      // A cancelled job never settles, so leaving this state stops the download.
+      loading(_, to) {
+        const [wanted, setWanted] = createSignal("");
+        let job: ReturnType<typeof preloadImage> | undefined;
+        const take = (src: string) => {
+          job?.cancel();
+          setWanted(src);
+          job = preloadImage(src);
+          void job.ready.then((pic) => {
+            // A newer swipe took the fetch over; its own answer is still owed.
+            if (wanted() !== src) return;
+            // The picture on screen is the one wanted after all: nothing to fade in.
+            if (src === shown()) {
+              to.still({ src, h: hPx() });
+              return;
+            }
+            to.fading({ src, h: fit(pic) });
+          });
+        };
+        const first = untrack(current);
+        if (first) take(first);
+        createEffect(
+          on(current, (src) => {
+            if (!src || src === wanted()) return;
+            take(src);
+          }),
+        );
+        onCleanup(() => job?.cancel());
+        return { src: wanted };
+      },
+      // The take-over writes the picture and its height through `still`.
+      fading(input, to) {
+        const fade = setTimeout(() => to.still(input), FADE_MS);
+        onCleanup(() => clearTimeout(fade));
+        // A swipe back to the picture underneath before the fade ends leaves it on screen.
+        createEffect(
+          on(current, (src) => {
+            if (src === shown()) to.still({ src, h: hPx() });
+          }),
+        );
+        return input;
+      },
+    },
+  });
+
+  // A swipe sends the gallery out. `loading` follows the index itself, and `skeleton` preloads on
+  // its own, so neither is sent out again here.
   createEffect(
     on(current, (src) => {
-      if (firstDone) return;
-      if (!src) {
-        firstDone = true;
-        setLoading(false);
-        return;
-      }
-      const job = preloadImage(src);
-      onCleanup(job.cancel);
-      void job.ready.then(() => {
-        firstDone = true;
-        setLoading(false);
-      });
+      if (!src || src === shown()) return;
+      const state = flow();
+      if (state.type === "skeleton" || state.type === "loading") return;
+      state.to.loading();
     }),
   );
 
-  createEffect(
-    on([current, displayed, incoming], () => {
-      const target = current();
-      if (target === displayed() || target === incoming()) return;
-      cancelPending?.();
-      setIncoming(target);
-      setReady(false);
-      const job = preloadImage(target);
-      cancelPending = job.cancel;
-      void job.ready.then((pic) => {
-        // A newer switch may have taken over while this download was running.
-        if (cancelPending !== job.cancel || current() !== target) return;
-        targetH = fit(pic);
-        setReady(true);
-        cancelPending = null;
-      });
-    }),
-  );
-
-  // After the incoming picture has faded in it becomes the displayed one, and the overlay goes
-  // away. The new picture is drawn at the old height first, then hPx animates to the height it
-  // needs, so the switch grows or shrinks.
-  createEffect(
-    on(ready, (isReady) => {
-      if (!isReady) return;
-      const t = setTimeout(() => {
-        const inc = incoming();
-        if (inc) {
-          setDisplayed(inc);
-          setIncoming(null);
-          setReady(false);
-          settled = true;
-          if (targetH > 0) setHPx(targetH);
-        }
-      }, 220);
-      onCleanup(() => clearTimeout(t));
-    }),
-  );
-
-  // Stop a download that is still running when the gallery goes away: it would take bandwidth
-  // away from whatever the user opens next.
-  onCleanup(() => {
-    cancelPending?.();
+  // One element across both states, so the fade has a 0 to start from.
+  const overlay = createMemo(() => {
+    const state = flow();
+    if (state.type === "loading")
+      return { src: state.value.src(), ready: false };
+    if (state.type === "fading") return { src: state.value.src, ready: true };
+    return null;
   });
 
   // The height the skeleton held comes first, then hPx, and 0 leaves the decision to the layout. A
@@ -169,7 +188,8 @@ export function Gallery(props: {
   // refit lands in the same frame, because the card measures against it right after.
   const [eased, setEased] = createSignal(true);
   const refit = () => {
-    if (!settled || !picEl) return;
+    // A picture that has never been drawn has no pixels to redo.
+    if (!untrack(() => flow().type !== "skeleton") || !picEl) return;
     const h = fit(picEl);
     // The same height is not a change: skipping it leaves the easing and the card around it alone.
     if (h <= 0 || h === hPx()) return;
@@ -204,7 +224,7 @@ export function Gallery(props: {
 
   return (
     <Switch fallback={<div class={`bg-surface-2 ${ART_PLACEHOLDER}`} />}>
-      <Match when={loading()}>
+      <Match when={flow().type === "skeleton"}>
         <GallerySkeleton
           thumbs={props.images.length}
           maxH={cap()}
@@ -214,15 +234,15 @@ export function Gallery(props: {
       <Match when={count() > 0}>
         <div>
           <div class="relative" ref={watchWidth}>
-            <Show when={displayed()}>
+            <Show when={shown()}>
               <RemoteImg
-                src={displayed()}
+                src={shown()}
                 ref={(el) => (picEl = el)}
                 class="w-full object-contain rounded-xl bg-surface"
                 style={{
                   ...picBox(),
                   transition: picMove(),
-                  opacity: mainLoaded() ? 1 : 0,
+                  opacity: drawn() ? 1 : 0,
                 }}
                 onTransitionEnd={(e) => {
                   // The card stands to this height, so a switch that changed it has to be reported.
@@ -230,32 +250,32 @@ export function Gallery(props: {
                 }}
                 onClick={() => props.onOpenFull()}
                 onLoad={(e) => {
-                  setMainLoaded(true);
-                  if (settled) return;
-                  settled = true;
+                  setDrawn(true);
                   setHPx(fit(e.currentTarget));
                 }}
                 onError={(e) => {
-                  setMainLoaded(true);
+                  setDrawn(true);
                   onImageError(e);
                 }} // a broken picture still fades in
               />
             </Show>
-            <Show when={incoming()}>
-              <RemoteImg
-                src={incoming()!}
-                class="absolute inset-0 w-full h-full object-contain rounded-xl bg-surface transition-opacity"
-                style={{
-                  opacity: ready() ? 1 : 0,
-                  "transition-duration": "200ms",
-                }}
-                onClick={() => props.onOpenFull()}
-                onError={onImageError}
-              />
+            <Show when={overlay()}>
+              {(next) => (
+                <RemoteImg
+                  src={next().src}
+                  class="absolute inset-0 w-full h-full object-contain rounded-xl bg-surface transition-opacity"
+                  style={{
+                    opacity: next().ready ? 1 : 0,
+                    "transition-duration": "200ms",
+                  }}
+                  onClick={() => props.onOpenFull()}
+                  onError={onImageError}
+                />
+              )}
             </Show>
             {/* a switch shows the spinner while the picture decodes; a first picture shows the
                 skeleton */}
-            <Show when={incoming() && !ready()}>
+            <Show when={overlay() && !overlay()!.ready}>
               <div class="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-black/40 rounded-xl">
                 <div class="spinner w-6 h-6" />
               </div>

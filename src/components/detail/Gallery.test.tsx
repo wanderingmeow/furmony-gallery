@@ -254,3 +254,107 @@ describe("A container that changes width", () => {
     host.remove();
   });
 });
+
+describe("The flow between pictures", () => {
+  type Job = { ready: Promise<HTMLImageElement>; cancel: () => void };
+  type Held = Job & { settle: () => void };
+
+  const hold = (): Held => {
+    let settle!: (pic: HTMLImageElement) => void;
+    const ready = new Promise<HTMLImageElement>((done) => (settle = done));
+    return { ready, cancel: vi.fn(), settle: () => settle(picture()) };
+  };
+
+  /** Every src the gallery asks the browser for, and the answer it is still owed. */
+  const queue = (): Map<string, Held> => {
+    const jobs = new Map<string, Held>();
+    preloadImage.mockImplementation((src: string) => {
+      const job = hold();
+      jobs.set(src, job);
+      return job;
+    });
+    return jobs;
+  };
+
+  // The index is per gallery: a swipe in one test must not start the next one part way through.
+  const open = (start = 0) => {
+    const [index, setIndex] = createSignal(start);
+    return {
+      ...mount({ maxH: 604, holdHeight: true, index, setIndex }),
+      turn: setIndex,
+    };
+  };
+  // The two layers are the only pictures drawn inside each other; thumbnails crop instead.
+  const layers = (host: HTMLElement) => [
+    ...host.querySelectorAll<HTMLImageElement>("img.object-contain"),
+  ];
+  const top = (host: HTMLElement) => layers(host)[1];
+
+  it("keeps the picture on screen while the next one is fetched", () => {
+    imageReady.mockReturnValue(true);
+    const jobs = queue();
+    const { host, done, turn } = open();
+    turn(1);
+    expect(mainPic(host)!.src).toBe(URLS[0]);
+    expect(top(host).src).toBe(URLS[1]);
+    expect(top(host).style.opacity).toBe("0");
+    expect(host.querySelector(".spinner")).not.toBeNull();
+    expect(jobs.get(URLS[1])).toBeDefined();
+    done();
+  });
+
+  it("fades the next picture in, then puts it on screen", async () => {
+    imageReady.mockReturnValue(true);
+    const jobs = queue();
+    const { host, done, turn } = open();
+    turn(1);
+    jobs.get(URLS[1])!.settle();
+    await vi.waitFor(() => expect(top(host).style.opacity).toBe("1"));
+    await vi.waitFor(() => expect(layers(host).length).toBe(1));
+    expect(mainPic(host)!.src).toBe(URLS[1]);
+    done();
+  });
+
+  it("gives up on the older picture when a newer swipe lands", () => {
+    imageReady.mockReturnValue(true);
+    const jobs = queue();
+    const { done, turn } = open();
+    turn(1);
+    turn(0);
+    expect(jobs.get(URLS[1])!.cancel).toHaveBeenCalled();
+    done();
+  });
+
+  it("cuts the fade short on a swipe back to the picture underneath", async () => {
+    imageReady.mockReturnValue(true);
+    const jobs = queue();
+    const { host, done, turn } = open();
+    turn(1);
+    jobs.get(URLS[1])!.settle();
+    await vi.waitFor(() => expect(top(host).style.opacity).toBe("1"));
+    turn(0);
+    await vi.waitFor(() => expect(layers(host).length).toBe(1));
+    expect(mainPic(host)!.src).toBe(URLS[0]);
+    done();
+  });
+
+  it("stops a download still running when the gallery goes away", () => {
+    imageReady.mockReturnValue(true);
+    const jobs = queue();
+    const { done, turn } = open();
+    turn(1);
+    done();
+    expect(jobs.get(URLS[1])!.cancel).toHaveBeenCalled();
+  });
+
+  it("holds the skeleton until the first picture settles", async () => {
+    imageReady.mockReturnValue(false);
+    const jobs = queue();
+    const { host, done } = open();
+    expect(skeletonBlock(host)).not.toBeNull();
+    jobs.get(URLS[0])!.settle();
+    await vi.waitFor(() => expect(skeletonBlock(host)).toBeNull());
+    expect(mainPic(host)!.src).toBe(URLS[0]);
+    done();
+  });
+});

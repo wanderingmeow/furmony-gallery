@@ -1,6 +1,6 @@
 // src/components/fab/panelParts.tsx - the shared parts every block in a corner panel is built
 // from, so one block's spacing cannot drift from its neighbour's.
-import type { JSXElement } from "solid-js";
+import { Show, type JSXElement } from "solid-js";
 import { tr } from "../../i18n";
 
 /** A header row: 6px of padding, a 12px glyph, an 8px gap, then its name. */
@@ -27,21 +27,22 @@ export const PANEL_BLOCK = `mt-1.5 pt-1.5 border-t border-border
   first:mt-0 first:pt-0 first:border-0`;
 
 /** 重置, in red because this is the row that takes things away; the panel it stands in says what it
- *  gives back. The row stays and goes gray when there is nothing to take back. */
+ *  gives back. With nothing to take back the row is not shown at all, and the line above it goes
+ *  with it: that line divides this block from the block before, so it has nothing left to divide. */
 export function ResetRow(props: {
   changed: () => boolean;
   onReset: () => void;
 }) {
   return (
-    <div class={PANEL_BLOCK}>
-      <button
-        class="w-full min-h-7 px-1.5 text-right text-xs font-semibold
-               text-red-500 dark:text-red-400 disabled:text-faint"
-        disabled={!props.changed()}
-        onClick={() => props.onReset()}
-      >
-        {tr("filter.reset")}
-      </button>
-    </div>
+    <Show when={props.changed()}>
+      <div class={PANEL_BLOCK}>
+        <button
+          class="w-full min-h-7 px-1.5 text-right text-xs font-semibold text-red-500 dark:text-red-400"
+          onClick={() => props.onReset()}
+        >
+          {tr("filter.reset")}
+        </button>
+      </div>
+    </Show>
   );
 }

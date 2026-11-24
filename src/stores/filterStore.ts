@@ -4,15 +4,9 @@
 // The filter signals live in memory, and the setters write them to localStorage on the spot,
 // so a refresh keeps the filters the reader left.
 import { batch, createSignal } from "solid-js";
-import {
-  FILTER_TABS,
-  SORT_MODES,
-  type FilterTab,
-  type SortMode,
-} from "../model/filter";
+import { type FilterTab, type SortMode } from "../model/filter";
 import { sameRange, type PriceRange } from "../model/priceRange";
-import { hasUncommittedText } from "../model/composing";
-import { isKnownColor, isKnownRaceName } from "../i18n/glossary";
+import { readSavedFilters } from "../model/savedFilters";
 
 const FILTER_KEY = "furmony_filter";
 
@@ -155,44 +149,17 @@ export function loadFilters(): void {
   try {
     const raw = localStorage.getItem(FILTER_KEY);
     if (!raw) return;
-    const f = JSON.parse(raw) as {
-      tab?: string;
-      sort?: string;
-      colors?: string[];
-      races?: string[];
-      search?: string;
-      socialOnly?: boolean;
-      price?: number[];
-    };
-    // validate tab/sort against the known vocab before applying (stale/corrupt data ignored)
-    if (f.tab && FILTER_TABS.includes(f.tab as FilterTab))
-      setTabSignal(f.tab as FilterTab);
-    if (f.sort && SORT_MODES.includes(f.sort as SortMode))
-      setSortModeSignal(f.sort as SortMode);
-    // A pick is stored as the name the shelf wrote, so a filter holds across a change of
-    // language. A name the shelf no longer sends is dropped with the rest of the stale data: it
-    // would filter the list down with no chip showing to clear.
-    if (Array.isArray(f.colors))
-      setSelectedColorsSignal(new Set(f.colors.filter(isKnownColor)));
-    if (Array.isArray(f.races))
-      setSelectedRacesSignal(new Set(f.races.filter(isKnownRaceName)));
-    // A query stored before the input gate existed can still hold syllables nobody
-    // committed. That is not a question, so `loadFilters` ignores it.
-    if (typeof f.search === "string" && !hasUncommittedText(f.search))
-      setSearchTextSignal(f.search);
-    setSocialOnlySignal(f.socialOnly === true);
-    // Two finite numbers in order, or nothing: a stored range that lost a number would hide
-    // every row.
-    const p = f.price;
-    if (
-      Array.isArray(p) &&
-      p.length === 2 &&
-      p.every((n) => Number.isFinite(n)) &&
-      p[0] <= p[1]
-    ) {
-      setPriceRangeSignal([p[0], p[1]]);
-    }
+    const saved = readSavedFilters(raw);
+    batch(() => {
+      if (saved.tab) setTabSignal(saved.tab);
+      if (saved.sort) setSortModeSignal(saved.sort);
+      setSelectedColorsSignal(new Set(saved.colors));
+      setSelectedRacesSignal(new Set(saved.races));
+      if (saved.search !== undefined) setSearchTextSignal(saved.search);
+      setSocialOnlySignal(saved.socialOnly);
+      if (saved.price) setPriceRangeSignal(saved.price);
+    });
   } catch {
-    /* ignore */
+    // A save this build cannot read is no filter at all.
   }
 }

@@ -9,6 +9,7 @@ import {
 } from "solid-js";
 import { CloseOutlined } from "@ant-design/icons-svg";
 import type uPlot from "uplot";
+import { syncLeft } from "../draw/cursorSync";
 import { listings } from "../stores/listingsStore";
 import {
   StatBarChart,
@@ -154,8 +155,8 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
   //
   // Both charts read one month axis. The count chart has every month that a listing was created
   // in. The price chart skips a month whose listings are all unpriced, so building the axis from
-  // the count chart leaves holes in the price line. Month i then means the same month at the
-  // same pixel in both charts.
+  // the count chart leaves holes in the price line. Month i then means the same month in both
+  // charts.
   const monthly = createMemo(() => monthlyCounts(data()));
   const months = createMemo(() => monthly().map((s) => s.label));
   const monthlyPrice = createMemo(() => monthlyPriceStats(data()));
@@ -183,12 +184,16 @@ export function Stats(props: { mode: () => LockFilter; onClose: () => void }) {
     const src = charts[self];
     const other = charts[1 - self];
     if (!src || !other) return;
-    // The other chart gets the number the source cursor already holds. setCursor reads that same
-    // number, so both lines land on one pixel. A position says where the pointer sits between two
-    // months, so the line follows it there. A negative left hides the line, and the second
-    // argument stops the other chart from reporting the move back.
+    // The second argument stops the other chart from reporting the move back.
     other.setCursor(
-      { left: idx === null ? -1 : (src.cursor.left ?? -1), top: -1 },
+      {
+        left: syncLeft(
+          src,
+          other,
+          idx === null ? null : (src.cursor.left ?? null),
+        ),
+        top: -1,
+      },
       false,
     );
   };

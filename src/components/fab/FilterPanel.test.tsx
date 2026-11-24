@@ -119,6 +119,13 @@ const reset = () => {
   return button;
 };
 
+/** The lines between blocks. A token match, because `border-t` is also the start of
+ *  `border-transparent`. */
+const lines = () =>
+  Array.from(host.querySelectorAll<HTMLElement>("div")).filter((d) =>
+    d.className.split(/\s+/).includes("border-t"),
+  ).length;
+
 const foldRows = () =>
   Array.from(host.querySelectorAll<HTMLButtonElement>("button[aria-expanded]"));
 
@@ -145,6 +152,7 @@ afterEach(() => {
 
 describe("FilterPanel", () => {
   it("reads top to bottom: order, colors, species, owner account, reset", () => {
+    facts.changed = true; // 重置 only shows when there is something to give back
     draw();
     const text = host.textContent ?? "";
     const at = ["排序", "颜色", "物种", "只显示有主人账号的", "重置"].map((s) =>
@@ -251,16 +259,29 @@ describe("FilterPanel", () => {
     expect(calls).toEqual([]);
   });
 
-  it("ends the list with 重置, gray while the store has nothing to give back", () => {
+  it("ends the list with 重置 once the store has something to give back", () => {
+    facts.changed = true;
     draw();
-    expect(reset().disabled).toBe(true);
-    expect(reset().className).toContain("text-faint");
+    expect(reset().textContent?.trim()).toBe("重置");
+  });
+
+  it("shows no 重置 row while the store has nothing to give back", () => {
+    draw();
+    expect(host.textContent).not.toContain("重置");
+  });
+
+  it("takes the line above 重置 with the row", () => {
+    facts.changed = true;
+    draw();
+    const withReset = lines();
+    facts.changed = false;
+    draw();
+    expect(lines()).toBe(withReset - 1);
   });
 
   it("重置 hands only the rows of this panel back to the store", () => {
     facts.changed = true;
     draw();
-    expect(reset().disabled).toBe(false);
     reset().click();
     expect(calls).toEqual(["resetFilters"]);
   });
