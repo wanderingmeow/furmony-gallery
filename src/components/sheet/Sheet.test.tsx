@@ -191,7 +191,8 @@ describe("the panel on a landscape screen", () => {
     dismissed = vi.fn();
     mount(body, PANEL);
     expect(frame().style.padding).toBe("24px");
-    expect(look().getPropertyValue("max-width")).toBe("1080px");
+    // 1133 less two 24 gaps: the art column asks for more than SPREAD_MAX_W leaves it
+    expect(look().getPropertyValue("max-width")).toBe("1085px");
     expect(frame().style.transform).not.toContain("translateY");
     // An inset card is as tall as its content, so the window's height is only a ceiling.
     expect(look().height).toContain("--sheet-cap");

@@ -82,7 +82,7 @@ export function Dialog(props: {
               aria-labelledby={titleId}
               aria-describedby={bodyId}
               tabindex={-1}
-              class={`glass ${motion()} max-h-[calc(100dvh-2.5rem)] touch-pan-y
+              class={`glass ${motion()} max-h-[calc(100svh-2.5rem)] touch-pan-y
                 overscroll-contain overflow-y-auto w-full max-w-[19.5rem] rounded-[26px]
                 border border-border px-6 pt-6 pb-5 text-ink shadow-xl outline-none`}
             >

@@ -64,6 +64,7 @@ export function DetailBody(props: {
               setIndex={props.setIndex}
               onOpenFull={props.onOpenFull}
               maxH={picMaxH()}
+              holdHeight={panel()}
               onPicHeightChange={props.onContentChange}
             />
           </div>

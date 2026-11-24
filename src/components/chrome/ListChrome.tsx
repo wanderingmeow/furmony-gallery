@@ -1,16 +1,5 @@
-import {
-  createEffect,
-  createSignal,
-  onCleanup,
-  Show,
-  type JSX,
-} from "solid-js";
-import {
-  BarChartOutlined,
-  CloseOutlined,
-  PictureOutlined,
-  SearchOutlined,
-} from "@ant-design/icons-svg";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { BarChartOutlined, SearchOutlined } from "@ant-design/icons-svg";
 import { useNavigate } from "@solidjs/router";
 import { tr } from "../../i18n";
 import { searchText } from "../../stores/filterStore";
@@ -22,28 +11,22 @@ import {
 import { warmSearch } from "../../data/searchApi";
 import { AntIcon } from "../ui/AntIcon";
 import { SparkMark } from "../ui/spark";
-import { BACKSPACE } from "../ui/icons";
 import {
-  CHROME_ACTS,
-  CHROME_ACTS_HOLD,
   CHROME_BAND,
   CHROME_BAR_BOX,
   CHROME_CORNER,
   CHROME_FIELD,
   CHROME_HIT,
-  CHROME_PLATE_BOX,
-  CHROME_PLATE_REST,
-  CHROME_STATS,
-  CHROME_TEXT_IN,
-  CHROME_TEXT_OUT,
-  CHROME_TAB_BAR,
   CHROME_LINE,
   CHROME_PILL,
-  CHROME_PLATE,
   CHROME_ROW,
   CHROME_ROW_OUT,
   CHROME_ROW_PICTURE,
   CHROME_ROW_TEXT,
+  CHROME_STATS,
+  CHROME_TAB_BAR,
+  CHROME_TEXT_IN,
+  CHROME_TEXT_OUT,
   PLATE_OPEN_R,
   PLATE_REST_R,
 } from "../ui/boxes";
@@ -54,51 +37,15 @@ import { statsPath } from "../../router";
 import { statsTitle } from "../../model/titles";
 import { SearchBar, type SearchBarApi } from "./SearchBar";
 import { PictureMode } from "./PictureSearch";
-import {
-  CHROME_WIDE,
-  FIELD_DROP,
-  FIELD_LEAD,
-  FIELD_PICTURE,
-  FIELD_REST,
-  FIELD_TEXT,
-  FIELD_WIDE,
-  PLATE_AIR,
-} from "../../draw/layout";
 import { watchViewport } from "../ui/viewport";
 import { holdPage } from "../../draw/pageHold";
+import { FieldPlate } from "./FieldPlate";
+import { FIELD_VARS, fieldShape, fieldVars, plateAir } from "./fieldGeometry";
 
 /** The entry a box the user opened leaves on the stack. Every way back arrives as one popstate,
  *  and only the entry's own state says whether the pop answered something stacked above it. */
 type Stand = { searchStand?: boolean };
 const standing = () => !!(history.state as Stand | null)?.searchStand;
-
-/** A circle on the field's right edge: 40px, because these stand inside the box and the corner's
- *  pair stands outside it. */
-function Act(props: {
-  label: string;
-  pressed?: () => boolean;
-  onClick: () => void;
-  children: JSX.Element;
-}) {
-  return (
-    <button
-      class="relative cursor-pointer w-10 h-10 shrink-0 grid place-items-center rounded-full
-             transition-[background-color,color,transform] duration-150 active:scale-[0.92]
-             motion-reduce:transition-none"
-      classList={{
-        "text-ink active:bg-black/10 dark:active:bg-white/10":
-          !props.pressed?.(),
-        "bg-accent text-white active:bg-accent-ink": !!props.pressed?.(),
-      }}
-      aria-label={props.label}
-      title={props.label}
-      aria-pressed={props.pressed === undefined ? undefined : props.pressed()}
-      onClick={() => props.onClick()}
-    >
-      {props.children}
-    </button>
-  );
-}
 
 /** The field holds one search at a time: a picture replaces the text row and takes the tall box,
  *  and the pill leaves the bottom edge because the box is the way out of a picture.
@@ -115,45 +62,29 @@ export function ListChrome() {
   let input!: HTMLInputElement;
 
   // a restored query or a staged picture is something the user should see what is answering
-  const isOpen = () => held() || searchText().length > 0 || picture.on();
+  const shape = () =>
+    fieldShape(
+      held() || searchText().length > 0 || picture.on(),
+      picture.on(),
+      picture.state(),
+    );
+  const isOpen = () => shape() !== "shut";
   // the typing itself, which runs ahead of the query the wait commits
   const typed = () => bar()?.hasText() ?? false;
-  const height = () =>
-    !isOpen()
-      ? FIELD_REST
-      : // the empty drop zone is the tall one; a staged picture and an unreadable one share one row
-        picture.on()
-        ? picture.state() === "empty"
-          ? FIELD_DROP
-          : FIELD_PICTURE
-        : FIELD_TEXT;
 
-  // the corner and the placeholder band are separate fixed elements, so they read the field's
-  // numbers off the root: --field-h is the box, --field-text the line the circles stand centred on
+  // the corner and the placeholder band are separate fixed elements, so the field's numbers go on
+  // the document root for them to read
   createEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--field-h", `${height()}px`);
-    root.style.setProperty("--field-text", `${FIELD_TEXT}px`);
-    root.style.setProperty(
-      "--field-lead",
-      `${isOpen() ? FIELD_LEAD : FIELD_REST}px`,
-    );
+    for (const [name, value] of Object.entries(fieldVars(shape())))
+      root.style.setProperty(name, value);
   });
   onCleanup(() => {
     const root = document.documentElement;
-    for (const name of ["--field-h", "--field-text", "--field-lead"])
-      root.style.removeProperty(name);
+    for (const name of FIELD_VARS) root.style.removeProperty(name);
   });
 
-  // How far the plate stands back from the field's right edge: the corner's circle and 8px on a
-  // phone, a fixed measure on an edge wide enough for one. The rows inset from the same number.
   const { frameW } = watchViewport();
-  const plateAir = () =>
-    !isOpen()
-      ? "0px"
-      : frameW() >= CHROME_WIDE
-        ? `calc(100% - ${FIELD_WIDE}px)`
-        : PLATE_AIR;
 
   const open = () => {
     warmSearch();
@@ -207,6 +138,12 @@ export function ListChrome() {
     if (picture.on()) picture.close();
     else picture.open();
   };
+  // ⌫ gives the text up, not the box: the caret stays in the field
+  const clearText = () => {
+    bar()?.clear();
+    setHeld(true);
+    input.focus({ preventScroll: true });
+  };
   return (
     <>
       {/* Every part of the band is drawn with utility classes, so these names are what a check that
@@ -243,64 +180,19 @@ export function ListChrome() {
               // one circle: the picture is up, or the enhanced search is off
               "--chrome-acts": picture.on() || !semanticOn() ? "56px" : "100px",
               "--plate-r": isOpen() ? PLATE_OPEN_R : PLATE_REST_R,
-              "--plate-air": plateAir(),
+              "--plate-air": plateAir(shape(), frameW()),
             }}
           >
-            <div
-              data-chrome="plate"
-              class={`${CHROME_PLATE} ${isOpen() ? CHROME_PLATE_BOX : CHROME_PLATE_REST}`}
-              style={{
-                right: isOpen()
-                  ? "var(--plate-air)"
-                  : "calc(100% - var(--fab-size))",
-              }}
-              onClick={() => isOpen() && input.focus({ preventScroll: true })}
-            >
-              {/* The two circles stay where they stood while the box grew around them. The × is
-                  whichever of the two the box needs: a field with text gives the text up, an empty
-                  one gives the box up. A picture has its own way out, the lit circle, so the × stands
-                  down while one is staged and keeps its place in the row: a circle that left the row
-                  would drag the picture circle along with it. */}
-              <div class={CHROME_ACTS_HOLD}>
-                <div
-                  data-chrome="acts"
-                  class={CHROME_ACTS}
-                  classList={{ "invisible opacity-0": !isOpen() }}
-                >
-                  <div classList={{ invisible: picture.on() }}>
-                    <Act
-                      label={typed() ? tr("search.clear") : tr("search.close")}
-                      onClick={() => {
-                        if (!typed()) return close();
-                        // ⌫ gives the text up, not the box: the caret stays in the field
-                        bar()?.clear();
-                        setHeld(true);
-                        input.focus({ preventScroll: true });
-                      }}
-                    >
-                      {/* A field with a query is text to take back, so the mark is the delete key. An
-                          empty field has nothing to take, and the mark is the way out of the box. */}
-                      {typed() ? (
-                        <AntIcon icon={BACKSPACE} size={20} />
-                      ) : (
-                        <AntIcon icon={CloseOutlined} size={18} />
-                      )}
-                    </Act>
-                  </div>
-                  {/* A picture is the other half of the enhanced search, so it leaves with the
-                      switch that turns that search off. */}
-                  <Show when={semanticOn()}>
-                    <Act
-                      label={tr("picture.find")}
-                      pressed={picture.on}
-                      onClick={togglePicture}
-                    >
-                      <AntIcon icon={PictureOutlined} size={18} />
-                    </Act>
-                  </Show>
-                </div>
-              </div>
-            </div>
+            <FieldPlate
+              open={isOpen}
+              typed={typed}
+              pictureOn={picture.on}
+              semanticOn={semanticOn}
+              onFocusField={() => input.focus({ preventScroll: true })}
+              onClose={close}
+              onClearText={clearText}
+              onTogglePicture={togglePicture}
+            />
 
             <Show when={!picture.on()}>
               <button

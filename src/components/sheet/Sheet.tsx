@@ -1,6 +1,7 @@
-import { createMemo, Show, type JSX } from "solid-js";
+import { createEffect, createMemo, on, Show, type JSX } from "solid-js";
 import { BACKDROP, BACKDROP_IN, BACKDROP_OUT, holdScroll } from "../ui/overlay";
 import { CARD_BAND_PAD, SCROLL_BAND_PAD } from "../../draw/layout";
+import { remeasureInsets } from "../ui/viewport";
 import { SheetFooterSlot } from "../ui/boxes";
 import { COL_SCROLLER, SCROLLER } from "./sheetScroll";
 import { useSheetDrag } from "./useSheetDrag";
@@ -37,6 +38,8 @@ export function Sheet(props: {
   let sheetEl: HTMLDivElement | null = null;
 
   // The innermost scroller, because in a panel the finger is on the right column.
+  // The card pads the screen's bands into its own box, so it asks for them again as it rises.
+  createEffect(on(open, (up) => up && remeasureInsets()));
   // eslint-disable-next-line solid/reactivity -- holdScroll tracks it inside its own effect
   holdScroll(
     open,

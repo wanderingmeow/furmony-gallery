@@ -28,7 +28,14 @@ const job = (): { ready: Promise<HTMLImageElement>; cancel: () => void } => ({
   cancel: vi.fn(),
 });
 
-function mount(props: { maxH?: number } = {}): {
+function mount(
+  props: {
+    maxH?: number;
+    holdHeight?: boolean;
+    index?: () => number;
+    setIndex?: (i: number) => void;
+  } = {},
+): {
   host: HTMLElement;
   done: () => void;
 } {
@@ -98,6 +105,81 @@ describe("Gallery first picture", () => {
   });
 });
 
+describe("A panel that holds its height", () => {
+  const held = () => mount({ maxH: 604, holdHeight: true });
+
+  it("stands at the height the screen gives, whatever the picture's shape", () => {
+    imageReady.mockReturnValue(true);
+    const { host, done } = held();
+    const pic = mainPic(host)!;
+    // A 1000x500 source in a 300px column fits 150 tall; the screen says 604.
+    Object.defineProperty(pic.parentElement!, "clientWidth", {
+      value: 300,
+      configurable: true,
+    });
+    Object.defineProperty(pic, "naturalWidth", {
+      value: 1000,
+      configurable: true,
+    });
+    Object.defineProperty(pic, "naturalHeight", {
+      value: 500,
+      configurable: true,
+    });
+    expect(pic.style.height).toBe("604px");
+    done();
+  });
+
+  it("animates the fade and nothing else", () => {
+    imageReady.mockReturnValue(true);
+    const { host, done } = held();
+    const move = mainPic(host)!.style.transition;
+    expect(move).toContain("opacity");
+    expect(move).not.toContain("height");
+    done();
+  });
+
+  it("keeps that height while the next picture arrives", async () => {
+    imageReady.mockReturnValue(true);
+    const [index, setIndex] = createSignal(0);
+    const { host, done } = mount({
+      maxH: 604,
+      holdHeight: true,
+      index,
+      setIndex,
+    });
+    const pic = mainPic(host)!;
+    expect(pic.style.height).toBe("604px");
+    setIndex(1);
+    await vi.waitFor(() => expect(pic.src).toBe(URLS[1]));
+    expect(pic.style.height).toBe("604px");
+    done();
+  });
+
+  it("reports nothing to the card around it at mount", () => {
+    imageReady.mockReturnValue(true);
+    const changes = vi.fn();
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const dispose = render(
+      () => (
+        <Gallery
+          images={URLS}
+          index={() => 0}
+          setIndex={() => {}}
+          onOpenFull={() => {}}
+          maxH={604}
+          holdHeight
+          onPicHeightChange={changes}
+        />
+      ),
+      host,
+    );
+    expect(changes).not.toHaveBeenCalled();
+    dispose();
+    host.remove();
+  });
+});
+
 describe("A container that changes width", () => {
   // The height the picture holds is pixels one width produced, so a new width must redo it.
   const watchers: (() => void)[] = [];
@@ -134,7 +216,7 @@ describe("A container that changes width", () => {
     const pic = mainPic(host)!;
     widen(pic.parentElement!, 300);
     withSource(pic, 1000, 500);
-    pic.style.height = "242px"; // the height a sideways screen left behind
+    pic.style.height = "242px"; // the height that a sideways screen left behind
     watchers.at(-1)!();
     // The width observer is answered one frame later on purpose.
     await vi.waitFor(() => expect(pic.style.height).toBe("150px"));

@@ -8,6 +8,8 @@ import {
   VIEW_PAD,
   detailPictureHeight,
   indexOfRow,
+  panelArtWidth,
+  panelInfoWidth,
   relatedCardWidth,
   relatedCardsHeight,
   relatedPerView,
@@ -15,8 +17,11 @@ import {
   renderWindow,
   rowOfIndex,
   type Shape,
+  CARD_BAND_PAD,
+  cardBands,
   shapeAt,
   sheetCardBox,
+  sheetCardOuterW,
   skeletonRows,
   waterfallCardWidth,
   waterfallCols,
@@ -371,10 +376,106 @@ describe("the detail's shape and box", () => {
       w: 852,
       h: 393,
     });
-    expect(sheetCardBox(1133, 744)).toEqual({ w: 1080, h: 696 });
+    expect(sheetCardBox(1133, 744)).toEqual({ w: 1085, h: 696 });
     expect(sheetCardBox(1366, 1024), "a tall panel keeps a wider gap").toEqual({
-      w: 1080,
+      w: 1270,
       h: 928,
     });
+  });
+});
+
+describe("a panel widens its art column", () => {
+  it("grows the card until the art column reaches 3 wide to 2 high", () => {
+    const box = sheetCardBox(1680, 1050);
+    expect(box).toEqual({ w: 1584, h: 954 });
+    expect(detailPictureHeight(box, "panel")).toBe(806);
+    expect(panelArtWidth(box.w)).toBe(1108);
+  });
+
+  it("stops growing there rather than eating the whole window", () => {
+    // the window leaves 1824 for the card; the art reaches 3:2 at 1691 of it
+    const box = sheetCardBox(1920, 1080);
+    expect(box.w).toBe(1691);
+    expect(panelArtWidth(box.w)).toBe(1215);
+  });
+
+  it("never grows past the window", () => {
+    expect(sheetCardBox(1000, 1000).w).toBe(904);
+    expect(sheetCardBox(1133, 744).w).toBe(1085);
+  });
+
+  it("keeps the box inside 3 wide to 2 high while it grows", () => {
+    for (const [w, h] of [
+      [1280, 800],
+      [1680, 1050],
+      [1920, 1080],
+      [1000, 1000],
+    ] as const) {
+      const box = sheetCardBox(w, h);
+      const ratio = panelArtWidth(box.w) / detailPictureHeight(box, "panel");
+      expect(ratio, `${w}x${h}`).toBeLessThanOrEqual(1.52);
+    }
+  });
+
+  it("holds the table column between 260 and 420 however wide the card gets", () => {
+    expect(panelInfoWidth(500)).toBe(260);
+    expect(panelInfoWidth(828)).toBe(398);
+    expect(panelInfoWidth(1080)).toBe(420);
+    expect(panelInfoWidth(1584)).toBe(420);
+  });
+
+  it("leaves a sheet's 760 alone", () => {
+    expect(sheetCardBox(1024, 1366).w).toBe(760);
+    expect(sheetCardBox(700, 1133).w).toBe(604);
+  });
+});
+
+describe("a card on a screen that takes its sides", () => {
+  // an iPhone in landscape: the notch is 47 wide at each side and the card keeps no gap
+  const NOTCH = { top: 0, right: 47, bottom: 0, left: 47 };
+
+  it("fills the screen and takes the bands inside, instead of shrinking away from them", () => {
+    expect(sheetCardOuterW(844, 390, NOTCH)).toBe(844);
+    expect(sheetCardBox(844, 390, NOTCH)).toEqual({ w: 750, h: 390 });
+  });
+
+  it("leaves the bands out of the card once the gap stands further in than they reach", () => {
+    expect(cardBands(0, NOTCH)).toEqual(NOTCH);
+    expect(cardBands(20, NOTCH)).toEqual({
+      top: 0,
+      right: 27,
+      bottom: 0,
+      left: 27,
+    });
+    expect(cardBands(48, NOTCH)).toEqual({
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+    });
+  });
+
+  it("narrows the columns the notch covers, not the card around them", () => {
+    // the grid reads the room the card leaves, so 47 at each side costs the art column its share
+    expect(panelArtWidth(sheetCardBox(844, 390, NOTCH).w)).toBe(335);
+    expect(panelArtWidth(sheetCardBox(844, 390).w)).toBe(382);
+  });
+
+  it("measures the same card where the screen gives its sides back", () => {
+    expect(sheetCardOuterW(844, 390)).toBe(844);
+    expect(sheetCardBox(844, 390).w).toBe(844);
+  });
+});
+
+describe("the padding the card paints for the screen's sides", () => {
+  it("comes from the bands the screen reports, not from a number a script read", () => {
+    // iOS answers a turn slowly: a card padding what the script last heard can stand under the island
+    expect(CARD_BAND_PAD).toContain("var(--safe-left)");
+    expect(CARD_BAND_PAD).toContain("var(--safe-right)");
+  });
+
+  it("takes off the gap the card already stands in by", () => {
+    expect(CARD_BAND_PAD).toContain("var(--sheet-gap");
+    expect(CARD_BAND_PAD).toContain("max(0px,");
   });
 });

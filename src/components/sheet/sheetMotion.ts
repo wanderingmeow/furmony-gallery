@@ -1,6 +1,6 @@
 import type { JSX } from "solid-js";
 import { EASE, prefersReducedMotion } from "../../draw/anim";
-import { cardGap, shapeAt, SPREAD_MAX_W } from "../../draw/layout";
+import { cardGap, shapeAt, sheetCardOuterW } from "../../draw/layout";
 import { watchViewport } from "../ui/viewport";
 
 export const SLIDE_MS = 300;
@@ -21,6 +21,8 @@ export interface SheetPose {
   fades: boolean;
   /** The gap between the card and the edges of the screen, in px. */
   inset: number;
+  /** The card's own outer width, which is what `max-width` on the card must be. */
+  maxW: number;
 }
 
 /** How the sheet presents: `shapeAt` picks the panel, the finger picks the transform. */
@@ -29,9 +31,10 @@ export function useSheetPose(drag: {
   dragging: () => boolean;
   gestured: () => boolean;
 }) {
-  const { viewportW, viewportH } = watchViewport();
+  const { viewportW, viewportH, safe } = watchViewport();
   const panel = () => shapeAt(viewportW(), viewportH()) === "panel";
   const inset = () => cardGap(viewportW(), viewportH());
+  const maxW = () => sheetCardOuterW(viewportW(), viewportH(), safe());
   // A drag pulls the card by hand and the fade branch has no transform to pull, so a sheet the
   // finger has touched stays on the transform for the whole round trip.
   const fades = () => (panel() || prefersReducedMotion()) && !drag.gestured();
@@ -43,6 +46,7 @@ export function useSheetPose(drag: {
       panel: panel(),
       fades: fades(),
       inset: inset(),
+      maxW: maxW(),
     }),
     moveMs: () => (fades() ? FADE_MS : SLIDE_MS),
   };
@@ -78,8 +82,9 @@ export function cardStyle(
 ): JSX.CSSProperties {
   return {
     "--sheet-pull": `${cornerPull(pose)}`,
+    "--sheet-gap": `${pose.inset}px`,
     transition: pose.dragging ? "none" : `border-radius ${SLIDE_MS}ms ${EASE}`,
-    ...(pose.panel ? { "max-width": `${SPREAD_MAX_W}px` } : null),
+    ...(pose.panel ? { "max-width": `${pose.maxW}px` } : null),
     // A card that stands in from the edges is as tall as the content fitSheetCard measured, with the
     // room the window leaves as its ceiling. A phone's sheet fills the screen it slides up on.
     ...(pose.inset > 0 ? { height: "var(--sheet-cap, 100%)" } : null),

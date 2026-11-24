@@ -197,6 +197,7 @@ describe("Dialog", () => {
   test("a notice whose words do not fit the screen can still be read to the end", () => {
     mount();
     expect(plate()!.className).toContain("overflow-y-auto");
-    expect(plate()!.className).toContain("max-h-[calc(100dvh-2.5rem)]");
+    // svh, not dvh: a plate that grows when Safari folds its bar away moves under the reader
+    expect(plate()!.className).toContain("max-h-[calc(100svh-2.5rem)]");
   });
 });

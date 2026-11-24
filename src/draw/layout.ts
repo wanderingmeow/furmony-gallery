@@ -129,19 +129,47 @@ const SM = 640;
 // desktop layout, and `cardGap` takes its last step there.
 export const TALL_WINDOW_H = 1400;
 
-// The panel's two columns, as one literal: Tailwind reads these numbers off the source, and a string
-// assembled at runtime never reaches the stylesheet, leaving the table an implicit column as wide as
-// it likes. The table gets half the room, capped at 420 so its lines stay readable, and never less
-// than 260 - 24 of card padding, a 60px label column, a 12 gap, 164 of values.
-//
-// No row track is named: the row is the gallery column's height, because the table column is laid
-// out of that flow (see DetailBody) and so adds nothing to it.
+// The panel's two columns, as one literal: Tailwind reads these numbers off the source, so a string
+// assembled at runtime never reaches the stylesheet and the table would take an implicit column as
+// wide as it likes. The table gets half the room up to 420, never less than 260 - 24 of card padding,
+// a 60px label column, a 12 gap, 164 of values. No row track is named: the table column is laid out
+// of that flow (see DetailBody), so the row is the gallery column's height.
 export const PANEL_GRID =
   "grid grid-cols-[minmax(0,1fr)_minmax(260px,min(50%,420px))] gap-6";
 
-// The widest a panel gets. Past this the table's lines stretch past comfortable reading, and the
-// list behind needs air.
+// The widest a panel stands before its art column asks for more. The table column keeps its own cap,
+// so growth past this goes to the art alone and the reading line stays as short as it was.
 export const SPREAD_MAX_W = 1080;
+
+/** The gap `PANEL_GRID` puts between the two columns: gap-6. */
+const PANEL_GAP = 24;
+
+/** The table column's width, as `PANEL_GRID` resolves minmax(260px,min(50%,420px)). The body pads the
+ *  sides, so the grid is narrower than the room the card leaves by 2 of DETAIL_PAD_X. */
+export function panelInfoWidth(roomW: number): number {
+  const grid = roomW - 2 * DETAIL_PAD_X;
+  return Math.max(260, Math.min(grid / 2, 420));
+}
+
+/** The column the art gets in a card whose content room is this wide. */
+export function panelArtWidth(roomW: number): number {
+  return roomW - 2 * DETAIL_PAD_X - PANEL_GAP - panelInfoWidth(roomW);
+}
+
+/** The widest the art's box stands against its own height: 3 wide to 2 high, past which a picture
+ *  reads as a banner. */
+const PIC_PANEL_WIDE = 1.5;
+
+/** How much of each side band falls inside the card. A band reaches the card only where the card
+ *  reaches into it, so one the gap stands further in than the band keeps none of it. */
+export function cardBands(gap: number, safe: Insets): Insets {
+  return {
+    top: 0,
+    right: Math.max(0, safe.right - gap),
+    bottom: safe.bottom,
+    left: Math.max(0, safe.left - gap),
+  };
+}
 
 /** The detail's two shapes: a sheet is the one-column card that comes up from the bottom, a panel is
  *  the two-column view a window too short for one column gets instead. A tall window is not a panel:
@@ -167,9 +195,13 @@ export function sheetInset(viewportH: number): number {
 
 export type CardBox = { w: number; h: number };
 
-/** The bands at the sides of the screen, as the padding that keeps a card's content out of them. The
- *  card paints these itself; the bottom band belongs to the scroller below. */
-export const CARD_BAND_PAD = "pl-[var(--safe-left)] pr-[var(--safe-right)]";
+/** The side bands that fall inside the card, as padding; the bottom band belongs to the scroller
+ *  below. `--sheet-gap` is how far the card stands in from the window: the part of a band it never
+ *  reaches. iOS updates the bands after the resize that a turn fires, so they are read from `env()`
+ *  where they are painted rather than from a number a script measured once. */
+export const CARD_BAND_PAD =
+  "pl-[max(0px,calc(var(--safe-left)-var(--sheet-gap,0px)))] " +
+  "pr-[max(0px,calc(var(--safe-right)-var(--sheet-gap,0px)))]";
 
 /** The band at the bottom of the screen, as the padding of whatever scrolls: content runs on to the
  *  edge, and this is what lets the last row be scrolled clear of it. */
@@ -195,21 +227,40 @@ export function cardGap(viewportW: number, viewportH: number): number {
   return viewportW >= SM ? sheetInset(viewportH) : 0;
 }
 
-/** The room the card has left for its own content: the window less `cardGap`, less the bands it pads
- *  away, never wider than 760 in a sheet or SPREAD_MAX_W in a panel.
+/** The card's own outer width: the window less the gap it stands in, the side bands included - a card
+ *  that reaches an edge pads them inside, the way the scroller pads the bottom. `sheetCardBox` cuts
+ *  the content's room out of this. Growth is one pass: the picture's height is read from the card
+ *  before it widens, and widening cannot raise a height the window already binds. */
+export function sheetCardOuterW(
+  viewportW: number,
+  viewportH: number,
+  safe: Insets = NO_INSETS,
+): number {
+  const gap = cardGap(viewportW, viewportH);
+  const bands = cardBands(gap, safe);
+  const availW = viewportW - 2 * gap;
+  const roomH = viewportH - 2 * gap - safe.bottom;
+  if (shapeAt(viewportW, viewportH) !== "panel") return Math.min(availW, 760);
+  const base = Math.min(availW, SPREAD_MAX_W);
+  const room = base - bands.left - bands.right;
+  const want = Math.ceil(
+    detailPictureHeight({ w: room, h: roomH }, "panel") * PIC_PANEL_WIDE,
+  );
+  return Math.min(availW, base + Math.max(0, want - panelArtWidth(room)));
+}
+
+/** The room the card leaves its own content: the card's own box less the side bands that fall inside
+ *  it, less the bottom band. The detail measures its two columns against this.
  */
 export function sheetCardBox(
   viewportW: number,
   viewportH: number,
   safe: Insets = NO_INSETS,
 ): CardBox {
-  const panel = shapeAt(viewportW, viewportH) === "panel";
   const gap = cardGap(viewportW, viewportH);
+  const bands = cardBands(gap, safe);
   return {
-    w: Math.min(
-      viewportW - 2 * gap - safe.left - safe.right,
-      panel ? SPREAD_MAX_W : 760,
-    ),
+    w: sheetCardOuterW(viewportW, viewportH, safe) - bands.left - bands.right,
     h: viewportH - 2 * gap - safe.bottom,
   };
 }
@@ -259,10 +310,8 @@ const PIC_MIN_H = 120;
 
 /** Half the card: what the art is allowed to hold in a sheet. */
 const PIC_CAP = 0.5;
-// A panel's art stops at this share of its own card. The table column takes min(50%, 420), so the
-// art's column is about 60% of the card: 0.75 of the card is roughly 1.2 of that column, past which
-// a picture reads as a banner. A window taller than any tablet is where the height alone would do
-// this - the art otherwise takes every pixel the card has.
+// A panel's art stops at this share of its own card, which holds the box upright in a window too
+// narrow to grow the card. PIC_PANEL_WIDE is the same rule where the window has room to spare.
 const PIC_PANEL_MAX = 0.75;
 
 /** The height the art's box takes: a panel hands over its whole left column, a sheet fits the art to
@@ -338,7 +387,7 @@ export function relatedStripHeight(cardWidth: number): number {
   return relatedCardsHeight(cardWidth) + RELATED_BAR_H + RELATED_BAR_GAP;
 }
 
-// ---- 上下两条边 ----
+// ---- the two bands the screen takes ----
 
 /** The band's distance from the page edge. The corner's circles sit on the same 16px. */
 export const CHROME_EDGE = 16;

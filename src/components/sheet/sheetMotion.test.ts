@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { SPREAD_MAX_W } from "../../draw/layout";
 import {
   cardStyle,
   cornerPull,
@@ -15,6 +14,7 @@ const pose = (
   panel: false,
   fades: false,
   inset: 12,
+  maxW: 1080,
   closing: false,
   ...over,
 });
@@ -60,11 +60,18 @@ describe("the layer the card rides in", () => {
 });
 
 describe("the card's own box", () => {
-  it("caps the width only where the card is a panel", () => {
-    expect(cardStyle(pose({ panel: true }))["max-width"]).toBe(
-      `${SPREAD_MAX_W}px`,
+  it("caps the width from the pose, and only where the card is a panel", () => {
+    // the pose carries the width the detail measures its art against, so the two cannot disagree
+    expect(cardStyle(pose({ panel: true, maxW: 1584 }))["max-width"]).toBe(
+      "1584px",
     );
     expect(cardStyle(pose({ panel: false }))["max-width"]).toBeUndefined();
+  });
+
+  it("tells the card how far it stands in from the window", () => {
+    // the stylesheet works out from this how much of each side band still reaches into the card
+    expect(cardStyle(pose({ inset: 24 }))["--sheet-gap"]).toBe("24px");
+    expect(cardStyle(pose({ inset: 0 }))["--sheet-gap"]).toBe("0px");
   });
 
   it("leaves every radius to the stylesheet, which reads the drag", () => {

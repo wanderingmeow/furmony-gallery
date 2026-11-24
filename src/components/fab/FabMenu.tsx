@@ -1,8 +1,6 @@
 // The panel opens away from the edge the button stands on, takes the room that direction has, and
-// stops short of the far edge.
-//
-// The panel is portalled to <body>. The waterfall sits in a fixed layer, and a second .glass inside
-// that layer is clipped by it, so the blur would never paint.
+// stops short of the far edge. It is portalled to <body>: the waterfall sits in a fixed layer, and a
+// second .glass inside that layer is clipped by it, so the blur would never paint.
 import {
   createEffect,
   createSignal,
@@ -14,7 +12,10 @@ import {
 import { Portal } from "solid-js/web";
 import type { IconDefinition } from "@ant-design/icons-svg/lib/types";
 import { AntIcon } from "../ui/AntIcon";
+import { steadyViewportH } from "../ui/viewport";
 import { FAB_SIZE, FabCircle } from "./FabCircle";
+import { place, type PopupPlace } from "./popupPlace";
+import { scrollTakes, touchTakes } from "./popupScroll";
 
 // The count sits on the button's edge, on the 45° line to the top-right corner.
 const EDGE = (FAB_SIZE / 2) * Math.SQRT1_2;
@@ -27,40 +28,12 @@ const ON_EDGE: JSX.CSSProperties = {
   transform: `translate(calc(-50% + ${EDGE}px), calc(-50% - ${EDGE}px))`,
 };
 
-// the near edge rests POPUP_GAP from the button; POPUP_AIR stays free at the far edge
-const POPUP_GAP = 8;
-const POPUP_AIR = 8;
-
 /** The box is the chrome and the height the screen allows; the panel inside owns the padding and the
  *  scrolling, so the content reaches the glass edge.
  *  Portalled to the body, so its level is the page's own: 40 the chrome it hangs from, 45 the
  *  back-to-top circle, 46 a box the user is working inside, 60 a sheet, 70 a dialog. */
 const POPUP_BOX = `fixed z-[46] glass rounded-xl shadow-xl border border-black/10
                    clip-no-scroll flex flex-col`;
-
-// A row can sit a fraction of a pixel short of its own end, so the last pixel reads as the end.
-const AT_END = 1;
-
-/** Whether a wheel over `from` moves something inside `box` that way. The nearest box that can
- *  scroll answers for the pointer: the panel behind it does not get a turn. */
-function scrollTakes(
-  box: HTMLElement,
-  from: EventTarget | null,
-  delta: number,
-): boolean {
-  const start =
-    from instanceof Element
-      ? from
-      : from instanceof Node
-        ? from.parentElement
-        : null;
-  for (let el = start; el && box.contains(el); el = el.parentElement) {
-    const room = el.scrollHeight - el.clientHeight;
-    if (room <= 0) continue;
-    return delta < 0 ? el.scrollTop > 0 : el.scrollTop < room - AT_END;
-  }
-  return false;
-}
 
 export function FabMenu(props: {
   label: string;
@@ -79,13 +52,7 @@ export function FabMenu(props: {
 
   let wrap!: HTMLDivElement;
   let popup!: HTMLDivElement;
-  type Placement = {
-    side: "top" | "bottom";
-    at: number;
-    right: number;
-    room: number;
-  };
-  const [pos, setPos] = createSignal<Placement | null>(null);
+  const [pos, setPos] = createSignal<PopupPlace | null>(null);
 
   createEffect(
     on(open, (shown) => {
@@ -93,33 +60,28 @@ export function FabMenu(props: {
         setPos(null);
         return;
       }
-      // portalled to <body>, so it shares no box with the circle: every scroll and resize reads it again
-      const measure = () => {
-        const r = wrap.getBoundingClientRect();
-        const right = window.innerWidth - r.right;
+      const measure = () =>
         setPos(
-          props.drop
-            ? {
-                side: "top",
-                at: r.bottom + POPUP_GAP,
-                right,
-                room: window.innerHeight - r.bottom - (POPUP_GAP + POPUP_AIR),
-              }
-            : {
-                side: "bottom",
-                at: window.innerHeight - r.top + POPUP_GAP,
-                right,
-                room: r.top - (POPUP_GAP + POPUP_AIR),
-              },
+          place(
+            wrap.getBoundingClientRect(),
+            {
+              w: window.innerWidth,
+              h: window.innerHeight,
+              steady: steadyViewportH(),
+            },
+            props.drop,
+          ),
         );
-      };
       measure();
-      window.addEventListener("resize", measure);
-      window.addEventListener("scroll", measure, true);
-      onCleanup(() => {
-        window.removeEventListener("resize", measure);
-        window.removeEventListener("scroll", measure, true);
-      });
+      // The circle stands in the band fixed to the top of the window, so nothing the page does moves
+      // it. The window's own height does, as Safari folds its bar away, and re-reading that while the
+      // box hangs open slides the box under the finger.
+      const wide = window.innerWidth;
+      const onResize = () => {
+        if (window.innerWidth !== wide) measure();
+      };
+      window.addEventListener("resize", onResize);
+      onCleanup(() => window.removeEventListener("resize", onResize));
     }),
   );
 
@@ -137,10 +99,30 @@ export function FabMenu(props: {
       const onKey = (e: KeyboardEvent) => {
         if (e.key === "Escape") setOpen(false);
       };
-      // The list behind stays where it is, whether the pointer sits over the glass, over the rest of
-      // the screen, or past either end of the panel's own list.
+      // Inside the panel the panel answers: past either end of its own list the list behind keeps its
+      // place. Outside it the page scrolls as it pleases - this is a corner popup, not a modal.
+      const owns = (t: EventTarget | null) =>
+        !!popup && t instanceof Node && popup.contains(t);
       const onWheel = (e: WheelEvent) => {
-        if (!scrollTakes(popup, e.target, e.deltaY)) e.preventDefault();
+        if (owns(e.target) && !scrollTakes(popup, e.target, e.deltaY))
+          e.preventDefault();
+      };
+      // A finger is measured from where it landed. The document's touch listeners are passive by
+      // default, so the one that may stop the page has to say otherwise.
+      let startX = 0;
+      let startY = 0;
+      const onTouchStart = (e: TouchEvent) => {
+        startX = e.touches[0]?.clientX ?? 0;
+        startY = e.touches[0]?.clientY ?? 0;
+      };
+      const onTouchMove = (e: TouchEvent) => {
+        const t = e.touches[0];
+        if (!e.cancelable || !t || e.touches.length !== 1 || !owns(e.target))
+          return;
+        if (
+          !touchTakes(popup, e.target, t.clientX - startX, t.clientY - startY)
+        )
+          e.preventDefault();
       };
       document.addEventListener("click", onClick, true);
       document.addEventListener("keydown", onKey);
@@ -148,10 +130,14 @@ export function FabMenu(props: {
         passive: false,
         capture: true,
       });
+      document.addEventListener("touchstart", onTouchStart, { passive: true });
+      document.addEventListener("touchmove", onTouchMove, { passive: false });
       onCleanup(() => {
         document.removeEventListener("click", onClick, true);
         document.removeEventListener("keydown", onKey);
         document.removeEventListener("wheel", onWheel, { capture: true });
+        document.removeEventListener("touchstart", onTouchStart);
+        document.removeEventListener("touchmove", onTouchMove);
       });
     }),
   );
