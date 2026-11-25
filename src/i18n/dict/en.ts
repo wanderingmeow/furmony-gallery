@@ -150,6 +150,8 @@ export const en: Dict = {
     change: "Pick another",
     uploading: "Uploading",
     searching: "Searching",
+    queued: "Queued",
+    waiting: "Still queued, a bit ahead of you",
     dropHint: "Drop a picture, paste one, or tap to choose",
     later: "Try again in a moment",
     matchTitle: "Matched by picture",

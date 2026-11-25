@@ -44,6 +44,47 @@ export default tseslint.config(
       eqeqeq: ["error", "always", { null: "ignore" }],
       "prefer-const": "error",
       "no-var": "error",
+      // A translation written into state stays in the language it was written in, and the reader who
+      // changes language mid-request is left reading the old one. Keep the key; call `tr` where the
+      // line is read. A signal opened with a sentence is the same trap at load time.
+      "no-restricted-syntax": [
+        "error",
+        {
+          // `setLine(tr("push.opening"))`: the sentence goes in, and the language comes with it.
+          selector:
+            'CallExpression[callee.name=/^set[A-Z][A-Za-z0-9]*$/] > CallExpression[callee.name="tr"]',
+          message:
+            "Store the key, not tr(...): a sentence kept in state does not follow the language. Read: tr(key()).",
+        },
+        {
+          // The same through one more call: `setLine(tell(tr("push.opening")))`. A function handed to
+          // the setter is left alone, because reading it later is the shape that stays correct.
+          selector:
+            'CallExpression[callee.name=/^set[A-Z][A-Za-z0-9]*$/] :not(ArrowFunctionExpression, FunctionExpression, FunctionDeclaration) > CallExpression[callee.name="tr"]',
+          message:
+            "Store the key, not tr(...): a sentence kept in state does not follow the language. Read: tr(key()).",
+        },
+        {
+          selector:
+            'CallExpression[callee.name="createSignal"] > CallExpression[callee.name="tr"]',
+          message:
+            "A signal opened with tr(...) is translated once, at load. Open it with the key and translate where it is read.",
+        },
+        {
+          selector:
+            'CallExpression[callee.name="createStore"] CallExpression[callee.name="tr"]',
+          message:
+            "A store opened with tr(...) holds a sentence from the language at load. Keep the key.",
+        },
+        {
+          // The phase that does an effect's work tracks nothing, so a bare callback leaves what
+          // wakes the effect unwritten: the reason has to be readable where the effect stands.
+          selector:
+            'CallExpression[callee.name="createEffect"] > :is(ArrowFunctionExpression, FunctionExpression)',
+          message:
+            "createEffect has to name its source: createEffect(on(deps, fn)). Pass what the body needs out of the source instead of reading it there.",
+        },
+      ],
     },
   },
   {

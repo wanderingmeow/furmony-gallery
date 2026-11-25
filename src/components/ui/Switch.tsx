@@ -68,6 +68,8 @@ export function Switch(props: {
   // this picks, so the knob and the scroll never disagree.
   let axis: "x" | "y" | null = null;
   let moved = false;
+  /** Whether the control is held still, for the mute switch `useHaptic` takes. */
+  const mute = () => !!props.disabled;
   // Releasing a drag sends a click, which would flip the switch a second time, so the first one is
   // ignored. A new press clears the flag.
   let swallow = false;
@@ -82,7 +84,7 @@ export function Switch(props: {
       axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
     }
     if (axis === "y") {
-      // The scroll has it now: following stops, and the click a release sends is refused, so a drag
+      // The scroll owns it from here: following stops, and the click a release sends is ignored, so a drag
       // that leaned off the track cannot turn the switch.
       stopFollow?.();
       stopFollow = null;
@@ -102,7 +104,8 @@ export function Switch(props: {
     setHeld(false);
     if (moved) {
       swallow = true;
-      if (wanted !== props.on) props.onChange(wanted);
+      // A request started elsewhere can hold the control still while the finger is still on it.
+      if (!props.disabled && wanted !== props.on) props.onChange(wanted);
     }
     syncHaptic();
   };
@@ -134,7 +137,7 @@ export function Switch(props: {
       title={props.label}
       disabled={props.disabled}
       ref={(el) => {
-        syncHaptic = useHaptic(el, () => props.on);
+        syncHaptic = useHaptic(el, () => props.on, mute);
       }}
       // pan-y: a vertical drag goes to the panel's scroll.
       class={`relative shrink-0 rounded-full border transition-colors duration-200 touch-pan-y

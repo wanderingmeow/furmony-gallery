@@ -19,6 +19,7 @@ import {
   searchConfigured,
   SEARCH_TIMEOUT_MS,
   type PictureResult,
+  type QueuePhase,
   type SemanticResult,
 } from "../data/searchApi";
 import { outcomeOf } from "../model/pictureOutcome";
@@ -50,10 +51,11 @@ type PictureFlow = {
   staged: { value: null; to: "searching" | "preparing" | "empty" };
   /** A request is running. Which half of it - the upload across the user's own network, or
    *  the service's work - is progress within one request, so it reads as `uploading` rather
-   *  than as a state: there is one thing to call off, not two. */
+   *  than as a state: there is one thing to call off, not two. `queue` is the other axis and
+   *  starts over with each request. */
   searching: {
     input: Queued;
-    value: { uploading: Accessor<boolean> };
+    value: { uploading: Accessor<boolean>; queue: Accessor<QueueState> };
     to: "busy" | "failed" | "none" | "done" | "staged" | "preparing" | "empty";
   };
   /** The service declined a second upload while one was in flight. */
@@ -69,6 +71,40 @@ type PictureFlow = {
 /** Where the picture stands. Adding a state to the machine makes every switch on this fail to
  *  compile until the new state is given a word and a meaning. */
 export type PictureState = keyof PictureFlow;
+
+/** Where a queued upload stands, frame by frame. `to` lists only what can really happen. */
+export type QueueFlow = {
+  /** Nothing has been said, so the ordinary 查找中 is the true thing to show. */
+  idle: { value: null; to: "line" | "turn" };
+  /** Waiting for a turn that has not come. */
+  line: { value: null; to: "crowded" | "turn" };
+  /** Waiting still: the service says so again while the line holds. */
+  crowded: { value: null; to: "turn" };
+  /** Being searched now, so there is nothing left to say about a line. */
+  turn: { value: null; to: [] };
+};
+
+export type QueueState = keyof QueueFlow;
+
+/** The table above at runtime: a phase moves the queue only where its state declares it can. */
+const QUEUE_NEXT: { [S in QueueState]: readonly QueueFlow[S]["to"][] } = {
+  idle: ["line", "turn"],
+  line: ["crowded", "turn"],
+  crowded: ["turn"],
+  turn: [],
+};
+
+const QUEUE_PHASE: Record<QueuePhase, QueueState> = {
+  queued: "line",
+  waiting: "crowded",
+  started: "turn",
+};
+
+/** The state a phase moves the queue to, or the state it was already in. */
+export function queueMove(from: QueueState, phase: QueuePhase): QueueState {
+  const to = QUEUE_PHASE[phase];
+  return (QUEUE_NEXT[from] as readonly QueueState[]).includes(to) ? to : from;
+}
 
 /** Past this fraction of both edges the box is the picture. Drawing it would put the frame on the
  *  preview's own rounded corners, where it looks like a broken overlay. A box over one edge is a
@@ -135,6 +171,7 @@ function makePictureSearch() {
        *  single slot. */
       searching(pic, to) {
         const [uploading, setUploading] = createSignal(true);
+        const [queue, setQueue] = createSignal<QueueState>("idle");
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), PICTURE_TIMEOUT_MS);
         let alive = true;
@@ -143,32 +180,39 @@ function makePictureSearch() {
           ctrl.abort();
           clearTimeout(timer);
         });
-        void askPicture(pic.blob, ctrl.signal, () => setUploading(false)).then(
-          (result) => {
-            if (!alive) return;
-            const found: PictureResult = result ?? {
-              // The browser only reports that the request stopped, and the timeout is the
-              // only thing here that stops one.
-              ids: [],
-              box: null,
-              error: "timeout",
-              action: "retry",
-            };
-            batch(() => {
-              setAnswer(found);
-              // Only a complete answer changes what the list shows. A wait that ended with
-              // nothing keeps the ranking the reader was looking at.
-              if (result && !result.error && !result.busy)
-                setLastShownIds(found.ids);
-              const outcome = outcomeOf(found);
-              if (outcome === "busy") to.busy();
-              else if (outcome === "failed") to.failed();
-              else if (outcome === "none") to.none();
-              else to.done();
-            });
+        void askPicture(
+          pic.blob,
+          ctrl.signal,
+          () => setUploading(false),
+          // A move comes from the table, so no frame can skip a state.
+          (phase) => {
+            const next = queueMove(queue(), phase);
+            if (next !== queue()) setQueue(next);
           },
-        );
-        return { uploading };
+        ).then((result) => {
+          if (!alive) return;
+          const found: PictureResult = result ?? {
+            // The browser only reports that the request stopped, and the timeout is the
+            // only thing here that stops one.
+            ids: [],
+            box: null,
+            error: "timeout",
+            action: "retry",
+          };
+          batch(() => {
+            setAnswer(found);
+            // Only a complete answer changes what the list shows. A wait that ended with
+            // nothing keeps the ranking the reader was looking at.
+            if (result && !result.error && !result.busy)
+              setLastShownIds(found.ids);
+            const outcome = outcomeOf(found);
+            if (outcome === "busy") to.busy();
+            else if (outcome === "failed") to.failed();
+            else if (outcome === "none") to.none();
+            else to.done();
+          });
+        });
+        return { uploading, queue };
       },
 
       busy: () => null,
@@ -178,11 +222,9 @@ function makePictureSearch() {
     },
   });
 
-  // A state's work starts where the machine is read, so the store keeps it read: a picture
-  // has to go out on a tap even while no panel is open to look at the state.
-  createEffect(() => {
-    flow();
-  });
+  // A state's work starts where the machine is read, so the store keeps it read: a picture has to go
+  // out on a tap even while no panel is open.
+  createEffect(on(flow, () => {}));
 
   /** Where the subject sat, as fractions of the staged picture: left, top, width, height.
    *  Null when there is nothing to draw. */
@@ -220,6 +262,11 @@ function makePictureSearch() {
     uploading: () => {
       const state = flow();
       return state.type === "searching" ? state.value.uploading() : false;
+    },
+    /** Where this upload stands in the service's line, or `idle` outside a running request. */
+    queue: () => {
+      const state = flow();
+      return state.type === "searching" ? state.value.queue() : "idle";
     },
 
     open() {
@@ -275,7 +322,7 @@ function makePictureSearch() {
     error: () => answer()?.error ?? "",
 
     /** What the user can do next. Empty means no button: the service names it for its own
-     *  refusals, this file for the browser's. */
+     *  errors, this file for the browser's. */
     action: () => answer()?.action ?? "",
 
     /** The ids the list is showing, or null while it still shows its plain matches. */

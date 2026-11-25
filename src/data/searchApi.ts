@@ -63,16 +63,10 @@ export async function askSettings(
   }
 }
 
-// ---------- search by picture ----------
-
-/** The picture path beside the address this build was given. The base already lost any
- *  trailing slash, so there is no `//` to allow for. */
 // ---------- warming the connection ----------
 
-// Where the service lives, the handshake is the wait: measured 3.7-12s before the edge answers
-// a ClientHello, against ~50ms for the search itself. A browser keeps one connection per
-// origin for the whole session, so one small request when the reader shows interest takes that
-// handshake out of every wait they can see.
+// A browser keeps one connection per origin for the whole session, so one small request while the
+// reader shows interest takes the TLS handshake out of every wait they can see.
 let warmed = false;
 
 /** The connection warm-up. `no-cors` keeps the answer opaque, since only the live connection is
@@ -88,16 +82,20 @@ export function warmSearch(): void {
   }).catch(() => {});
 }
 
-/** Twenty-five seconds, where a sentence gets ten. The service takes one upload at a time, so
- *  the wait is the queue in front plus the 3.5s embedding, and the reader chose the file. */
-export const PICTURE_TIMEOUT_MS = 25000;
+// ---------- search by picture ----------
+
+/** 45 s, against 10 s for a sentence: the wait covers the line ahead plus this picture's own work.
+ *  `test_service.py` checks it against the service's queue budget.
+ */
+export const PICTURE_TIMEOUT_MS = 45000;
 
 /** Why the reader's own device never produced a picture to send. These are the words this
- *  build speaks for itself; the service's refusals arrive as free text over the wire and stay
- *  outside the union, because typing them would promise what the wire does not guarantee. */
+ *  build speaks for itself; the service's error answers arrive as free text over the wire and stay
+ *  outside the union, because typing them would claim what the wire does not guarantee.
+ */
 export type LocalReason = "unreadable" | "noHevc" | "timeout";
 
-/** Every reason the page keeps a sentence for: the local ones, and the refusals the service
+/** Every reason the page keeps a sentence for: the local ones, and the errors the service
  *  sends by name. A reason missing from `WHY` is a compile error, not a vaguer message. */
 export type PictureError =
   | LocalReason
@@ -112,13 +110,14 @@ export interface PictureResult {
   /** Where the subject sat, as fractions of the picture that was sent: left, top, width,
    *  height. Null when nothing was cut out, which is also when there is no region to show. */
   box: [number, number, number, number] | null;
-  /** The service refused a second upload because one was already in flight. Not a failure:
-   *  trying again at once hits the same refusal. */
+  /** The service turns a second upload away while one is already in flight. Not a failure: retrying
+   *  at once hits the same limit.
+   */
   busy?: boolean;
   /** Why there is no answer, in the service's own word: `not_an_image`, `too_large`,
    *  `embed_down`, or one of the two the browser reports. */
   error?: string;
-  /** What to do next. The service sets it for its own refusals, this file for the browser's.
+  /** What to do next. The service sets it for its own errors, this file for the browser's.
    *  Absent means no button. */
   action?: "pick" | "retry";
 }
@@ -148,6 +147,32 @@ export function parsePicture(body: unknown): PictureResult | null {
   };
 }
 
+/** Where a queued upload stands, as the service itself said it. */
+export type QueuePhase = "queued" | "waiting" | "started";
+
+/** The lines of a streamed answer, in order; a reply that was never streamed is one line too. */
+export function parseLines(text: string): unknown[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    });
+}
+
+function phaseOf(body: unknown): QueuePhase | null {
+  const got = body as { event?: unknown; queued?: unknown } | null;
+  if (got?.event === "waiting" || got?.event === "started") return got.event;
+  // Served straight away is not news about a line.
+  if (got?.event === "accept") return got.queued === true ? "queued" : null;
+  return null;
+}
+
 /** Which listings look like this picture. The bytes are the body, not a form field, and
  *  `cutout` is always on: a design sheet loses nothing, and a photograph only finds its own
  *  design once the background is gone.
@@ -161,9 +186,15 @@ export async function askPicture(
   picture: Blob,
   signal: AbortSignal,
   onUploaded?: () => void,
+  onPhase?: (phase: QueuePhase) => void,
 ): Promise<PictureResult | null> {
   if (!searchConfigured || signal.aborted) return null;
-  const query = new URLSearchParams({ cutout: "1", k: String(WANT) });
+  const query = new URLSearchParams({
+    cutout: "1",
+    k: String(WANT),
+    // Asked for, so a service that does not stream still answers with one JSON object.
+    stream: "1",
+  });
   return await new Promise<PictureResult | null>((done) => {
     const xhr = new XMLHttpRequest();
     const stop = () => xhr.abort();
@@ -173,20 +204,28 @@ export async function askPicture(
     };
     signal.addEventListener("abort", stop);
     xhr.upload.addEventListener("load", () => onUploaded?.());
+    const tell = () => {
+      // Every line carries every phase it passed; the queue flow picks which ones to show.
+      if (!onPhase) return;
+      for (const body of parseLines(xhr.responseText)) {
+        const phase = phaseOf(body);
+        if (phase) onPhase(phase);
+      }
+    };
+    xhr.addEventListener("progress", tell);
     xhr.open("POST", `${PICTURE_ENDPOINT}?${query}`);
     xhr.responseType = "text";
     xhr.setRequestHeader("content-type", picture.type || "image/jpeg");
     xhr.addEventListener("load", () => {
-      // 429 is an answer, not a failure: the reader is waiting for a slot.
+      // 429 is an answer with a retry, and the limiter can still send it before any line.
       if (xhr.status === 429) return finish({ ids: [], box: null, busy: true });
-      let body: unknown;
-      try {
-        body = JSON.parse(xhr.responseText);
-      } catch {
-        body = null;
-      }
+      const lines = parseLines(xhr.responseText);
+      const found = parsePicture(lines[lines.length - 1] ?? null);
+      // An error arrives as its own line, because the status code went out with the first one.
+      if (found?.error === "busy")
+        return finish({ ids: [], box: null, busy: true });
       // With no reason from the service every failure looks the same, so it gets no action.
-      finish(parsePicture(body) ?? { ids: [], box: null, error: "unknown" });
+      finish(found ?? { ids: [], box: null, error: "unknown" });
     });
     // A browser-level failure: only this file can say what happened, because the service
     // never answered.

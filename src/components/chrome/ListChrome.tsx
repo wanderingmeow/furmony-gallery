@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
 import { BarChartOutlined, SearchOutlined } from "@ant-design/icons-svg";
 import { useNavigate } from "@solidjs/router";
 import { tr } from "../../i18n";
@@ -74,11 +74,13 @@ export function ListChrome() {
 
   // the corner and the placeholder band are separate fixed elements, so the field's numbers go on
   // the document root for them to read
-  createEffect(() => {
-    const root = document.documentElement;
-    for (const [name, value] of Object.entries(fieldVars(shape())))
-      root.style.setProperty(name, value);
-  });
+  createEffect(
+    on(shape, (held) => {
+      const root = document.documentElement;
+      for (const [name, value] of Object.entries(fieldVars(held)))
+        root.style.setProperty(name, value);
+    }),
+  );
   onCleanup(() => {
     const root = document.documentElement;
     for (const name of FIELD_VARS) root.style.removeProperty(name);

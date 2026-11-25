@@ -5,7 +5,11 @@ import { RemoteImg } from "../ui/RemoteImg";
 import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
 import type { JSX } from "solid-js";
 import { PictureOutlined } from "@ant-design/icons-svg";
-import { picture, type PictureState } from "../../stores/semanticStore";
+import {
+  picture,
+  type PictureState,
+  type QueueState,
+} from "../../stores/semanticStore";
 import { type PictureError } from "../../data/searchApi";
 import { AntIcon } from "../ui/AntIcon";
 import { PAW_PRINT } from "../ui/icons";
@@ -111,6 +115,17 @@ function PreviewWithBox(props: { onClick: () => void }) {
   );
 }
 
+/** The word for each state of the queue flow. Null means the queue has nothing to report. */
+const QUEUE_WORD: Record<
+  QueueState,
+  "picture.queued" | "picture.waiting" | null
+> = {
+  idle: null,
+  line: "picture.queued",
+  crowded: "picture.waiting",
+  turn: null,
+};
+
 // `spark` sits with its word so the compiler checks both when a state is added
 function stateLines(
   onPick: () => void,
@@ -129,11 +144,12 @@ function stateLines(
     preparing: { spark: true, word: () => <>{tr("common.loading")}</> },
     searching: {
       spark: true,
-      word: () => (
-        <>
-          {tr(picture.uploading() ? "picture.uploading" : "picture.searching")}
-        </>
-      ),
+      word: () => {
+        const key = picture.uploading()
+          ? "picture.uploading"
+          : (QUEUE_WORD[picture.queue()] ?? "picture.searching");
+        return <>{tr(key)}</>;
+      },
     },
     busy: { word: () => <>{tr("picture.later")}</> },
     // a control that moves is harder to hit than one extra row

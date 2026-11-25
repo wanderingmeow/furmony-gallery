@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { settled } from "../testSetup";
-import { PICTURE_TIMEOUT_MS, SEARCH_TIMEOUT_MS } from "../data/searchApi";
+import {
+  PICTURE_TIMEOUT_MS,
+  SEARCH_TIMEOUT_MS,
+  type QueuePhase,
+} from "../data/searchApi";
 import { setSemanticSearch } from "./displayStore";
 import { setSearchText } from "./filterStore";
 
@@ -15,6 +19,8 @@ const sent = vi.hoisted(() => ({
   signals: [] as AbortSignal[],
   answer: null as unknown,
   uploaded: null as (() => void) | null,
+  // The queue phase a test hands over, the way a streamed line would.
+  phase: null as ((phase: QueuePhase) => void) | null,
   // A sentence the service answers when a test says it does. Null stands for the reply that
   // never lands.
   textAnswer: null as Promise<unknown> | null,
@@ -37,10 +43,16 @@ vi.mock("../data/searchApi", async (importOriginal) => {
         void sent.textAnswer?.then(resolve);
       });
     },
-    askPicture: (_blob: Blob, signal: AbortSignal, onUploaded?: () => void) =>
+    askPicture: (
+      _blob: Blob,
+      signal: AbortSignal,
+      onUploaded?: () => void,
+      onPhase?: (phase: QueuePhase) => void,
+    ) =>
       new Promise((resolve) => {
         sent.signals.push(signal);
         sent.uploaded = onUploaded ?? null;
+        sent.phase = onPhase ?? null;
         signal.addEventListener("abort", () => resolve(null));
         void (sent.answer as Promise<unknown> | null)?.then(resolve);
       }),
@@ -60,6 +72,7 @@ vi.mock("../data/pictureInput", () => ({
 
 const {
   picture,
+  queueMove,
   semanticActive,
   route,
   semanticPending,
@@ -278,7 +291,7 @@ describe("search by picture", () => {
 
   // A pasted picture replaces the one on screen without going through the toggle, so nothing
   // calls stop first: the request still running has to be dropped by the choice itself, or
-  // `search` refuses to start and the new picture sits there wearing the old one's results.
+  // `search` fails to start, and the new picture would still show the old one's results.
   it("sends a picture pasted while the previous one is still being asked about", async () => {
     sent.answer = new Promise(() => {}); // the first request never comes back
     await choose();
@@ -485,6 +498,60 @@ describe("search by picture", () => {
     sent.uploaded?.();
     expect(picture.uploading()).toBe(false);
     expect(picture.state()).toBe("searching"); // still waiting, now for the answer
+  });
+
+  it("carries what the service said about the line, and drops it when the turn comes", async () => {
+    let resolveAnswer: (found: unknown) => void = () => {};
+    sent.answer = new Promise((done) => {
+      resolveAnswer = done;
+    });
+    await picture.stage(new Blob(["x"]));
+    await settled();
+    expect(picture.queue()).toBe("idle");
+
+    sent.phase?.("queued");
+    await settled();
+    expect(picture.queue()).toBe("line");
+    sent.phase?.("queued");
+    await settled();
+    expect(picture.queue()).toBe("line");
+
+    sent.phase?.("waiting");
+    await settled();
+    expect(picture.queue()).toBe("crowded");
+    sent.phase?.("started");
+    await settled();
+    expect(picture.queue()).toBe("turn");
+
+    resolveAnswer({ ids: [7], box: null });
+    await settled();
+    expect(picture.state()).toBe("done");
+    expect(picture.queue()).toBe("idle");
+  });
+
+  it("keeps a line that arrives out of order off the page", async () => {
+    let resolveAnswer: (found: unknown) => void = () => {};
+    sent.answer = new Promise((done) => {
+      resolveAnswer = done;
+    });
+    await picture.stage(new Blob(["x"]));
+    sent.phase?.("started");
+    sent.phase?.("queued");
+    sent.phase?.("waiting");
+    await settled();
+    expect(picture.queue()).toBe("turn");
+    resolveAnswer({ ids: [7], box: null });
+    await settled();
+  });
+
+  it("only moves the queue where the table says it can", () => {
+    expect(queueMove("idle", "queued")).toBe("line");
+    expect(queueMove("idle", "waiting")).toBe("idle");
+    expect(queueMove("idle", "started")).toBe("turn");
+    expect(queueMove("line", "queued")).toBe("line");
+    expect(queueMove("crowded", "waiting")).toBe("crowded");
+    expect(queueMove("turn", "queued")).toBe("turn");
+    expect(queueMove("turn", "waiting")).toBe("turn");
   });
 
   // A tap has to show something the same moment it lands. On a phone the encode runs long

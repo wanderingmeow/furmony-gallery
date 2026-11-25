@@ -125,6 +125,8 @@ export const zh_tw: Dict = {
     change: "換一張",
     uploading: "上傳中",
     searching: "尋找中",
+    queued: "正在排隊",
+    waiting: "還在排隊，前面有點多",
     dropHint: "可以拖入圖片、貼上圖片，或點擊選擇",
     later: "稍後再試",
     matchTitle: "影像比對結果",

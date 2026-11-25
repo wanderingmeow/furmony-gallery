@@ -8,7 +8,7 @@ import { Switch } from "./Switch";
 
 let dispose: (() => void) | undefined;
 let host: HTMLDivElement;
-let disabled = false;
+const [off, setOff] = createSignal(false);
 const [on, setOn] = createSignal(false);
 /** What the row above is asked to change to, in the order it was asked. */
 const answers: boolean[] = [];
@@ -16,11 +16,11 @@ const answers: boolean[] = [];
 // The track is 40px and the knob travels 16px, so the middle sits at 8px.
 const START_X = 100;
 
-function draw(start = false, off = false, refuse = false): void {
+function draw(start = false, held = false, refuse = false): void {
   dispose?.();
   host?.remove();
   answers.length = 0;
-  disabled = off;
+  setOff(held);
   setOn(start);
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -28,7 +28,7 @@ function draw(start = false, off = false, refuse = false): void {
     () => (
       <Switch
         on={on()}
-        disabled={disabled}
+        disabled={off()}
         label="语义搜索"
         onChange={(v) => {
           answers.push(v);
@@ -222,6 +222,42 @@ describe("Switch", () => {
     expect(answers).toEqual([]);
   });
 
+  // The engine hands Chromium's pointer events to a disabled button, so the guard is the only thing
+  // between a held-still switch and a change the reader did not mean to make. A drag can be under
+  // the finger when that happens: a request started elsewhere answers and disables it.
+  it("a switch held still mid-drag does not answer the release", () => {
+    draw();
+    press();
+    moveTo(14);
+    setOff(true);
+    letGo();
+    expect(answers, "the release belongs to no tap the reader meant").toEqual(
+      [],
+    );
+  });
+
+  // The buzz is a switch the reader turns, so a control that cannot take the tap has nothing to
+  // buzz for, and the switch that buzzes is put out of reach while it is held still.
+  it("a disabled switch gives no buzz", () => {
+    withSwitch();
+    draw(false, true);
+    expect(
+      host.querySelector<HTMLInputElement>(".haptic-switch")!.disabled,
+      "nothing to buzz for",
+    ).toBe(true);
+  });
+
+  it("the buzz comes back when the switch is let go", () => {
+    withSwitch();
+    draw(false, true);
+    const buzz = () => host.querySelector<HTMLInputElement>(".haptic-switch")!;
+    expect(buzz().disabled).toBe(true);
+    setOff(false);
+    expect(buzz().disabled, "the control can take the tap again").toBe(false);
+    host.querySelector<HTMLElement>(".haptic-hit")!.click();
+    expect(answers).toEqual([true]);
+  });
+
   // The buzz is a switch behind a label over the track. The label must not take the tap or the drag
   // from the switch.
   it("the buzz label leaves the tap working", () => {
@@ -245,6 +281,17 @@ describe("Switch", () => {
     moveTo(10);
     letGo();
     expect(answers).toEqual([true]);
+  });
+
+  it("the buzz starts on the side the row already shows", () => {
+    // A switch drawn from an `on` row has to buzz from the right side on the first frame, so the
+    // effect has to run at mount rather than defer.
+    withSwitch();
+    draw(true);
+    expect(
+      host.querySelector<HTMLInputElement>(".haptic-switch")!.checked,
+      "the effect runs at mount, not only on the next change",
+    ).toBe(true);
   });
 
   // The tap lands on the label over the track, and the label turns the switch. The row shows one

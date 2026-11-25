@@ -4,6 +4,7 @@ import {
   askSettings,
   parsePicture,
   parseResponse,
+  type QueuePhase,
 } from "./searchApi";
 
 describe("parseResponse", () => {
@@ -206,6 +207,91 @@ describe("askPicture", () => {
     expect(sent().body).toBeInstanceOf(Blob);
   });
 
+  it("hears about the line before the answer arrives", async () => {
+    FakeXhr.auto = null;
+    const heard: QueuePhase[] = [];
+    const going = askPicture(
+      picture(),
+      new AbortController().signal,
+      undefined,
+      (phase) => heard.push(phase),
+    );
+    const xhr = sent();
+    expect(new URL(xhr.url).searchParams.get("stream")).toBe("1");
+    xhr.responseText = '{"event":"accept","queued":true}\n';
+    xhr.fire("progress");
+    expect(heard).toEqual(["queued"]);
+    xhr.respond(200, '{"event":"done","ids":[201],"box":null}\n');
+    expect((await going)?.ids).toEqual([201]);
+  });
+
+  it("hands on the line again when another progress event repeats it", async () => {
+    FakeXhr.auto = null;
+    const heard: QueuePhase[] = [];
+    const going = askPicture(
+      picture(),
+      new AbortController().signal,
+      undefined,
+      (phase) => heard.push(phase),
+    );
+    const xhr = sent();
+    xhr.responseText = '{"event":"accept","queued":true}\n';
+    xhr.fire("progress");
+    xhr.fire("progress");
+    xhr.respond(200, '{"event":"done","ids":[201],"box":null}\n');
+    await going;
+    expect(heard).toEqual(["queued", "queued"]);
+  });
+
+  it("reports every phase when the lines all arrive at once", async () => {
+    FakeXhr.auto = null;
+    const heard: QueuePhase[] = [];
+    const going = askPicture(
+      picture(),
+      new AbortController().signal,
+      undefined,
+      (phase) => heard.push(phase),
+    );
+    const xhr = sent();
+    xhr.responseText =
+      '{"event":"accept","queued":true}\n{"event":"waiting"}\n{"event":"started"}\n';
+    xhr.fire("progress");
+    expect(heard).toEqual(["queued", "waiting", "started"]);
+    xhr.respond(200, '{"event":"done","ids":[201],"box":null}\n');
+    expect((await going)?.ids).toEqual([201]);
+  });
+
+  it("says nothing about a line when the first line is the answer", async () => {
+    FakeXhr.auto = null;
+    const heard: QueuePhase[] = [];
+    const going = askPicture(
+      picture(),
+      new AbortController().signal,
+      undefined,
+      (phase) => heard.push(phase),
+    );
+    const xhr = sent();
+    xhr.responseText = '{"event":"done","ids":[201],"box":null}\n';
+    xhr.fire("progress");
+    expect(heard).toEqual([]);
+    xhr.respond(200, '{"event":"done","ids":[201],"box":null}\n');
+    expect((await going)?.ids).toEqual([201]);
+  });
+
+  it("reads a refusal that arrives as a line, and still calls being queued not a fault", async () => {
+    FakeXhr.auto = null;
+    const going = askPicture(picture(), new AbortController().signal);
+    sent().respond(200, '{"event":"busy","error":"busy","ids":[]}\n');
+    expect(await going).toEqual({ ids: [], box: null, busy: true });
+  });
+
+  it("still reads a service that answers with one object", async () => {
+    FakeXhr.auto = { status: 200, body: '{"ids":[201,7],"box":[1,2,3,4]}' };
+    const got = await askPicture(picture(), new AbortController().signal);
+    expect(got?.ids).toEqual([201, 7]);
+    expect(got?.box).toEqual([1, 2, 3, 4]);
+  });
+
   // The two waits are reported apart, so the transport has to say when the first one ends -
   // before the answer, and whether or not an answer ever comes.
   it("says when the picture has left the device", async () => {
@@ -223,7 +309,7 @@ describe("askPicture", () => {
   });
 
   // The reader is waiting for a slot, not for a fix. Retrying straight away walks into the
-  // same refusal, so the two answers cannot be the same word.
+  // same answer, so the two cases cannot share one line of copy.
   it("says busy apart from failing", async () => {
     FakeXhr.auto = { status: 429, body: '{"error":"busy","ids":[]}' };
     expect(await askPicture(picture(), new AbortController().signal)).toEqual({

@@ -145,6 +145,8 @@ export const ja: Dict = {
     change: "別の画像",
     uploading: "アップロード中",
     searching: "検索中",
+    queued: "待機中です",
+    waiting: "まだ待機中です。少し混んでいます",
     dropHint: "画像をドラッグ、貼り付け、またはタップして選択",
     later: "あとでまた試す",
     matchTitle: "画像で探した結果",

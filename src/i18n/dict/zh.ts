@@ -137,6 +137,8 @@ export const zh = {
     change: "换一张",
     uploading: "上传中",
     searching: "查找中",
+    queued: "正在排队",
+    waiting: "还在排队，前面有点多",
     dropHint: "可以拖入图片，粘贴图片，或者点击选择",
     later: "稍后再试",
     matchTitle: "视觉匹配结果",
@@ -186,8 +188,8 @@ export const zh = {
     avgMedian: (avg: string, median: string) => `均值 ${avg} | 中位 ${median}`,
     band: (low: string, high: string, count: number) =>
       `${low}-${high}: ${count} 个`,
-    /** 简体中文 writes a month as the last two year digits and the month number. */
-    /** The axis fits a short label, so the year keeps two digits: 24年3月 is how Furmony writes it. */
+    /** 简体中文 writes 24年3月: two year digits and the month number. The axis fits a short
+     *  label, so the year keeps its two digits. */
     monthLabel: (year: number, month: number) => `${year % 100}年${month}月`,
     noData: "无数据",
   },

@@ -105,38 +105,41 @@ export function holdFocus(options: {
   onClose: () => void;
   getPlate: () => HTMLElement | undefined;
 }): void {
-  createEffect(() => {
-    if (!options.open()) return;
-    const outside = document.getElementById("root");
-    const held = document.activeElement;
-    outside?.setAttribute("inert", "");
-    options.getPlate()?.focus();
+  // The value comes from the source, so the phase that changes the page reads no signal.
+  createEffect(
+    on(options.open, (up) => {
+      if (!up) return;
+      const outside = document.getElementById("root");
+      const held = document.activeElement;
+      outside?.setAttribute("inert", "");
+      options.getPlate()?.focus();
 
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        options.onClose();
-        return;
-      }
-      const plate = options.getPlate();
-      if (event.key !== "Tab" || !plate) return;
-      const stops = [...plate.querySelectorAll<HTMLElement>(FOCUSABLE)];
-      if (stops.length === 0) return;
-      const first = stops[0];
-      const last = stops[stops.length - 1];
-      const at = document.activeElement;
-      if (event.shiftKey && (at === first || at === plate)) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && at === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    onCleanup(() => {
-      document.removeEventListener("keydown", onKey);
-      outside?.removeAttribute("inert");
-      if (held instanceof HTMLElement) held.focus();
-    });
-  });
+      const onKey = (event: KeyboardEvent): void => {
+        if (event.key === "Escape") {
+          options.onClose();
+          return;
+        }
+        const plate = options.getPlate();
+        if (event.key !== "Tab" || !plate) return;
+        const stops = [...plate.querySelectorAll<HTMLElement>(FOCUSABLE)];
+        if (stops.length === 0) return;
+        const first = stops[0];
+        const last = stops[stops.length - 1];
+        const at = document.activeElement;
+        if (event.shiftKey && (at === first || at === plate)) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && at === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      };
+      document.addEventListener("keydown", onKey);
+      onCleanup(() => {
+        document.removeEventListener("keydown", onKey);
+        outside?.removeAttribute("inert");
+        if (held instanceof HTMLElement) held.focus();
+      });
+    }),
+  );
 }
