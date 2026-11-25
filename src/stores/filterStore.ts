@@ -78,6 +78,12 @@ export function setSortMode(v: SortMode): void {
     notify("sort");
   });
 }
+/** The order an address asked for, for this visit only. Nothing is written down: an order someone
+ *  reached by tapping a notification does not get to replace the one the reader left.
+ */
+export function linkSort(v: SortMode): void {
+  setSortModeSignal(v);
+}
 export function setSelectedColors(v: Set<string>): void {
   batch(() => {
     setSelectedColorsSignal(v);

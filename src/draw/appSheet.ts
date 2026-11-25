@@ -1,6 +1,7 @@
+// src/draw/appSheet.ts - whether the layout sheet has landed. The whole layout is utility
+// classes, so a page painted before the sheet arrives is a column of text.
 import { createSignal } from "solid-js";
 
-/** The whole layout is utility classes: a page painted without the sheet is a column of text. */
 // Ready until the entry says otherwise: a document with no sheet to wait for has nothing to wait.
 const [ready, setReady] = createSignal(true);
 
@@ -26,7 +27,7 @@ const mark = (): boolean => {
     sessionStorage.setItem(RELOADED, "1");
     return true;
   } catch {
-    // Private mode can refuse storage, and a reload nobody remembers is the first lap of a loop.
+    // Private mode can block storage, and a reload nobody remembers is the first lap of a loop.
     return false;
   }
 };

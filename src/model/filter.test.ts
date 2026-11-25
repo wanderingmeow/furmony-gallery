@@ -1,6 +1,12 @@
 // Functional tests for the pure filtering/sorting layer (filter.ts). No reactivity, no I/O.
 import { describe, expect, it } from "vitest";
-import { compute, hasSocial, orderLabel, type SortMode } from "./filter";
+import {
+  compute,
+  hasSocial,
+  orderLabel,
+  sortFromQuery,
+  type SortMode,
+} from "./filter";
 import type { SocialSearchEntry } from "../data/socials";
 import type { AdoptListing } from "./types";
 import { MISSING_PRICE } from "./domain";
@@ -868,5 +874,19 @@ describe("orderLabel", () => {
 
   it("shows nothing for a row that holds no listing", () => {
     expect(at({ item: undefined })).toBe("");
+  });
+});
+
+describe("the order an address asks for", () => {
+  const known: SortMode[] = ["timeDesc", "timeAsc", "priceAsc", "priceDesc"];
+
+  it("takes every order the page has", () => {
+    for (const mode of known) expect(sortFromQuery(mode)).toBe(mode);
+  });
+
+  it("leaves the choice to the reader when the name is not one the page has", () => {
+    for (const raw of [null, "", "timeDescend", "TIMEDESC", "newest"]) {
+      expect(sortFromQuery(raw)).toBeNull();
+    }
   });
 });

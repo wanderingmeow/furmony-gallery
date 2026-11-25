@@ -37,6 +37,13 @@ export const SORT_UP: Record<SortMode, boolean> = {
   timeDesc: false,
 };
 
+/** The order an address asks for. A name the page does not have, or none at all, leaves the choice
+ *  as the reader left it: a mistyped link is a plain visit, not a list in the wrong order.
+ */
+export function sortFromQuery(raw: string | null): SortMode | null {
+  return SORT_MODES.includes(raw as SortMode) ? (raw as SortMode) : null;
+}
+
 const SORT_MODE_KEY = {
   priceAsc: "sort.priceAsc",
   priceDesc: "sort.priceDesc",

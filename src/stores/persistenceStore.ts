@@ -48,7 +48,7 @@ export const [promptsSilenced, setPromptsSilenced] = createSignal(
   toldRecently(toldAt(), Date.now(), TOLD_AGAIN_AFTER),
 );
 
-const environment = () => ({
+const browserEnv = () => ({
   userAgent: navigator.userAgent,
   iosEngine: CSS.supports("-webkit-touch-callout", "none"),
   standalone:
@@ -56,7 +56,22 @@ const environment = () => ({
     (navigator as { standalone?: boolean }).standalone === true,
 });
 
-function raise(env: ReturnType<typeof environment>): void {
+/** Whether this page could be added to a Home Screen or a Dock. The storage notice asks the same
+ *  question through a signal that stays empty until something has been saved, so push reads the
+ *  browser directly and has an answer on a first visit.
+ */
+export const installCapable = (): boolean =>
+  storageRiskFor(browserEnv()) === "install";
+
+/** The same read, for the copy that names iPhone and iPad differently from the Mac. */
+export const onIosBrowser = (): boolean => isIos(browserEnv());
+
+/** Apple's page for this device, read from the browser: the signal above holds the same address
+ *  only once there is a saved list to warn about.
+ */
+export const appleGuide = (): string => appleGuideFor(browserEnv());
+
+function raise(env: ReturnType<typeof browserEnv>): void {
   setStorageOnIos(isIos(env));
   setStorageGuide(appleGuideFor(env));
   setStorageRisk(storageRiskFor(env));
@@ -76,7 +91,7 @@ export function noteSavedList(): void {
     askedBrowser = true;
     void requestPersistence();
   }
-  const env = environment();
+  const env = browserEnv();
   if (storageRiskFor(env) === "none") return;
   if (toldThisVisit || toldRecently(toldAt(), Date.now(), TOLD_AGAIN_AFTER))
     return;
@@ -100,7 +115,7 @@ export function restorePrompts(hasSavedList: boolean): void {
   }
   toldThisVisit = false;
   setPromptsSilenced(false);
-  const env = environment();
+  const env = browserEnv();
   if (!hasSavedList || storageRiskFor(env) === "none") return;
   raise(env);
   markNoticeAnswered();

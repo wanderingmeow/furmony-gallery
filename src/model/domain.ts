@@ -172,9 +172,10 @@ export function detailImages(listing: AdoptListing): string[] {
 
 export const MISSING_PRICE = "?";
 
-/** Furmony leaves the price at 0 when a listing has none. Sorting also uses 0, which puts such
- *  a listing at the cheap end. */
-// The shape of a sum of money belongs to the language on screen: ¥40500, 40500元, ¥40,500.
+/** Furmony leaves the price at 0 when a listing has none, and sorting uses 0 too, which puts such
+ *  a listing at the cheap end. The shape of a sum of money belongs to the language on screen:
+ *  ¥40500, 40500元, ¥40,500.
+ */
 export function formatPrice(n: number): string {
   return n > 0 ? tr("money.amount", Math.round(n)) : MISSING_PRICE;
 }

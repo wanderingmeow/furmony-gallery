@@ -11,6 +11,7 @@ if (import.meta.env.DEV) {
 import App from "./App.tsx";
 import { watchAppSheet } from "./draw/appSheet";
 import { holdPinch } from "./draw/pinchLock";
+import { registerServiceWorker } from "./draw/serviceWorker";
 
 // iOS reads a double tap as a zoom request, and the gesture lands between two taps on a card.
 document.ondblclick = (e) => e.preventDefault();
@@ -19,14 +20,12 @@ holdPinch();
 // the app restores its own row, so Safari must not restore one on a history step
 history.scrollRestoration = "manual";
 
-// The spinner in index.html sits outside #root, so render() cannot clear it. Home removes it
-// once the screen has something to show.
-
 // the mount does not wait for the sheet, so the listing request starts beside that download
 watchAppSheet();
 render(() => <App />, document.getElementById("root")!);
 
-// Dynamic, so a normal visit never downloads it.
+// The first paint does not wait for a worker, so this runs after the mount and nothing reads a result.
+registerServiceWorker();
 
 // Rollup keeps a file separate only when something imports it dynamically. Starting the detail
 // body here means it downloads beside the first screen, so a card opens with no wait. Stats

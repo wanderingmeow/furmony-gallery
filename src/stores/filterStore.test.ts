@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  linkSort,
   loadFilters,
+  setSortMode,
+  sortMode,
   priceRange,
   selectedColors,
   selectedRaces,
@@ -151,5 +154,24 @@ describe("the price band the list runs with", () => {
     const before = localStorage.getItem(KEY);
     releasePriceBand();
     expect(localStorage.getItem(KEY)).toBe(before);
+  });
+});
+
+describe("the order an address asks for", () => {
+  beforeEach(() => {
+    localStorage.removeItem(KEY);
+  });
+
+  it("orders the list for this visit", () => {
+    setSortMode("priceAsc");
+    linkSort("timeDesc");
+    expect(sortMode()).toBe("timeDesc");
+  });
+
+  it("does not rewrite the order the reader left", () => {
+    setSortMode("priceAsc");
+    const left = localStorage.getItem(KEY);
+    linkSort("timeDesc");
+    expect(localStorage.getItem(KEY)).toBe(left);
   });
 });

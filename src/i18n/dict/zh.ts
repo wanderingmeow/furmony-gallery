@@ -248,6 +248,44 @@ export const zh = {
     xiaohongshu: "小红书",
   },
 
+  push: {
+    title: "通知",
+    note: "当有新设定上架，或锁定状态变化，浏览器会发送通知。",
+    /** The switch is the service's record. A device can block a notification for reasons a page
+     *  cannot see, so the standing line says which of the two it is.
+     */
+    meaning: "开关表示服务器上的记录。能不能收到，还要看这台设备的通知设置。",
+    news: "新设定",
+    lock: "锁定状态",
+    checking: "正在获取通知状态…",
+    opening: "正在开启通知…",
+    setting: "正在设置通知…",
+    closing: "正在关闭通知…",
+    /** The browser side worked and the address is stored. What failed is the hop to the push server,
+     *  which the hourly round tries again.
+     */
+    pending: "通知已启用，但与推送服务器连接暂时出现异常，稍后将重试。",
+    denied: "通知权限被拒绝，请在浏览器设置里打开。",
+    rejected: "这台设备的通知服务暂时无法注册，请重新尝试。",
+    busy: "操作过于频繁，请稍后再尝试。",
+    unreachable: "暂时无法连接通知服务，请稍后再试。",
+    /* The site's own fault, and never a browser's: the worker file never arrived, the key was baked
+     * wrong, or the service answered 400 for the body this file built. A browser with no push at all is
+     * `unsupported`, and a server with no signing key writes no line.
+     */
+    broken: "通知服务模块加载失败，请重新打开页面。",
+    /** A page on iPhone or iPad cannot be woken up; only one added to the Home Screen can. */
+    installIosLine: "添加到主屏幕后，这里才收得到通知。",
+    /* Only after an attempt failed, because a background Safari may deliver to a closed tab. The Mac
+     * adds to the Dock and runs as an app, so the action has another name.
+     */
+    installMacLine: "把这个网站转换成 App 后，这里才收得到通知。",
+    /** A browser with no web push at all: an in-app browser, or one that never shipped the API. */
+    unsupported: "这个浏览器不支持网页通知。",
+    /** Apple's instructions sit at one address that covers every system version. */
+    installHelp: "看 Apple 的官方说明",
+  },
+
   storage: {
     /** The notice after the first save, on a browser that deletes stored data without a visit. */
     title: "Safari 会忘掉你收藏的设定",

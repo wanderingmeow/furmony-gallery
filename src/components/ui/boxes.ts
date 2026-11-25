@@ -1,6 +1,6 @@
+// src/components/ui/boxes.ts - the boxes a skeleton shares with the screen it stands in for, so
+// the two cannot drift apart.
 import { createContext, useContext } from "solid-js";
-
-/** The boxes a skeleton shares with the screen it stands in for, so the two cannot drift apart. */
 
 /** The fill that stands in for a picture while it loads. */
 export const SK_FILL = "sk-bar sk-pulse";

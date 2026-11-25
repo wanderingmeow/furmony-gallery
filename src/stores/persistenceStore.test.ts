@@ -34,6 +34,21 @@ describe("persistenceStore", () => {
     expect(Number(localStorage.getItem(TOLD))).toBeGreaterThan(0);
   });
 
+  test("an iPhone tab is asked about an install before anything is saved", async () => {
+    // Push needs this answer on a first visit, and the signal the notice reads is still "none"
+    // there: nothing has been saved, so nothing has raised it.
+    const store = await freshStore(IOS);
+    expect(store.storageRisk()).toBe("none");
+    expect(store.installCapable()).toBe(true);
+    expect(store.onIosBrowser()).toBe(true);
+  });
+
+  test("a Chrome tab can be woken up from where it is", async () => {
+    const store = await freshStore(CHROME);
+    expect(store.installCapable()).toBe(false);
+    expect(store.onIosBrowser()).toBe(false);
+  });
+
   test("the second save does not open it again", async () => {
     const store = await freshStore(IOS);
     store.noteSavedList();

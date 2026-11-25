@@ -1,8 +1,15 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { gzipSync } from "node:zlib";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv, type Plugin, type UserConfig } from "vite";
+import ts from "typescript";
 import solid from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
 import { prefetchScript } from "./src/data/prefetch.ts";
@@ -31,11 +38,10 @@ function localValue(mode: string, name: string): string {
   return process.env[name] || loadEnv(mode, process.cwd(), "")[name] || "";
 }
 
-/**
- * A value the built files should not carry as plain text, in the form they ship it: base64. The
- * server address names a machine you run, and the Translate key is public on the official site
- * but is still exactly what a secret scanner greps for. An encoded value in the environment wins, so
- * a machine can hold that form instead of the plain one.
+/** A value the built files should not carry as plain text, shipped as base64. The server address
+ * names a machine you run, and the Translate key and the VAPID public key are public on their own
+ * sites but are still what a secret scanner greps for. The encoded form wins when the environment
+ * holds it, so a machine can keep that form instead of the plain one.
  */
 function encoded(read: (name: string) => string, name: string): string {
   const already = read(`${name}_B64`);
@@ -202,6 +208,36 @@ function inlineBootScripts(warmList = true): Plugin {
  */
 const DOCUMENT_BUDGET_KB = 5;
 
+/* The worker is written in TypeScript under `src/worker` and reaches the browser as `sw.js`,
+   beside the document and without a hash: `serviceWorkerAddress()` names that one path, so the
+   build writes it there and the minifier of the main build rewrites it. A dev server has no
+   bundle to read, so it answers the same path with types stripped and comments kept. */
+const workerEntry = "src/worker/sw.ts";
+
+const stripTypes = (code: string): string =>
+  ts.transpileModule(code, {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+    },
+  }).outputText;
+
+function serviceWorker(): Plugin {
+  let base = "/";
+  return {
+    name: "service-worker",
+    configResolved(cfg) {
+      base = cfg.base;
+    },
+    configureServer(server) {
+      server.middlewares.use(hrefFor(base, "sw.js"), (_req, res) => {
+        res.setHeader("content-type", "text/javascript; charset=utf-8");
+        res.end(stripTypes(readFileSync(resolve(root, workerEntry), "utf8")));
+      });
+    },
+  };
+}
+
 function documentBudget(): Plugin {
   let outDir = "dist";
   return {
@@ -224,6 +260,52 @@ function documentBudget(): Plugin {
       this.info(
         `document ${kb.toFixed(2)} kB gzipped, budget ${DOCUMENT_BUDGET_KB} kB`,
       );
+    },
+  };
+}
+
+/**
+ * The list the worker caches at install. The build writes it so it cannot drift from the build, and
+ * it holds more than the document's own links: a route opened later has to be in it too.
+ *
+ * Out: the document (one key serves every route), the worker (it re-downloads itself on every
+ * update check), and the 512 icons (the browser copies them at install, and the app never asks).
+ * `icon-192.png` stays: a notification names it at display time.
+ */
+const precached = (file: string): boolean =>
+  !file.endsWith(".html") &&
+  file !== "sw.js" &&
+  file !== "precache.json" &&
+  !/-512\.png$/.test(file) &&
+  file !== "apple-touch-icon.png";
+
+/** Every file under a directory, with the separators a URL uses. */
+const beneath = (dir: string, at = ""): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory()
+      ? beneath(`${dir}/${entry.name}`, at ? `${at}/${entry.name}` : entry.name)
+      : [at ? `${at}/${entry.name}` : entry.name],
+  );
+
+function precacheList(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "precache-list",
+    apply: "build",
+    enforce: "post",
+    configResolved(cfg) {
+      outDir = cfg.build.outDir;
+    },
+    closeBundle() {
+      const dir = outPath(outDir);
+      if (!existsSync(dir)) return;
+      const names = beneath(dir).filter(precached).sort();
+      writeFileSync(resolve(dir, "precache.json"), JSON.stringify(names));
+      const kb = names.reduce(
+        (sum, name) => sum + gzippedKB(readFileSync(resolve(dir, name))),
+        0,
+      );
+      this.info(`precache ${names.length} files, ${kb.toFixed(0)} kB gzipped`);
     },
   };
 }
@@ -317,7 +399,9 @@ export function buildConfig(mode: string): UserConfig {
       inlineBootScripts(!mock),
       inlineBootSheet(),
       appSheet(),
+      serviceWorker(),
       documentBudget(),
+      precacheList(),
     ],
     // GitHub Pages serves at https://<user>.github.io/furmony-gallery/ (sub-path)
     base: "/furmony-gallery",
@@ -333,6 +417,9 @@ export function buildConfig(mode: string): UserConfig {
       "import.meta.env.VITE_TRANSLATE_KEY_B64": JSON.stringify(
         encoded(read, "TRANSLATE_KEY"),
       ),
+      "import.meta.env.VITE_VAPID_PUBLIC_KEY_B64": JSON.stringify(
+        encoded(read, "VAPID_PUBLIC_KEY"),
+      ),
       "import.meta.env.VITE_MOCK": JSON.stringify(mock),
     },
     build: {
@@ -347,6 +434,12 @@ export function buildConfig(mode: string): UserConfig {
           main: resolve(root, "index.html"),
           boot: resolve(root, "src/boot.css"),
           sheet: resolve(root, "src/index.css"),
+          sw: resolve(root, workerEntry),
+        },
+        output: {
+          // The registered name is fixed, so the worker keeps it; everything else keeps its hash.
+          entryFileNames: (chunk) =>
+            chunk.name === "sw" ? "sw.js" : "assets/[name]-[hash].js",
         },
       },
     },

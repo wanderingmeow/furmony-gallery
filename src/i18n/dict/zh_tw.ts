@@ -232,6 +232,29 @@ export const zh_tw: Dict = {
     xiaohongshu: "小紅書",
   },
 
+  push: {
+    title: "通知",
+    note: "當有新設定上架，或鎖定狀態變化，瀏覽器會發送通知。",
+    meaning: "開關表示伺服器上的記錄。能否收到，還要看這台裝置的通知設定。",
+    news: "新設定",
+    lock: "鎖定狀態",
+    checking: "正在取得通知狀態…",
+    opening: "正在開啟通知…",
+    setting: "正在設置通知…",
+    closing: "正在關閉通知…",
+    pending: "通知已啟用，但與推送伺服器連線暫時出現異常，稍後將重試。",
+    denied: "通知權限被拒絕，請在瀏覽器設定裡打開。",
+    rejected: "這台設備的通知服務暫時無法註冊，請重新嘗試。",
+    busy: "操作過於頻繁，請稍後再嘗試。",
+    unreachable: "暫時無法連線通知服務，請稍後再試。",
+    broken: "通知服務模組載入失敗，請重新開啟頁面。",
+    installIosLine: "新增至主畫面後，這裡才收得到通知。",
+    installMacLine: "把這個網站轉換成 App 後，這裡才收得到通知。",
+    unsupported: "這個瀏覽器不支援網頁通知。",
+    /** Apple's instructions sit at one address that covers every system version. */
+    installHelp: "查看 Apple 的官方說明",
+  },
+
   storage: {
     /** The notice after the first save, on a browser that deletes stored data without a visit. */
     title: "Safari 會忘掉你收藏的設定",

@@ -255,6 +255,34 @@ export const ja: Dict = {
     xiaohongshu: "Xiaohongshu",
   },
 
+  push: {
+    title: "通知",
+    note: "新しい設定が並ぶかロック状態が変わったとき、ブラウザが通知を送ります。",
+    meaning:
+      "スイッチはサーバー上の記録を示します。実際に届くかは、このデバイスの通知設定によります。",
+    news: "新しい設定",
+    lock: "ロック状態",
+    checking: "通知の状態を確認しています…",
+    opening: "通知をオンにしています…",
+    setting: "通知を設定しています…",
+    closing: "通知をオフにしています…",
+    pending:
+      "通知は有効になりましたが、プッシュサーバーとの接続でしばらく問題が起きています。あとでもう一度試します。",
+    denied: "通知の許可が下りていません。ブラウザの設定でオンにしてください。",
+    rejected:
+      "この端末の通知サービスを登録できません。もう一度お試しください。",
+    busy: "操作が多すぎます。しばらくしてからもう一度お試しください。",
+    unreachable:
+      "しばらく通知サービスに接続できません。あとでもう一度お試しください。",
+    broken:
+      "通知モジュールを読み込めませんでした。ページを開き直してください。",
+    installIosLine: "ホーム画面に追加すると、ここで通知が届きます。",
+    installMacLine: "このサイトを App にすると、ここで通知が届きます。",
+    unsupported: "このブラウザはウェブ通知を持っていません。",
+    /** Apple's instructions sit at one address that covers every system version. */
+    installHelp: "Apple の手順を見る",
+  },
+
   storage: {
     /** The notice after the first save, on a browser that deletes stored data without a visit. */
     title: "Safari はいいねしたものを忘れてしまいます",

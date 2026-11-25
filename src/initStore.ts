@@ -3,8 +3,10 @@
 // for a component to import, so a test mocks only what the component under test uses.
 
 import { createEffect, createRoot, on } from "solid-js";
-import { loadFilters } from "./stores/filterStore";
+import { linkSort, loadFilters } from "./stores/filterStore";
+import { sortFromQuery } from "./model/filter";
 import { loadSession } from "./stores/sessionStore";
+import { loadPush } from "./stores/pushStore";
 import { loadWishlist } from "./stores/wishlistStore";
 import { loadData } from "./stores/listingsStore";
 import { loadSocials } from "./stores/socialsStore";
@@ -15,8 +17,15 @@ export function initStore(): void {
   loadSession();
   loadWishlist();
   loadFilters();
+  // An address may ask for an order, and that ask outranks what the reader left: a notification that
+  // names three new listings would open a list ordered by price, where none of the three is near the
+  // top.
+  const asked = sortFromQuery(new URLSearchParams(location.search).get("sort"));
+  if (asked) linkSort(asked);
   loadData();
   loadSocials();
+  // Last: it reads the language the stores above settled on, and sends nothing before then.
+  loadPush();
 
   // The shelf writes its words in the language the request asked for, so a new language means
   // asking again. `defer` keeps the load above as the only one at startup, and the root is here

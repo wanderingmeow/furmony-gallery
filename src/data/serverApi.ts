@@ -24,6 +24,8 @@ export const PATH = {
   search: "/search",
   searchPicture: "/search-image",
   ping: "/ping",
+  subscribe: "/subscribe",
+  subscription: "/subscription",
 } as const;
 
 export type ServerPath = (typeof PATH)[keyof typeof PATH];

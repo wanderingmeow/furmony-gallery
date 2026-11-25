@@ -260,6 +260,36 @@ export const en: Dict = {
     xiaohongshu: "Xiaohongshu",
   },
 
+  push: {
+    title: "Notifications",
+    note: "The browser sends a notice when a new listing appears or a lock changes.",
+    meaning:
+      "The switch shows the record on the server. Whether a notice arrives also depends on this device's notification settings.",
+    news: "New listings",
+    lock: "Lock state",
+    checking: "Finding out where notifications stand…",
+    opening: "Turning notifications on…",
+    setting: "Setting up notifications…",
+    closing: "Turning notifications off…",
+    pending:
+      "Notifications are on, but the connection to the push server hit a problem. It will retry in a moment.",
+    denied:
+      "Notifications were turned down. Turn them on in the browser's settings.",
+    rejected:
+      "This device's push service can't register right now. Please try again.",
+    busy: "Too many actions. Please try again later.",
+    unreachable:
+      "Can't reach the notification service right now. Please try again later.",
+    broken: "The notification module failed to load. Reopen the page.",
+    installIosLine:
+      "Add it to the Home Screen, and this is where notifications arrive.",
+    installMacLine:
+      "Turn this site into an app, and this is where notifications arrive.",
+    unsupported: "This browser has no web notifications.",
+    /** Apple's instructions sit at one address that covers every system version. */
+    installHelp: "See Apple’s instructions",
+  },
+
   storage: {
     /** The notice after the first save, on a browser that deletes stored data without a visit. */
     title: "Safari forgets the listings you liked",
