@@ -7,36 +7,49 @@ import {
 } from "solid-js";
 import type { Insets } from "../../draw/layout";
 
-// `env()` becomes a length only once it reaches a property that takes one, so each band is read
-// off a box whose own width or height is the --safe-* name the CSS pads with.
-let probe: HTMLDivElement | null = null;
+// `env()` becomes a length only once it reaches a property that takes one, so each band is read off
+// a box whose own width or height is its --safe-* name. A box keeps only the last name it was
+// given, so each band gets a box of its own.
+const BANDS = {
+  top: "height",
+  right: "width",
+  bottom: "height",
+  left: "width",
+} as const;
 
-function readInset(size: "width" | "height", name: string): number {
-  probe ??= document.createElement("div");
-  if (!probe.isConnected) {
-    probe.style.cssText =
-      "position:fixed;top:0;left:0;visibility:hidden;pointer-events:none";
-    document.body.appendChild(probe);
+const bandBoxes = new Map<keyof typeof BANDS, HTMLDivElement>();
+
+function bandBox(band: keyof typeof BANDS): HTMLDivElement {
+  let box = bandBoxes.get(band);
+  if (!box) {
+    box = document.createElement("div");
+    box.style.cssText = `position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;${
+      BANDS[band]
+    }:var(--safe-${band})`;
+    bandBoxes.set(band, box);
   }
-  probe.style[size] = `var(${name})`;
-  const box = probe.getBoundingClientRect();
-  return size === "width" ? box.width : box.height;
+  if (!box.isConnected) document.body.appendChild(box);
+  return box;
+}
+
+function readBand(band: keyof typeof BANDS): number {
+  const box = bandBox(band).getBoundingClientRect();
+  return BANDS[band] === "width" ? box.width : box.height;
 }
 
 const readInsets = (): Insets => ({
-  top: readInset("height", "--safe-top"),
-  right: readInset("width", "--safe-right"),
-  bottom: readInset("height", "--safe-bottom"),
-  left: readInset("width", "--safe-left"),
+  top: readBand("top"),
+  right: readBand("right"),
+  bottom: readBand("bottom"),
+  left: readBand("left"),
 });
 
 // One read of the bands serves every layer, because the question they answer is the same one and a
 // layer that takes the bands into its own box wants to be told when they move.
-let insets: { get: Accessor<Insets>; set: (next: Insets) => void } | null =
-  null;
+let bands: Accessor<Insets> | null = null;
 
-function insetStore() {
-  return (insets ??= createRoot(() => {
+function readBands(): Accessor<Insets> {
+  return (bands ??= createRoot(() => {
     const [get, set] = createSignal(readInsets(), {
       equals: (a: Insets, b: Insets) =>
         a.top === b.top &&
@@ -45,16 +58,18 @@ function insetStore() {
         a.left === b.left,
     });
     const read = () => set(readInsets());
+    // A fullscreen web app gets its bands a little after launch, and neither `resize` nor
+    // `orientationchange` fires when they arrive, so these boxes are what to watch.
+    if (typeof ResizeObserver !== "undefined") {
+      const watch = new ResizeObserver(read);
+      for (const band of Object.keys(BANDS) as (keyof typeof BANDS)[])
+        watch.observe(bandBox(band));
+      onCleanup(() => watch.disconnect());
+    }
     window.addEventListener("resize", read);
     window.addEventListener("orientationchange", read);
-    return { get, set };
+    return get;
   }));
-}
-
-/** The bands as the screen reports them right now. A layer that pads them takes this reading as it
- *  rises: iOS answers a turn slowly, and the first one after it can still say the island is nowhere. */
-export function remeasureInsets(): void {
-  insetStore().set(readInsets());
 }
 
 /** The window's size, the width left inside its bands, and the bands themselves, kept current.
@@ -74,7 +89,7 @@ export function watchViewport(): {
     document.documentElement.clientWidth,
   );
   const [viewportH, setViewportH] = createSignal(window.innerHeight);
-  const safe = insetStore().get;
+  const safe = readBands();
   const frameW = createMemo(() => viewportW() - safe().left - safe().right);
   const onResize = () => {
     setViewportW(document.documentElement.clientWidth);

@@ -33,6 +33,7 @@ export function DetailPulse(props: { shape: Shape }) {
     detailPictureHeight(
       sheetCardBox(viewportW(), viewportH(), safe()),
       props.shape,
+      safe().top,
     );
   const art = (
     <>

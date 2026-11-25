@@ -38,7 +38,7 @@ export function DetailBody(props: {
   const panel = () => shape() === "panel";
   const box = () => BOX[shape()];
   const cardBox = () => sheetCardBox(viewportW(), viewportH(), safe());
-  const picMaxH = () => detailPictureHeight(cardBox(), shape());
+  const picMaxH = () => detailPictureHeight(cardBox(), shape(), safe().top);
   const footerHost = useSheetFooter();
 
   return (

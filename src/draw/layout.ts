@@ -244,7 +244,8 @@ export function sheetCardOuterW(
   const base = Math.min(availW, SPREAD_MAX_W);
   const room = base - bands.left - bands.right;
   const want = Math.ceil(
-    detailPictureHeight({ w: room, h: roomH }, "panel") * PIC_PANEL_WIDE,
+    detailPictureHeight({ w: room, h: roomH }, "panel", safe.top) *
+      PIC_PANEL_WIDE,
   );
   return Math.min(availW, base + Math.max(0, want - panelArtWidth(room)));
 }
@@ -265,6 +266,15 @@ export function sheetCardBox(
   };
 }
 
+/** The room above the art: the close button's row and the air under it, plus the screen's band on top
+ *  of both. The row moves down with the band, so the two add: a clearance that only reaches past the
+ *  button leaves the button sitting on the art. `DETAIL_TOP` is the same measure in a class: 1rem of
+ *  edge, the 2.75rem button (`SHEET_FAB_BOX`), and 8 of air. */
+const detailTopClear = (safeTop: number): number => 16 + 44 + 8 + safeTop;
+const DETAIL_TOP = "pt-[calc(4.25rem+var(--safe-top))]";
+/** The air under the body's content, which both shapes keep the same. */
+const DETAIL_BODY_BOTTOM = 16;
+
 /** The detail's box model, one row per shape, so the whole of it is read in one place: who pads the
  *  body, who pads a column, how the action bar and the related strip meet the edges. */
 export const BOX: Record<
@@ -280,7 +290,7 @@ export const BOX: Record<
   // The body pads all four sides, so the strip and the bar pay that side padding back to reach the
   // card's edge.
   sheet: {
-    bodyPad: "pt-16 pb-4",
+    bodyPad: `${DETAIL_TOP} pb-4`,
     colPad: "",
     stripBleed: DETAIL_PAD_X,
     barPad: "px-4 pb-[max(0.75rem,var(--safe-bottom))]",
@@ -289,15 +299,17 @@ export const BOX: Record<
   // level when the panel opens.
   panel: {
     bodyPad: "",
-    colPad: "pt-16 pb-4",
+    colPad: `${DETAIL_TOP} pb-4`,
     stripBleed: 0,
     barPad: "pb-3",
   },
 };
 
-// The parts of the first screen that never move. 64 of clearance above the art and 16 under it cost
-// the same in both shapes: pt-16 + pb-4 in a sheet, pt-16 + the column gap in a panel.
-const DETAIL_CHROME = 80;
+// The parts of the first screen that never move: the clearance above the art and the air under the
+// body. Both cost the same in either shape: the body's own padding in a sheet, the column's in a
+// panel.
+const detailChrome = (safeTop: number): number =>
+  detailTopClear(safeTop) + DETAIL_BODY_BOTTOM;
 const DETAIL_STRIP_H = 68; // mt-2 + the 60px thumbs
 const SHEET_BAR_H = 61; // py-3 + a 36px control + the border above it
 
@@ -317,10 +329,14 @@ const PIC_PANEL_MAX = 0.75;
 /** The height the art's box takes: a panel hands over its whole left column, a sheet fits the art to
  *  its card, keeps the bar's height outside the scroller, and stops at `PIC_CAP` of the card. A
  *  sheet is one column, so a taller cover leaves the table below the fold entirely. */
-export function detailPictureHeight(box: CardBox, shape: Shape): number {
+export function detailPictureHeight(
+  box: CardBox,
+  shape: Shape,
+  safeTop = 0,
+): number {
   const room =
     box.h -
-    DETAIL_CHROME -
+    detailChrome(safeTop) -
     DETAIL_STRIP_H -
     (shape === "panel" ? 0 : SHEET_BAR_H);
   if (shape === "panel")

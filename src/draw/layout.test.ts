@@ -323,11 +323,11 @@ describe("the detail's shape and box", () => {
     expect(
       detailPictureHeight(sheetCardBox(1133, 744), "panel"),
       "an iPad mini sideways",
-    ).toBe(548);
+    ).toBe(544);
     expect(
       detailPictureHeight(sheetCardBox(852, 393), "panel"),
       "a phone sideways",
-    ).toBe(245);
+    ).toBe(241);
     expect(
       detailPictureHeight(sheetCardBox(700, 200), "panel"),
       "below this the zoom is how you look at it",
@@ -349,14 +349,34 @@ describe("the detail's shape and box", () => {
     expect(
       detailPictureHeight(sheetCardBox(1366, 1024), "panel"),
       "a panel's own column",
-    ).toBe(780);
+    ).toBe(776);
   });
 
   it("caps the art so the table stays on the first screen", () => {
     // The room a sheet has left once its padding, the thumbs and the bar are paid for. A card this
     // short is under the cover's own ceiling, so the room is what decides.
     const box = sheetCardBox(393, 400);
-    expect(detailPictureHeight(box, "sheet")).toBe(box.h - 80 - 68 - 61);
+    expect(detailPictureHeight(box, "sheet")).toBe(box.h - 84 - 68 - 61);
+  });
+
+  it("keeps the close button's row and the screen's band out of the art's room", () => {
+    // On a screen this short the room left for the art is smaller than the art's own width, so the
+    // room decides its height. That room pays for the close button's row - 1rem of edge, a 44 tall
+    // button, 8 of air - and the screen's band sits on top of it, because the row moves down with
+    // the band.
+    const flat = { top: 0, right: 0, bottom: 0, left: 0 };
+    expect(
+      detailPictureHeight(sheetCardBox(393, 400, flat), "sheet", 0),
+      "a screen with no band",
+    ).toBe(187);
+    expect(
+      detailPictureHeight(
+        sheetCardBox(393, 400, { ...flat, top: 59 }),
+        "sheet",
+        59,
+      ),
+      "a notched phone",
+    ).toBe(128);
   });
 
   it("sizes the card the way its classes draw it", () => {
@@ -388,7 +408,7 @@ describe("a panel widens its art column", () => {
   it("grows the card until the art column reaches 3 wide to 2 high", () => {
     const box = sheetCardBox(1680, 1050);
     expect(box).toEqual({ w: 1584, h: 954 });
-    expect(detailPictureHeight(box, "panel")).toBe(806);
+    expect(detailPictureHeight(box, "panel")).toBe(802);
     expect(panelArtWidth(box.w)).toBe(1108);
   });
 
