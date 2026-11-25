@@ -28,11 +28,11 @@ function ids(result: AdoptListing[]): number[] {
 describe("compute - tab", () => {
   const rows = [
     listing(1, { isLock: 2 }), // locked
-    listing(2, { isLock: 1 }), // isLock=1 → pure unlocked in processing
+    listing(2, { isLock: 1 }), // on hold
     listing(3, { isLock: 0 }), // unlocked
   ];
 
-  it("unlocked tab includes isLock=1 but excludes isLock=2", () => {
+  it("unlocked tab keeps only listings with no lock", () => {
     expect(
       ids(
         compute({
@@ -45,10 +45,10 @@ describe("compute - tab", () => {
           wishlist: EMPTY_MAP,
         }),
       ),
-    ).toEqual([2, 3]);
+    ).toEqual([3]);
   });
 
-  it("locked tab only includes isLock=2", () => {
+  it("locked tab keeps a hold and a paid lock", () => {
     expect(
       ids(
         compute({
@@ -61,7 +61,7 @@ describe("compute - tab", () => {
           wishlist: EMPTY_MAP,
         }),
       ),
-    ).toEqual([1]);
+    ).toEqual([1, 2]);
   });
 
   it("all tab includes every non-self listing", () => {

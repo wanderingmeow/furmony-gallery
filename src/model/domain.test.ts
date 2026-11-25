@@ -5,6 +5,8 @@ import { setLocale } from "../i18n/locale";
 import type { AdoptListing } from "./types";
 import {
   formatPrice,
+  isCommittedLock,
+  isLocked,
   installmentTotal,
   monthlyPayment,
   priceParts,
@@ -316,5 +318,23 @@ describe("the species a listing belongs to", () => {
   it("names nothing for a row that came with neither", () => {
     expect(raceName(row({}))).toBeUndefined();
     expect(raceDisplay(row({}))).toBeUndefined();
+  });
+});
+
+describe("the lock flags", () => {
+  it("treats a hold and a paid lock as locked", () => {
+    expect(isLocked(fake({ isLock: 1 }))).toBe(true);
+    expect(isLocked(fake({ isLock: 2 }))).toBe(true);
+  });
+
+  it("treats a missing flag as unlocked", () => {
+    expect(isLocked(fake({ isLock: 0 }))).toBe(false);
+    expect(isLocked(fake())).toBe(false);
+  });
+
+  it("matches only the paid lock", () => {
+    expect(isCommittedLock(fake({ isLock: 1 }))).toBe(false);
+    expect(isCommittedLock(fake({ isLock: 2 }))).toBe(true);
+    expect(isCommittedLock(fake())).toBe(false);
   });
 });

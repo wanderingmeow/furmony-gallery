@@ -35,7 +35,7 @@ export interface AdoptListing {
   nonrecurringExpense?: number;
   status?: number; // 1 = adopted
   isShow?: number;
-  isLock?: number; // 2 = locked
+  isLock?: number; // 1 = on hold, 2 = paid lock, 0 or missing = free
   detailDescription?: string;
   createBy?: string;
   createTime?: string; // "yyyy-MM-dd HH:mm:ss"

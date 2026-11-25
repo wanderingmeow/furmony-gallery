@@ -3,7 +3,7 @@ import { tr } from "../i18n";
 import { listingName } from "../model/translatedText";
 import { createSignal } from "solid-js";
 import type { AdoptListing } from "../model/types";
-import { displayPrice, isLocked } from "../model/domain";
+import { displayPrice, isCommittedLock } from "../model/domain";
 
 export type ListingChange =
   | {
@@ -41,8 +41,10 @@ export function removeNotification(uid: number): void {
   setNotifications((q) => q.filter((n) => n.uid !== uid));
 }
 
-// Watched: the lock flag (isLocked) and the full price shown on the card (displayPrice).
-// Not watched: allcost, earnest, discount.
+// This reports two changes: the paid lock (isCommittedLock) and the price on the card
+// (displayPrice). A hold (isLock 1) is left out on purpose. The site reserves a listing for 15
+// minutes, and most of those reservations end without payment. No other field is checked, because
+// the card only shows displayPrice.
 export function notifyListingChanges(
   oldRows: AdoptListing[],
   newRows: AdoptListing[],
@@ -53,17 +55,17 @@ export function notifyListingChanges(
   for (const item of newRows) {
     const name = listingName(item) ?? tr("common.unknown");
     const old = oldDict.get(item.adoptId);
-    if (old && isLocked(old) !== isLocked(item)) {
+    if (old && isCommittedLock(old) !== isCommittedLock(item)) {
       changes.push({
         uid: nextUid(),
         id: item.adoptId,
         name,
         headPicture: item.adoptHeadPicture,
         kind: "lock",
-        isLocked: isLocked(item),
+        isLocked: isCommittedLock(item),
       });
-    } else if (!old && isLocked(item)) {
-      // a row that just appeared already locked is worth reporting: a lock is easy to miss
+    } else if (!old && isCommittedLock(item)) {
+      // a listing that arrives already paid for is worth reporting: it is easy to miss a lock
       changes.push({
         uid: nextUid(),
         id: item.adoptId,

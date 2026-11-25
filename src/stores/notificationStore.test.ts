@@ -38,6 +38,52 @@ describe("notifyListingChanges", () => {
     ]);
   });
 
+  it("says nothing while a listing is only on hold", () => {
+    // The site reserves a listing for the first buyer for 15 minutes, and most of those
+    // reservations end without payment.
+    expect(
+      diff([listing({ isLock: 0 })], [listing({ isLock: 1 })]),
+    ).toHaveLength(0);
+    expect(
+      diff([listing({ isLock: 1 })], [listing({ isLock: 0 })]),
+    ).toHaveLength(0);
+    expect(
+      diff([listing({ isLock: 1 })], [listing({ isLock: 1 })]),
+    ).toHaveLength(0);
+  });
+
+  it("notifies when the deposit is paid", () => {
+    expect(
+      diff([listing({ isLock: 1 })], [listing({ isLock: 2 })]),
+    ).toMatchObject([{ kind: "lock", isLocked: true }]);
+  });
+
+  it("notifies when the lock ends", () => {
+    expect(
+      diff([listing({ isLock: 2 })], [listing({ isLock: 0 })]),
+    ).toMatchObject([{ kind: "lock", isLocked: false }]);
+  });
+
+  it("notifies when a paid lock becomes a hold", () => {
+    // The paid lock ended, so the reader should hear about it, even though the card still
+    // shows a lock.
+    expect(
+      diff([listing({ isLock: 2 })], [listing({ isLock: 1 })]),
+    ).toMatchObject([{ kind: "lock", isLocked: false }]);
+  });
+
+  it("notifies about a listing that arrives already paid for", () => {
+    expect(
+      diff([listing({ adoptId: 7 })], [listing({ adoptId: 8, isLock: 2 })]),
+    ).toMatchObject([{ kind: "lock", isLocked: true }]);
+  });
+
+  it("says nothing about a listing that arrives on hold", () => {
+    expect(
+      diff([listing({ adoptId: 7 })], [listing({ adoptId: 8, isLock: 1 })]),
+    ).toHaveLength(0);
+  });
+
   it("says nothing when the price is the same", () => {
     expect(diff([listing()], [listing()])).toHaveLength(0);
   });

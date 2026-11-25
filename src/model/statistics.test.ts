@@ -33,13 +33,10 @@ describe("filterByLock", () => {
   ];
   it("all keeps everything", () =>
     expect(filterByLock(rows, "all").length).toBe(3));
-  it("locked = isLock 2 only", () =>
-    expect(filterByLock(rows, "locked").map((l) => l.adoptId)).toEqual([1]));
-  it("unlocked = not isLock 2 (1 counts as unlocked)", () => {
-    expect(filterByLock(rows, "unlocked").map((l) => l.adoptId)).toEqual([
-      2, 3,
-    ]);
-  });
+  it("locked keeps the hold and the paid lock", () =>
+    expect(filterByLock(rows, "locked").map((l) => l.adoptId)).toEqual([1, 2]));
+  it("unlocked keeps only listings with no lock", () =>
+    expect(filterByLock(rows, "unlocked").map((l) => l.adoptId)).toEqual([3]));
 });
 
 describe("medianPrice", () => {

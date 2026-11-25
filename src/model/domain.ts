@@ -95,7 +95,17 @@ export function isAdopted(listing: AdoptListing): boolean {
   return listing.status === 1;
 }
 
+/** Not available for purchase: either a hold or a paid lock. The card's lock, the 已锁定 tab and
+ *  the social chips all read this. `isLock` is optional on the wire, so a missing flag means no
+ *  lock. */
 export function isLocked(listing: AdoptListing): boolean {
+  return (listing.isLock ?? 0) > 0;
+}
+
+/** The deposit was paid, so the lock is real. A hold (1) lasts 15 minutes and most of them end
+ *  without payment, so it is not worth a notification. The notification rule uses this flag, and
+ *  the server's push rule matches it. */
+export function isCommittedLock(listing: AdoptListing): boolean {
   return listing.isLock === 2;
 }
 
