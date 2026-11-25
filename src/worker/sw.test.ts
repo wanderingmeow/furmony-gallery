@@ -21,6 +21,13 @@ const CARD =
 
 const DOWN = new Error("no network");
 
+/** One turn of the event loop, which is what opening a cache costs. */
+const storageStep = (): Promise<void> =>
+  new Promise((done) => setTimeout(done, 0));
+
+const ASSETS_STORE = "furmony-assets-v1";
+const DOCUMENT_STORE = "furmony-document-v1";
+
 interface FakeResponse {
   ok: boolean;
   status: number;
@@ -44,16 +51,29 @@ const reply = (
 ): FakeResponse => {
   const status = init.status ?? 200;
   const type = init.type ?? "basic";
+  // A body goes to one reader. Once it has been read, a second clone is a TypeError, which is how a
+  // worker learns it kept the copy too late.
+  let read = false;
+  const used = (): TypeError => new TypeError("Response body is already used");
   return {
     ok: status >= 200 && status < 400,
     status,
     type,
     body,
-    clone: () => reply(body, { status, type }),
-    text: () => Promise.resolve(body),
+    clone: () => {
+      if (read) throw used();
+      return reply(body, { status, type });
+    },
+    text: () => {
+      if (read) return Promise.reject(used());
+      read = true;
+      return Promise.resolve(body);
+    },
     // A real Response rejects `json()` when the body is not json, which the worker reads as an
     // empty entry.
     json: () => {
+      if (read) return Promise.reject(used());
+      read = true;
       try {
         return Promise.resolve(JSON.parse(body));
       } catch (err) {
@@ -105,6 +125,10 @@ function fakeStorage(
     stores,
     caches: {
       open: async (name: string) => {
+        // Opening a cache is storage work, so it does not land before the page has taken the body
+        // it is being painted with. A fake that answered in one microtask would let a worker get
+        // away with cloning too late.
+        await storageStep();
         const entries = stores.get(name) ?? new Map<string, FakeResponse>();
         stores.set(name, entries);
         return {
@@ -136,8 +160,10 @@ interface Kit {
   stores?: Map<string, Map<string, FakeResponse>>;
   /** Cards an earlier worker showed, so a second instance sees the same tray. */
   cards?: Card[];
-  /** Storage that refuses to open: the number must still go away when the page is opened. */
+  /** Storage that fails to open: the number must still go away when the page is opened. */
   failStore?: boolean;
+  /** A build that ships this list. Every write to the document cache is checked against it. */
+  list?: string[];
 }
 
 // A card as the platform hands one back: the payload's own data, and a way to put it away.
@@ -197,6 +223,11 @@ function worker(
     ...(where === "registration" ? bager : {}),
   };
   const { stores, caches } = fakeStorage(kit.stores);
+  if (kit.list !== undefined) {
+    const doc = stores.get(DOCUMENT_STORE) ?? new Map<string, FakeResponse>();
+    doc.set(LIST, reply(JSON.stringify(kit.list)));
+    stores.set(DOCUMENT_STORE, doc);
+  }
   const storage = kit.failStore
     ? { ...caches, open: () => Promise.reject(new Error("no storage")) }
     : caches;
@@ -250,6 +281,17 @@ function worker(
     modes,
     calls,
     stores,
+    /**
+     * Whether a copy the worker writes on its own reaches storage. It waits for the list first and
+     * for the cache to open second, so the turn it lands on is not a fact worth asserting.
+     */
+    holds: async (name: string, key: string): Promise<boolean> => {
+      for (let turn = 0; turn < 20; turn++) {
+        if (stores.get(name)?.has(key)) return true;
+        await storageStep();
+      }
+      return false;
+    },
     /** `undefined` is the answer for a request the worker leaves to the browser. */
     serve: async (req: FakeRequest): Promise<FakeResponse | undefined> => {
       let answered: Promise<FakeResponse> | undefined;
@@ -297,9 +339,13 @@ describe("the worker's own life", () => {
   // Every project page of one account shares an origin and a CacheStorage, so cleanup reaches names
   // this worker never wrote unless it keeps to its own prefix.
   test("activate clears our own old version and leaves another project alone", async () => {
-    const w = worker({ [ASSET]: reply("code"), [ROOT]: reply("<html>") });
+    const w = worker(
+      { [ASSET]: reply("code"), [ROOT]: reply("<html>") },
+      { list: [] },
+    );
     await w.serve(navigate(ROOT));
     await w.serve(request(ASSET));
+    expect(await w.holds(DOCUMENT_STORE, ROOT)).toBe(true);
     w.stores.set("puzzles-v1", new Map([["gone", reply("old")]]));
     // A page still open from the previous deploy reaches for the chunk kept here.
     w.stores.set("furmony-assets-v0", new Map([["chunk", reply("old")]]));
@@ -337,6 +383,186 @@ describe("the worker's own life", () => {
     expect(w.asked).toContain(sheet);
   });
 
+  test("a name outside this origin is no file of this build", async () => {
+    const foreign = "https://other.test/evil.js";
+    const w = worker({
+      [ROOT]: reply("<html>"),
+      [LIST]: reply(
+        JSON.stringify([foreign, "assets/main-BUcNlnNG.js", "../outside.js"]),
+      ),
+      [foreign]: reply("bytes"),
+      [ASSET]: reply("code"),
+    });
+    await w.install();
+    // Storage would reject a foreign key the way a browser does, and a name above the scope is not
+    // one of this deploy's files either.
+    expect(w.asked).not.toContain(foreign);
+    expect(w.asked).not.toContain(`${ORIGIN}/outside.js`);
+    expect([...(w.stores.get(ASSETS_STORE)?.keys() ?? [])]).toEqual([ASSET]);
+  });
+
+  test("an install drops what this build no longer names", async () => {
+    const gone = `${BASE}/assets/main-OLDold00.js`;
+    const w = worker(
+      {
+        [ROOT]: reply("<html>"),
+        [LIST]: reply(JSON.stringify(["assets/main-BUcNlnNG.js"])),
+        [ASSET]: reply("code"),
+      },
+      { stores: new Map([[ASSETS_STORE, new Map([[gone, reply("old")]])]]) },
+    );
+    await w.install();
+    expect([...(w.stores.get(ASSETS_STORE)?.keys() ?? [])]).toEqual([ASSET]);
+  });
+
+  test("a file this build no longer ships leaves the document cache", async () => {
+    const socials = `${BASE}/socials.json`;
+    const w = worker(
+      {
+        [ROOT]: reply("<html>"),
+        [LIST]: reply(JSON.stringify(["assets/main-BUcNlnNG.js"])),
+        [ASSET]: reply("code"),
+      },
+      {
+        stores: new Map([[DOCUMENT_STORE, new Map([[socials, reply("[]")]])]]),
+      },
+    );
+    await w.install();
+    expect(w.stores.get(DOCUMENT_STORE)?.has(socials)).toBe(false);
+    expect(w.stores.get(DOCUMENT_STORE)?.has(ROOT)).toBe(true);
+  });
+
+  test("a file the new build still ships keeps its place in the document cache", async () => {
+    const socials = `${BASE}/socials.json`;
+    const w = worker(
+      {
+        [ROOT]: reply("<html>"),
+        [LIST]: reply(JSON.stringify(["socials.json"])),
+        [socials]: reply("[{}]"),
+      },
+      {
+        stores: new Map([[DOCUMENT_STORE, new Map([[socials, reply("[]")]])]]),
+      },
+    );
+    await w.install();
+    expect(w.stores.get(DOCUMENT_STORE)?.has(socials)).toBe(true);
+  });
+
+  test("a list that cannot be read leaves the files already held", async () => {
+    const held = `${BASE}/assets/main-OLDold00.js`;
+    const socials = `${BASE}/socials.json`;
+    const w = worker(
+      { [ROOT]: reply("<html>"), [LIST]: DOWN },
+      {
+        stores: new Map([
+          [ASSETS_STORE, new Map([[held, reply("old")]])],
+          [DOCUMENT_STORE, new Map([[socials, reply("[]")]])],
+        ]),
+      },
+    );
+    await w.install();
+    expect([...(w.stores.get(ASSETS_STORE)?.keys() ?? [])]).toEqual([held]);
+    expect(w.stores.get(DOCUMENT_STORE)?.has(socials)).toBe(true);
+  });
+
+  const held = `${BASE}/assets/main-OLDold00.js`;
+  const socials = `${BASE}/socials.json`;
+  const both = () =>
+    new Map([
+      [ASSETS_STORE, new Map([[held, reply("old")]])],
+      [DOCUMENT_STORE, new Map([[socials, reply("[]")]])],
+    ]);
+
+  // A dev server has no list to ship, and it answers the missing file with a document of its own
+  // under a 200. Only a body that reads as a list of names is the list.
+  for (const [answer, body] of [
+    ["a document under a 200", reply("<html>an error page</html>")],
+    ["an object where a list belongs", reply('{"assets":[]}')],
+    ["a list with something that is not a name", reply('["assets/a.js",3]')],
+  ] as [string, FakeResponse][]) {
+    test(`a list that reads as ${answer} empties the document cache`, async () => {
+      const w = worker(
+        { [ROOT]: reply("<html>"), [LIST]: body },
+        { stores: both() },
+      );
+      await w.install();
+      expect(w.stores.get(DOCUMENT_STORE)?.size).toBe(0);
+      // The asset cache has no list to prune it by, and the list itself is not written: a body that
+      // is not a list must not become what later writes are checked against.
+      expect([...(w.stores.get(ASSETS_STORE)?.keys() ?? [])]).toEqual([held]);
+      // The list is the first read, so a body that fails the rule stops the install before the
+      // document is asked for.
+      expect(w.asked).toEqual([LIST]);
+    });
+  }
+
+  // Pages answers a missing file with 404 and a document inside, and the cache in front can answer
+  // with a list under a 500. An answer that did not succeed says nothing about this build.
+  for (const [answer, body] of [
+    ["a document under a 404", reply("<html>", { status: 404 })],
+    [
+      "a list under a failed status",
+      reply('["assets/main-BUcNlnNG.js"]', { status: 500 }),
+    ],
+  ] as [string, FakeResponse][]) {
+    test(`a list that reads as ${answer} leaves both caches as they were`, async () => {
+      const w = worker(
+        { [ROOT]: reply("<html>"), [LIST]: body },
+        { stores: both() },
+      );
+      await w.install();
+      expect([...(w.stores.get(ASSETS_STORE)?.keys() ?? [])]).toEqual([held]);
+      expect([...(w.stores.get(DOCUMENT_STORE)?.keys() ?? [])]).toEqual([
+        socials,
+      ]);
+    });
+  }
+
+  // The list is held in storage, not in a variable: a worker is stopped between visits and wakes to
+  // a fetch event with no memory of its own install.
+  test("the list an install holds is what lets a later read be copied", async () => {
+    const socials = `${BASE}/socials.json`;
+    const net: Record<string, FakeResponse | Error> = {
+      [ROOT]: reply("<html>"),
+      [LIST]: reply(JSON.stringify(["socials.json"])),
+      // Out of reach while the worker installs, and back by the time the page asks.
+      [socials]: DOWN,
+    };
+    const w = worker(net);
+    await w.install();
+    expect(w.stores.get(DOCUMENT_STORE)?.has(socials)).toBe(false);
+    net[socials] = reply('[{"id":1}]');
+    await w.serve(request(socials));
+    expect(await w.holds(DOCUMENT_STORE, socials)).toBe(true);
+  });
+
+  // Storage is only ever written by an install that checked the same rule, but a worker reads it
+  // back without memory of that install.
+  test("a stored list that is not a list of names opens nothing", async () => {
+    const socials = `${BASE}/socials.json`;
+    const w = worker({ [socials]: reply("[{}]") });
+    w.stores.set(
+      DOCUMENT_STORE,
+      new Map([[LIST, reply('["socials.json",7]')]]),
+    );
+    await w.serve(request(socials));
+    expect(await w.holds(DOCUMENT_STORE, socials)).toBe(false);
+  });
+
+  test("a read this build does not ship is not copied", async () => {
+    const touch = `${BASE}/apple-touch-icon.png`;
+    const w = worker({
+      [ROOT]: reply("<html>"),
+      [LIST]: reply(JSON.stringify(["assets/main-BUcNlnNG.js"])),
+      [ASSET]: reply("code"),
+      [touch]: reply("bytes"),
+    });
+    await w.install();
+    // iOS asks for this one out of the document's own link, and the build leaves it out of the list.
+    await w.serve(request(touch));
+    expect(await w.holds(DOCUMENT_STORE, touch)).toBe(false);
+  });
+
   test("a file the worker already holds is not asked for a second time", async () => {
     const w = worker({
       [ROOT]: reply("<html>"),
@@ -348,15 +574,21 @@ describe("the worker's own life", () => {
     expect(w.asked.filter((url) => url === ASSET)).toEqual([ASSET]);
   });
 
-  test("a build that lists nothing still leaves a worker standing", async () => {
+  test("a build that ships no list still leaves a worker standing", async () => {
     const w = worker({
       [ROOT]: reply("<html>"),
-      [LIST]: new Error("no list"),
+      [LIST]: reply("<!doctype html><html></html>"),
       [ASSET]: reply("code"),
     });
     await w.install();
     expect(w.calls).toEqual(["skipWaiting"]);
-    expect(w.stores.get("furmony-document-v1")?.has(ROOT)).toBe(true);
+  });
+
+  test("a read is not copied while the build ships no list", async () => {
+    const w = worker({ [ROOT]: reply("<html>") });
+    await w.serve(navigate(ROOT));
+    await storageStep();
+    expect(w.stores.get(DOCUMENT_STORE)?.size ?? 0).toBe(0);
   });
 });
 
@@ -364,6 +596,7 @@ describe("a repeat visit with no network", () => {
   test("a hashed asset is asked for once and then comes out of storage", async () => {
     const w = worker({ [ASSET]: reply("code") });
     expect((await w.serve(request(ASSET)))?.body).toBe("code");
+    await storageStep();
     expect((await w.serve(request(ASSET)))?.body).toBe("code");
     expect(w.asked).toEqual([ASSET]);
   });
@@ -383,16 +616,28 @@ describe("a repeat visit with no network", () => {
     expect(w.asked).toEqual([ROOT, ROOT]);
   });
 
+  test("the document is copied for the cache before the page reads it", async () => {
+    const w = worker({ [ROOT]: reply("<html>the app</html>") }, { list: [] });
+    const page = await w.serve(navigate(ROOT));
+    // The browser paints with this body: a copy taken after it is a rejected promise.
+    await page?.text();
+    expect(await w.holds(DOCUMENT_STORE, ROOT)).toBe(true);
+  });
+
   test("a deep link is stored even though Pages answers it with 404", async () => {
     const deep = `${BASE}/detail/7`;
-    const w = worker({ [deep]: reply("<html>", { status: 404 }) });
+    const w = worker(
+      { [deep]: reply("<html>", { status: 404 }) },
+      { list: [] },
+    );
     expect((await w.serve(navigate(deep)))?.status).toBe(404);
-    expect(w.stores.get("furmony-document-v1")?.has(ROOT)).toBe(true);
+    expect(await w.holds(DOCUMENT_STORE, ROOT)).toBe(true);
   });
 
   test("offline, the stored document answers a route that was never visited", async () => {
-    const first = worker({ [ROOT]: reply("<html>") });
+    const first = worker({ [ROOT]: reply("<html>") }, { list: [] });
     await first.serve(navigate(ROOT));
+    expect(await first.holds(DOCUMENT_STORE, ROOT)).toBe(true);
 
     const later = worker({ [ROOT]: DOWN });
     later.stores.set(
@@ -537,7 +782,7 @@ describe("the number on the icon", () => {
 describe("the tally the number is built from", () => {
   // The reader's own sequence, one hour to the next: one listing at 8, two locks and one new
   // listing at 9, a tap on the lock card at 9:30, one unlock at 10, the page opened at 10:30.
-  test("a day of news stacks up card by card and goes at once on opening", async () => {
+  test("a day of notifications stacks up card by card and goes at once on opening", async () => {
     const w = worker({});
     await w.push({ title: "上新", tag: "furmony-new-08", count: 1 });
     await w.push({ title: "锁定", tag: "furmony-lock-09", count: 2 });

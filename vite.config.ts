@@ -294,6 +294,9 @@ function documentBudget(): Plugin {
  * Out: the document (one key serves every route), the worker (it re-downloads itself on every
  * update check), and the 512 icons (the browser copies them at install, and the app never asks).
  * `icon-192.png` stays: a notification names it at display time.
+ *
+ * The worker reads this list before it stores or drops anything, so a name left out here is neither
+ * cached nor kept: it is the only place to change what the offline copy holds.
  */
 const precached = (file: string): boolean =>
   !file.endsWith(".html") &&

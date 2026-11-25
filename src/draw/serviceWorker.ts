@@ -41,8 +41,25 @@ export function registerWorker(): Promise<ServiceWorkerRegistration | null> {
   );
 }
 
+/** A page loaded under one worker, then taken over by a newer one: the files it was built against
+ *  are gone from storage, so it asks for the address it already stands at. A page that arrived with
+ *  no worker does not listen, or the first visit would reload itself.
+ */
+export function watchUpdate(
+  controller: {
+    controller: unknown;
+    addEventListener: (type: string, done: () => void) => void;
+  },
+  reload: () => void,
+): void {
+  if (!controller.controller) return;
+  controller.addEventListener("controllerchange", reload);
+}
+
 // When registration fails, the app loses the install entry and nothing else.
 export function registerServiceWorker(): void {
+  if ("serviceWorker" in navigator)
+    watchUpdate(navigator.serviceWorker, () => location.reload());
   void registerWorker().then((registration) => {
     if (!registration) return;
     // An app resumed from the app switcher never navigates, so nothing re-checks sw.js. Coming

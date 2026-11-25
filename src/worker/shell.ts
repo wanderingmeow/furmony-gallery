@@ -21,10 +21,53 @@ const assetDir = new URL("assets/", self.location.href).pathname;
 const hashed = (url: string): boolean =>
   new URL(url).pathname.startsWith(assetDir);
 
-const store = (name: string, key: string, response: Response): Promise<void> =>
-  caches
-    .open(name)
-    .then((cache) => cache.put(key, response.clone())) as Promise<void>;
+// A body is read once, and opening a cache is a step: the caller hands over a copy, not the response
+// the page is about to paint with. The install writes through here, before the list is held.
+const put = (name: string, key: string, copy: Response): Promise<void> =>
+  caches.open(name).then((cache) => cache.put(key, copy)) as Promise<void>;
+
+// A list is a list of names or it is no list at all.
+const names = (body: unknown): body is string[] =>
+  Array.isArray(body) && body.every((one) => typeof one === "string");
+
+// The names sit under the list, so a build under a sub-path stays under it. A name that walks out
+// of this directory is not one of this deploy's files, and `caches.put` takes a same-origin URL
+// only: a foreign one throws before it is stored.
+const addresses = (list: string[]): string[] =>
+  list.flatMap((name) => {
+    try {
+      const at = new URL(name, listFile);
+      return at.href.startsWith(root) ? [at.href] : [];
+    } catch {
+      return [];
+    }
+  });
+
+// What the build ships is what the caches hold: the same set covers both what may be written and
+// what may stay.
+const shipped = async (): Promise<Set<string>> => {
+  const found = await caches.match(listFile);
+  if (!found) return new Set();
+  const body: unknown = await found.json().catch(() => null);
+  if (!names(body)) return new Set();
+  // One key behind the document serves every route, and the list is what the next install reads.
+  return new Set([...addresses(body), root, listFile]);
+};
+
+const storeIfShipped = async (
+  name: string,
+  key: string,
+  copy: Response,
+): Promise<void> => {
+  if (name === DOCUMENT && !(await shipped()).has(key)) return;
+  await put(name, key, copy);
+};
+
+const empty = async (name: string): Promise<void> => {
+  const cache = await caches.open(name);
+  const held = await cache.keys();
+  await Promise.all(held.map((one) => cache.delete(one.url)));
+};
 
 // A stalled request never fails, so the stored copy behind it would never get its turn.
 const STALL_MS = 3000;
@@ -53,7 +96,8 @@ const networkFirst = async (
   try {
     const response = await fromNetwork(request);
     // Pages answers a deep link with 404 and the app inside the body.
-    if (response.ok || response.status === 404) void store(name, key, response);
+    if (response.ok || response.status === 404)
+      void storeIfShipped(name, key, response.clone());
     return response;
   } catch {
     const saved = await caches.match(key);
@@ -62,33 +106,69 @@ const networkFirst = async (
   }
 };
 
-const cacheFirst = (
+const cacheFirst = async (
   request: RequestInfo,
   name: string,
   key: string,
-): Promise<Response> =>
-  caches.match(key).then(
-    (saved) =>
-      saved ??
-      fetch(request).then((response) => {
-        if (response.ok) void store(name, key, response);
-        return response;
-      }),
-  );
+): Promise<Response> => {
+  const saved = await caches.match(key);
+  if (saved) return saved;
+  const found = await fetch(request);
+  if (found.ok) void storeIfShipped(name, key, found.clone());
+  return found;
+};
 
-const remember = (url: string): Promise<unknown> =>
-  cacheFirst(url, hashed(url) ? ASSETS : DOCUMENT, url).catch(() => undefined);
+// The write is waited for: the worker can be stopped the moment the install step ends, and a file
+// still on its way to storage would be missing on the first visit with no network. Nobody else reads
+// this body, so it goes in as it stands.
+const remember = async (url: string): Promise<unknown> => {
+  const name = hashed(url) ? ASSETS : DOCUMENT;
+  try {
+    if (await caches.match(url)) return undefined;
+    const found = await fetch(url);
+    if (found.ok) await put(name, url, found);
+  } catch {
+    // One file that cannot be had is not worth losing the whole install over.
+  }
+};
+
+// Pruning costs a page that still runs the previous deploy: it cannot reach a chunk this build never
+// named, so it reloads once a newer worker takes over.
+const onlyThese = async (name: string, urls: string[]): Promise<void> => {
+  const cache = await caches.open(name);
+  const wanted = new Set(urls);
+  const held = await cache.keys();
+  await Promise.all(
+    held
+      .filter((one) => !wanted.has(one.url))
+      .map((one) => cache.delete(one.url)),
+  );
+};
 
 // An install that fails leaves the browser with no worker at all, so nothing here may throw.
 export const precache = async (): Promise<void> => {
+  const list = await fetch(listFile, { cache: "reload" }).catch(() => null);
+  // A read that did not reach us, or did not succeed, says nothing about this build: what is held
+  // stays. Pages answers a missing file with 404 and its own document inside.
+  if (!list?.ok) return;
+  // The copy is taken before the body is read, and the list goes in before anything else: later
+  // writes are checked against it.
+  const held = list.clone();
+  const body: unknown = await list.json().catch(() => null);
+  // What parses into a list of names is the list. A dev server answers the missing file with the
+  // document of its own, under a 200, and that is no list: its cache fills with modules that change
+  // on the next edit.
+  if (!names(body)) {
+    await empty(DOCUMENT);
+    return;
+  }
+  await put(DOCUMENT, listFile, held);
   const shell = await fetch(root, { cache: "reload" });
-  if (shell.ok || shell.status === 404) await store(DOCUMENT, root, shell);
-  const names: string[] = await fetch(listFile, { cache: "reload" })
-    .then((found) => (found.ok ? found.json() : []))
-    .catch(() => []);
-  await Promise.all(
-    names.map((name) => remember(new URL(name, listFile).href)),
-  );
+  if (shell.ok || shell.status === 404) await put(DOCUMENT, root, shell);
+  const urls = addresses(body);
+  await Promise.all(urls.map((url) => remember(url)));
+  await onlyThese(ASSETS, urls);
+  await onlyThese(DOCUMENT, [...(await shipped())]);
 };
 
 // What the worker answers for. `undefined` leaves the request to the browser.
