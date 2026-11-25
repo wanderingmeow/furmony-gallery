@@ -473,7 +473,7 @@ async function leave(): Promise<void> {
   });
 }
 
-/** Change one of the two kinds of news the reader wants. */
+/** Change one of the two kinds of notification the reader wants. */
 export function setPick(which: PushCategory, on: boolean): void {
   const next = { ...pushPicks(), [which]: on };
   setPicks(next);
@@ -494,9 +494,10 @@ export function setPick(which: PushCategory, on: boolean): void {
   if (pushRows()) schedule();
 }
 
-/** Opening the page is how the reader reads the news: the worker closes the cards, and the number on
- *  the icon goes with them. The number counts the cards that are left, so leaving them open would
- *  raise it again on the next round.
+/** Opening the page closes the cards and clears the number on the icon. That number counts the
+ *  listings that changed since the page was last opened, so this is what puts it back to nothing.
+ *  It runs again whenever the page becomes visible, because a card can bring a page that is already
+ *  open to the front.
  */
 function markSeen(): void {
   if (typeof document !== "undefined" && document.visibilityState !== "visible")
@@ -557,9 +558,8 @@ async function restore(): Promise<void> {
     setPicks(said.prefs);
     keepPicks(said.prefs);
     go("on");
-    // The record is what the switch reports. Whether this device would show a notice is a separate
-    // fact, and the reader hears it here rather than by never seeing one: a site the browser blocks
-    // stops everything, so it is said before the provider's silence.
+    // The switch reports the server's record; this line reports the device. When the browser blocks
+    // the site, nothing would arrive even with a record, so that is what gets said.
     setLine(!shown ? "push.denied" : said.pending ? "push.pending" : "");
   });
   // A language chosen after the row was written is worth one more POST, and one POST is cheaper than

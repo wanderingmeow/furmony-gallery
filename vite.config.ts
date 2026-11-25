@@ -9,9 +9,9 @@ import { gzipSync } from "node:zlib";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv, type Plugin, type UserConfig } from "vite";
-import ts from "typescript";
 import solid from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
+import { bundleWorker } from "./workerBundle.ts";
 import { prefetchScript } from "./src/data/prefetch.ts";
 import { ENDPOINT_URL } from "./src/data/endpoints.ts";
 
@@ -208,31 +208,54 @@ function inlineBootScripts(warmList = true): Plugin {
  */
 const DOCUMENT_BUDGET_KB = 5;
 
-/* The worker is written in TypeScript under `src/worker` and reaches the browser as `sw.js`,
-   beside the document and without a hash: `serviceWorkerAddress()` names that one path, so the
-   build writes it there and the minifier of the main build rewrites it. A dev server has no
-   bundle to read, so it answers the same path with types stripped and comments kept. */
+/* The worker is TypeScript under `src/worker`. A browser gets one file named `sw.js` beside the
+document, because `serviceWorkerAddress()` registers only that path. */
 const workerEntry = "src/worker/sw.ts";
-
-const stripTypes = (code: string): string =>
-  ts.transpileModule(code, {
-    compilerOptions: {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.ESNext,
-    },
-  }).outputText;
 
 function serviceWorker(): Plugin {
   let base = "/";
+  // Every request rebuilds, so a saved file is always in the answer. A build already running is
+  // shared, so the requests of one page load cost one build, and a failed build is not kept.
+  let running: Promise<string> | undefined;
+  const current = (): Promise<string> => {
+    running ??= bundleWorker(root).finally(() => {
+      running = undefined;
+    });
+    return running;
+  };
   return {
     name: "service-worker",
     configResolved(cfg) {
       base = cfg.base;
     },
+    // The published build is a separate run from `bundleWorker`, so the one-file rule is checked
+    // here too.
+    writeBundle(_options, bundle) {
+      const worker = Object.values(bundle ?? {}).find(
+        (one) => one.type === "chunk" && one.name === "sw",
+      );
+      if (!worker || worker.type !== "chunk") {
+        throw new Error(
+          `the build emitted no chunk named sw from ${workerEntry}`,
+        );
+      }
+      const needed = [...worker.imports, ...worker.dynamicImports];
+      if (needed.length > 0) {
+        throw new Error(
+          `${worker.fileName} would import ${needed.join(", ")}; a service worker has to be one ` +
+            `file, because the browser may fetch it with no network`,
+        );
+      }
+    },
     configureServer(server) {
-      server.middlewares.use(hrefFor(base, "sw.js"), (_req, res) => {
-        res.setHeader("content-type", "text/javascript; charset=utf-8");
-        res.end(stripTypes(readFileSync(resolve(root, workerEntry), "utf8")));
+      server.middlewares.use(hrefFor(base, "sw.js"), async (_req, res) => {
+        try {
+          res.setHeader("content-type", "text/javascript; charset=utf-8");
+          res.end(await current());
+        } catch (why) {
+          res.statusCode = 500;
+          res.end(`/* the worker did not compile: ${String(why)} */`);
+        }
       });
     },
   };
@@ -407,8 +430,7 @@ export function buildConfig(mode: string): UserConfig {
     base: "/furmony-gallery",
     // remote access to this dev machine, so the host stays open and the port is fixed
     server: { host: true, port: 5173, strictPort: true },
-    // the same address for dev and preview; strictPort makes the collision loud instead of moving
-    // the server to a port nobody typed
+    // the same address for dev and preview; strictPort fails when the port is taken
     preview: { host: true, port: 5173, strictPort: true },
     define: {
       "import.meta.env.VITE_SERVER_ORIGIN_B64": JSON.stringify(

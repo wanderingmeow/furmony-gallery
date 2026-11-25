@@ -25,5 +25,6 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
+  // The worker has its own program: tsconfig.worker.json.
   "exclude": ["src/worker"]
 }

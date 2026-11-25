@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.worker.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker.test.tsbuildinfo",
+    // The test reads files and runs the bundler, so it needs Node globals.
+    "types": ["node"]
+  },
+  // The base file excludes the test file, so this list has to name something.
+  "exclude": ["node_modules"],
+  "include": ["src/worker/sw.test.ts"]
+}
