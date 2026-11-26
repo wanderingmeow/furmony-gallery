@@ -16,6 +16,11 @@ const answers: boolean[] = [];
 // The track is 40px and the knob travels 16px, so the middle sits at 8px.
 const START_X = 100;
 
+// Where the knob rests or rides. A held knob adds the growth every pressed control shares, read from
+// the token rather than the number it resolves to, so the token stays the contract.
+const at = (px: number) => `translateX(${px}px)`;
+const heldAt = (px: number) => `${at(px)} scale(var(--press-grow))`;
+
 function draw(start = false, held = false, refuse = false): void {
   dispose?.();
   host?.remove();
@@ -49,16 +54,22 @@ const hit = () => host.querySelector<HTMLElement>(".haptic-hit") ?? btn();
 // draw. draw/haptics.test.ts covers that guard.
 
 let pressX = START_X;
+let pointerId = 1;
 const press = (clientX = START_X) => {
   pressX = clientX;
+  pointerId += 1;
   hit().dispatchEvent(
-    new PointerEvent("pointerdown", { bubbles: true, clientX }),
+    new PointerEvent("pointerdown", { bubbles: true, clientX, pointerId }),
   );
 };
 /** Move the held pointer `dx` px from where the press landed. */
 const moveTo = (dx: number) =>
   hit().dispatchEvent(
-    new PointerEvent("pointermove", { bubbles: true, clientX: pressX + dx }),
+    new PointerEvent("pointermove", {
+      bubbles: true,
+      clientX: pressX + dx,
+      pointerId,
+    }),
   );
 /** Move the held pointer `dx` and `dy` px from where the press landed. */
 const moveToXY = (dx: number, dy: number) =>
@@ -67,12 +78,17 @@ const moveToXY = (dx: number, dy: number) =>
       bubbles: true,
       clientX: pressX + dx,
       clientY: dy,
+      pointerId,
     }),
   );
 const letGo = () =>
-  hit().dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+  hit().dispatchEvent(
+    new PointerEvent("pointerup", { bubbles: true, pointerId }),
+  );
 const dropped = () =>
-  hit().dispatchEvent(new PointerEvent("pointercancel", { bubbles: true }));
+  hit().dispatchEvent(
+    new PointerEvent("pointercancel", { bubbles: true, pointerId }),
+  );
 
 afterEach(() => {
   dispose?.();
@@ -112,16 +128,16 @@ describe("Switch", () => {
     moveTo(5);
     letGo();
     expect(answers).toEqual([]);
-    expect(knob().style.transform).toBe("translateX(0px)");
+    expect(knob().style.transform).toBe(at(0));
   });
 
   it("the knob follows the pointer and stops at the end of the track", () => {
     draw();
     press();
     moveTo(6);
-    expect(knob().style.transform).toBe("translateX(6px) scale(1.18)");
+    expect(knob().style.transform).toBe(heldAt(6));
     moveTo(40);
-    expect(knob().style.transform).toBe("translateX(16px) scale(1.18)");
+    expect(knob().style.transform).toBe(heldAt(16));
   });
 
   // A finger that has not leaned either way yet could still become the panel's scroll, so the knob
@@ -130,12 +146,12 @@ describe("Switch", () => {
     draw();
     press();
     expect(knob().style.transform, "a finger alone is not yet a drag").toBe(
-      "translateX(0px)",
+      at(0),
     );
     moveTo(6);
-    expect(knob().style.transform).toBe("translateX(6px) scale(1.18)");
+    expect(knob().style.transform).toBe(heldAt(6));
     letGo();
-    expect(knob().style.transform).toBe("translateX(0px)");
+    expect(knob().style.transform).toBe(at(0));
   });
 
   it("the drag counts from where the knob rests", () => {
@@ -143,7 +159,7 @@ describe("Switch", () => {
     // A press near the right edge: the knob is already there, so it must not jump to the finger.
     press(START_X + 14);
     moveTo(-6);
-    expect(knob().style.transform).toBe("translateX(10px) scale(1.18)");
+    expect(knob().style.transform).toBe(heldAt(10));
   });
 
   // iOS hands a drag that leans off the track to the panel's scroll and takes the switch out of it.
@@ -154,17 +170,32 @@ describe("Switch", () => {
     expect(
       knob().style.transform,
       "inside the tap's drift, the knob still waits",
-    ).toBe("translateX(0px)");
+    ).toBe(at(0));
     moveToXY(2, 26);
-    expect(knob().style.transform, "no growth, no travel").toBe(
-      "translateX(0px)",
-    );
+    expect(knob().style.transform, "no growth, no travel").toBe(at(0));
     letGo();
     answers.length = 0;
     btn()!.click();
     expect(answers, "the click a release sends is refused").toEqual([]);
     btn()!.click();
     expect(answers, "a later tap still works").toEqual([true]);
+  });
+
+  // A second finger takes the drag from the first, so the knob must not keep the position the first
+  // finger left it at, and must not stay grown while the second finger has moved nowhere.
+  it("a second finger starts from where the knob rests", () => {
+    draw();
+    press();
+    moveTo(12);
+    expect(knob().style.transform).toBe(heldAt(12));
+    press();
+    expect(knob().style.transform, "no travel, no growth").toBe(at(0));
+    moveTo(40);
+    expect(knob().style.transform, "the second finger's own travel").toBe(
+      heldAt(16),
+    );
+    letGo();
+    expect(answers).toEqual([true]);
   });
 
   it("the first click after a drag is ignored, and the next one works", () => {
@@ -185,7 +216,7 @@ describe("Switch", () => {
     moveTo(2);
     dropped();
     expect(answers).toEqual([]);
-    expect(knob().style.transform).toBe("translateX(0px)");
+    expect(knob().style.transform).toBe(at(0));
   });
 
   // The knob crossing the middle is a drag in flight: the change comes on the release.
@@ -264,12 +295,6 @@ describe("Switch", () => {
     withSwitch();
     draw();
     expect(host.querySelector(".haptic-hit")).not.toBeNull();
-    // One value gives the buzz the same band as the tap target, so a finger can start a turn from
-    // outside the track.
-    expect(
-      btn()!.style.getPropertyValue("--hit"),
-      "the buzz reaches past the track",
-    ).not.toBe("");
     btn()!.click();
     expect(answers).toEqual([true]);
   });

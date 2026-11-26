@@ -1,17 +1,12 @@
-// src/components/ui/Switch.tsx - the iOS switch, for settings that are on or off.
+// The iOS switch, for settings that are on or off.
 //
 // The iOS settings switch is 51×31, a size for a full-height row: too big for a panel this dense.
-// This is the same design smaller, with the same gap on every side.
+// This is the same design smaller, with a 2px gap between the knob and the track's edge.
 //
-// The off track uses a theme token, so it changes in dark mode. The green is written out because
-// iOS uses the same green in both themes.
-//
-// A drag across the track works the way it does on iOS: the knob rides with the pointer, and a
-// release past the middle of the track decides the value.
-import { createSignal, onCleanup } from "solid-js";
-import { followPointer } from "../../draw/trackPointer";
-import { createAxisLock } from "../../draw/axisLock";
+// Both states take theme tokens, so the fill is the app's accent rather than iOS's green, and dark
+// mode flips it with every other color.
 import { useHaptic } from "../../hooks/useHaptic";
+import { useKnobDrag } from "../../hooks/useKnobDrag";
 
 const TRACK_W = 40;
 const TRACK_H = 24;
@@ -20,19 +15,15 @@ const BORDER = 1;
 /** The gap between the knob and the track edge, measured inside the border. */
 const INSET = 1;
 const TRAVEL = TRACK_W - BORDER * 2 - KNOB - INSET * 2;
-// The growth that the price slider's thumb gets under a held finger, so every held control looks
-// the same.
-const SCALE = 1.18;
 
-// 24px of track against a 44px tap target is +10px above and below. To the right the row gives 6px
-// of padding: past that the panel's scroll container grows wider than the panel, and the panel gets
-// a horizontal scrollbar. One value feeds the tap target and the buzz.
-const HIT = "-10px -6px -10px 0";
-const HIT_AREA = `after:absolute after:[inset:var(--hit)] after:content-['']`;
-
-// The shadow is the iOS knob's: a soft drop and a tight edge under it.
-const KNOB_LOOK = `absolute rounded-full bg-white motion-reduce:transition-none
-                   shadow-[0_2px_5px_rgba(0,0,0,0.15),0_1px_1px_rgba(0,0,0,0.16)]`;
+// The shadow is the iOS knob's: a soft drop and a tight edge under it. A disabled switch drops it:
+// a shadow makes the knob look raised and tappable, and the knob sits fainter than the track around
+// it.
+const KNOB_BASE =
+  "absolute rounded-full bg-white motion-reduce:transition-none";
+const KNOB_RAISE =
+  "shadow-[0_2px_5px_rgba(0,0,0,0.15),0_1px_1px_rgba(0,0,0,0.16)]";
+const KNOB_MUTED = "opacity-70";
 
 export function Switch(props: {
   on: boolean;
@@ -40,90 +31,15 @@ export function Switch(props: {
   label: string;
   disabled?: boolean;
 }) {
-  // How far the pointer has travelled since the press, in px, or null while nothing is held.
-  const [drag, setDrag] = createSignal<number | null>(null);
-  const [held, setHeld] = createSignal(false);
-  let stopFollow: (() => void) | null = null;
   // The release runs this: iOS may have turned its switch without the page hearing a change.
   let syncHaptic = (): void => {};
-  const rest = () => (props.on ? TRAVEL : 0);
-  const knob = () => {
-    const d = drag();
-    if (d === null) return rest();
-    return Math.min(Math.max(rest() + d, 0), TRAVEL);
-  };
-  // The scale comes after the travel, so the knob grows from where it stands. A scale before the
-  // travel would stretch the distance it slides.
-  const knobAt = () =>
-    `translateX(${knob()}px)${held() ? ` scale(${SCALE})` : ""}`;
-  // The green follows the knob, so a drag past the middle of the track shows the color that the
-  // switch is about to take.
-  const lit = () => knob() > TRAVEL / 2;
-
-  let startX = 0;
-  let startY = 0;
-  // Whose gesture this turned out to be. The switch takes a drag along the track; a drag that
-  // leans off it belongs to the panel's scroll, and `touch-pan-y` hands it over at the same angle
-  // this picks, so the knob and the scroll never disagree.
-  const lock = createAxisLock();
-  let moved = false;
-  /** Whether the control is held still, for the mute switch `useHaptic` takes. */
-  const mute = () => !!props.disabled;
-  // Releasing a drag sends a click, which would flip the switch a second time, so the first one is
-  // ignored. A new press clears the flag.
-  let swallow = false;
-
-  const moveTo = (x: number, y: number): void => {
-    const dx = x - startX;
-    const dy = y - startY;
-    // Whose gesture this is stays unknown until the press has left the tap's drift, and the knob
-    // waits on that: a drag the scroll takes never grows.
-    const axis = lock.of(dx, dy);
-    if (!axis) return;
-    if (axis === "y") {
-      // The scroll owns it from here: following stops, and the click a release sends is ignored, so a drag
-      // that leaned off the track cannot turn the switch.
-      stopFollow?.();
-      stopFollow = null;
-      swallow = true;
-      setHeld(false);
-      return;
-    }
-    setHeld(true);
-    moved = true;
-    setDrag(dx);
-  };
-
-  const release = () => {
-    const wanted = lit();
-    stopFollow = null;
-    setDrag(null);
-    setHeld(false);
-    if (moved) {
-      swallow = true;
-      // A request started elsewhere can hold the control still while the finger is still on it.
-      if (!props.disabled && wanted !== props.on) props.onChange(wanted);
-    }
-    syncHaptic();
-  };
-
-  const press = (event: PointerEvent) => {
-    if (props.disabled) return;
-    startX = event.clientX;
-    startY = event.clientY;
-    lock.reset();
-    moved = false;
-    swallow = false;
-    // A second finger takes the drag from the first, so two fingers do not pull at one knob.
-    stopFollow?.();
-    // eslint-disable-next-line solid/reactivity -- followPointer runs this when the finger lifts
-    stopFollow = followPointer(event.pointerId, moveTo, () => {
-      stopFollow = null;
-      release();
-    });
-  };
-
-  onCleanup(() => stopFollow?.());
+  const blocked = () => !!props.disabled;
+  const knob = useKnobDrag(TRAVEL, {
+    live: () => !blocked(),
+    value: () => props.on,
+    onChange: (on) => props.onChange(on),
+    settled: () => syncHaptic(),
+  });
 
   return (
     <button
@@ -134,37 +50,44 @@ export function Switch(props: {
       title={props.label}
       disabled={props.disabled}
       ref={(el) => {
-        syncHaptic = useHaptic(el, () => props.on, mute);
+        syncHaptic = useHaptic(el, () => props.on, blocked);
       }}
       // pan-y: a vertical drag goes to the panel's scroll.
-      class={`relative shrink-0 rounded-full border transition-colors duration-200 touch-pan-y
-              motion-reduce:transition-none ${HIT_AREA}`}
-      style={{ width: `${TRACK_W}px`, height: `${TRACK_H}px`, "--hit": HIT }}
+      class="switch relative shrink-0 rounded-full border transition-colors duration-200 touch-pan-y
+             motion-reduce:transition-none"
+      style={{ width: `${TRACK_W}px`, height: `${TRACK_H}px` }}
       classList={{
-        "bg-accent border-accent": lit() && !props.disabled,
-        "bg-surface-2 border-border": !lit() || !!props.disabled,
-        "opacity-45 cursor-not-allowed": !!props.disabled,
+        // The fill follows the knob, so a drag past the middle shows the color the switch is about
+        // to take.
+        "bg-accent border-accent": knob.pastMiddle() && !blocked(),
+        "bg-surface-2 border-border": !knob.pastMiddle() || blocked(),
+        "opacity-45 cursor-not-allowed": blocked(),
       }}
-      onPointerDown={press}
+      onPointerDown={knob.press}
       // A disabled control blocks pointer events. The guard catches a click that code sends.
       onClick={() => {
-        if (swallow) {
-          swallow = false;
-          return;
-        }
-        if (!props.disabled) props.onChange(!props.on);
+        if (knob.clickToIgnore()) return;
+        if (!blocked()) props.onChange(!props.on);
       }}
     >
       <span
-        // While the knob is held it follows the pointer, so no transition may sit between them. On
-        // release it eases back through the rule below.
-        class={`${KNOB_LOOK} ${held() ? "transition-none" : "transition-transform duration-200"}`}
+        // A transition would keep the knob behind the finger, so none runs while the knob is held;
+        // the release eases back. `--press-grow` is the growth every pressed control shares.
+        class={KNOB_BASE}
+        classList={{
+          [KNOB_MUTED]: blocked(),
+          [KNOB_RAISE]: !blocked(),
+          "transition-none": knob.held(),
+          "transition-transform duration-200": !knob.held(),
+        }}
         style={{
           top: `${INSET}px`,
           left: `${INSET}px`,
           width: `${KNOB}px`,
           height: `${KNOB}px`,
-          transform: knobAt(),
+          transform: `translateX(${knob.x()}px)${
+            knob.held() ? " scale(var(--press-grow))" : ""
+          }`,
         }}
       />
     </button>

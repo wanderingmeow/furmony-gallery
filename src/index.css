@@ -3,6 +3,7 @@
 /* Component sheets the entry graph reaches. The document carries boot.css and nothing else, so a
    component the entry reaches arrives on this sheet; one only a lazy chunk reaches imports its own. */
 @import "./components/ui/SegmentedControl.css";
+@import "./components/ui/Switch.css";
 @import "./components/ui/WishlistHeart.css";
 @import "./components/priceRange/PriceRail.css";
 @import "./components/priceRange/PriceRange.css";
@@ -104,6 +105,9 @@ body[data-scroll-locked] {
   --field-rise: 2px;
   /* The corner circle the two corner actions and the back-to-top button share. */
   --fab-size: 48px;
+  /* How far a control grows while a finger is on it: the corner circle, the chrome's plate and its
+     mark, the price rail's thumb, and the switch's knob. One number, so every press looks alike. */
+  --press-grow: 1.18;
   /* The part of the pill that never gives way: its four labels at their natural width. The script
      measures it once it arrives; until then this guess carries the first paint. Too small clips the
      tabs in a wide language, too large leaves air on the line. */
@@ -307,7 +311,7 @@ body[data-scroll-locked] {
 }
 
 .press-fab:active {
-  transform: scale(1.18);
+  transform: scale(var(--press-grow));
   transition: none;
 }
 
@@ -343,7 +347,7 @@ body[data-scroll-locked] {
     [data-chrome="hit"][data-press="true"]
   )
   .chrome-mark {
-  transform: scale(1.18);
+  transform: scale(var(--press-grow));
   transition: none;
 }
 
