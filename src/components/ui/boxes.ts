@@ -52,11 +52,14 @@ export const CHROME_CORNER = `col-start-2 justify-self-end flex flex-row-reverse
 export const CHROME_STATS = `col-start-1 justify-self-start flex items-center
   pl-[calc(var(--fab-size)+0.5rem)] pointer-events-auto`;
 
-/** --field-h and --chrome-acts arrive inline: two classes writing one custom property would be
- *  settled by stylesheet order. A circle centres on the bar; a box starts at its top edge, so only
- *  the growth that fits the bar is symmetric. */
+/** `top` centres the box on the bar. A box taller than the bar cannot centre without rising above it,
+ *  so it takes at most --field-rise: the 60px text box takes 2px and stays centred, and the taller
+ *  boxes stop at that line and grow downward, over the cards.
+ *
+ *  --field-h and --chrome-acts arrive inline: two classes writing one custom property would be settled
+ *  by stylesheet order. */
 export const CHROME_FIELD = `absolute left-0 right-0 h-[var(--field-h)]
-  top-[max(0px,calc((var(--bar-h)-var(--field-h))/2))]
+  top-[max(calc(var(--field-rise)*-1),calc((var(--bar-h)-var(--field-h))/2))]
   transition-[height,top] duration-300
   ease-chrome motion-reduce:transition-none`;
 

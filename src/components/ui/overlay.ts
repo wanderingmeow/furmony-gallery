@@ -116,6 +116,9 @@ export function holdFocus(options: {
 
       const onKey = (event: KeyboardEvent): void => {
         if (event.key === "Escape") {
+          // The layer answers for its own Escape. Its listener sits on the document, so the stop
+          // keeps the key off the window and off whatever band or list is behind this layer.
+          event.stopPropagation();
           options.onClose();
           return;
         }

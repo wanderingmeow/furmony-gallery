@@ -140,3 +140,25 @@ describe("the … circle", () => {
     ).toBe("more");
   });
 });
+
+describe("Escape on an open panel", () => {
+  it("closes the panel and stops there", () => {
+    // The band behind reads the same key as "leave picture mode", so the panel keeps it.
+    const seen: string[] = [];
+    const onWindow = (e: KeyboardEvent): void => {
+      seen.push(e.key);
+    };
+    window.addEventListener("keydown", onWindow);
+    draw();
+    funnel().click();
+    expect(shown("filter-panel")).toBe(true);
+
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+
+    window.removeEventListener("keydown", onWindow);
+    expect(shown("filter-panel")).toBe(false);
+    expect(seen).toEqual([]);
+  });
+});

@@ -96,8 +96,12 @@ export function FabMenu(props: {
         if (wrap.contains(t) || popup.contains(t)) return;
         setOpen(false);
       };
+      // Escape belongs to the panel while it is up: stopping here keeps the band behind from
+      // reading the same key as a request to leave picture mode.
       const onKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape") setOpen(false);
+        if (e.key !== "Escape") return;
+        e.stopPropagation();
+        setOpen(false);
       };
       // Inside the panel the panel answers: past either end of its own list the list behind keeps its
       // place. Outside it the page scrolls as it pleases - this is a corner popup, not a modal.

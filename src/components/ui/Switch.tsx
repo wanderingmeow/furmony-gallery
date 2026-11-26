@@ -10,6 +10,7 @@
 // release past the middle of the track decides the value.
 import { createSignal, onCleanup } from "solid-js";
 import { followPointer } from "../../draw/trackPointer";
+import { createAxisLock } from "../../draw/axisLock";
 import { useHaptic } from "../../hooks/useHaptic";
 
 const TRACK_W = 40;
@@ -19,8 +20,6 @@ const BORDER = 1;
 /** The gap between the knob and the track edge, measured inside the border. */
 const INSET = 1;
 const TRAVEL = TRACK_W - BORDER * 2 - KNOB - INSET * 2;
-// A press that has not moved this far is a tap: the click that follows makes the change.
-const SLOP = 4;
 // The growth that the price slider's thumb gets under a held finger, so every held control looks
 // the same.
 const SCALE = 1.18;
@@ -66,7 +65,7 @@ export function Switch(props: {
   // Whose gesture this turned out to be. The switch takes a drag along the track; a drag that
   // leans off it belongs to the panel's scroll, and `touch-pan-y` hands it over at the same angle
   // this picks, so the knob and the scroll never disagree.
-  let axis: "x" | "y" | null = null;
+  const lock = createAxisLock();
   let moved = false;
   /** Whether the control is held still, for the mute switch `useHaptic` takes. */
   const mute = () => !!props.disabled;
@@ -77,12 +76,10 @@ export function Switch(props: {
   const moveTo = (x: number, y: number): void => {
     const dx = x - startX;
     const dy = y - startY;
-    if (axis === null) {
-      // Whose gesture this is stays unknown until the press has left the tap's drift, and the knob
-      // waits on that: a drag the scroll takes never grows.
-      if (Math.hypot(dx, dy) <= SLOP) return;
-      axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-    }
+    // Whose gesture this is stays unknown until the press has left the tap's drift, and the knob
+    // waits on that: a drag the scroll takes never grows.
+    const axis = lock.of(dx, dy);
+    if (!axis) return;
     if (axis === "y") {
       // The scroll owns it from here: following stops, and the click a release sends is ignored, so a drag
       // that leaned off the track cannot turn the switch.
@@ -114,7 +111,7 @@ export function Switch(props: {
     if (props.disabled) return;
     startX = event.clientX;
     startY = event.clientY;
-    axis = null;
+    lock.reset();
     moved = false;
     swallow = false;
     // A second finger takes the drag from the first, so two fingers do not pull at one knob.

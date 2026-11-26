@@ -99,6 +99,9 @@ body[data-scroll-locked] {
      a height before the script arrives. */
   --bar-h: 56px;
   --field-h: 48px;
+  /* How far above the bar's top edge the field may rise. The text box is 60px against a 56px bar, so
+     staying centred costs 2px; a taller box stops at this line and grows downward over the cards. */
+  --field-rise: 2px;
   /* The corner circle the two corner actions and the back-to-top button share. */
   --fab-size: 48px;
   /* The part of the pill that never gives way: its four labels at their natural width. The script

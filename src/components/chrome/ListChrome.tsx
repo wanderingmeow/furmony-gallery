@@ -1,6 +1,6 @@
 import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
 import { BarChartOutlined, SearchOutlined } from "@ant-design/icons-svg";
-import { useNavigate } from "@solidjs/router";
+import { useMatch, useNavigate } from "@solidjs/router";
 import { tr } from "../../i18n";
 import { searchText } from "../../stores/filterStore";
 import {
@@ -33,7 +33,7 @@ import {
 import { TabPill } from "./TabPill";
 import { CornerActions } from "../fab/CornerActions";
 import { FabCircle } from "../fab/FabCircle";
-import { statsPath } from "../../router";
+import { detailPattern, statsPath } from "../../router";
 import { statsTitle } from "../../model/titles";
 import { SearchBar, type SearchBarApi } from "./SearchBar";
 import { PictureMode } from "./PictureSearch";
@@ -133,6 +133,21 @@ export function ListChrome() {
   };
   window.addEventListener("keydown", onKey);
   onCleanup(() => window.removeEventListener("keydown", onKey));
+
+  // The sheet stands above the band, and the full-screen zoom stands inside it. Escape on either
+  // one is an answer to what is nearest, and the ranking behind keeps its picture.
+  const sheetUp = useMatch(() => detailPattern);
+
+  // Escape leaves picture mode whichever state it is in: a picture the device is still reading,
+  // bytes on their way, a wait at the service, or a ranking already drawn. The band holds the mode
+  // through all of them, so the one thing this key can mean here is going back to the plain list.
+  const onPictureKey = (e: KeyboardEvent): void => {
+    if (e.key !== "Escape" || e.isComposing) return;
+    if (!picture.on() || sheetUp()) return;
+    picture.close();
+  };
+  window.addEventListener("keydown", onPictureKey);
+  onCleanup(() => window.removeEventListener("keydown", onPictureKey));
 
   const togglePicture = () => {
     // the file search is the longest pause in this path, so the service trip is paid inside it

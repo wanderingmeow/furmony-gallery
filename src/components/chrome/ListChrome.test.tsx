@@ -4,9 +4,41 @@ import { settled } from "../../testSetup";
 import { tr } from "../../i18n";
 import { ListChrome } from "./ListChrome";
 import { searchText, setSearchText } from "../../stores/filterStore";
+import { setSemanticSearch } from "../../stores/displayStore";
 
-// the band's charts circle calls useNavigate
-vi.mock("@solidjs/router", () => ({ useNavigate: () => () => {} }));
+// the band's charts circle calls useNavigate; whether the sheet is up is which route is read
+const route = vi.hoisted(() => ({ sheet: false }));
+const sent = vi.hoisted(() => ({
+  answer: null as Promise<unknown> | null,
+  encodeGate: null as Promise<void> | null,
+}));
+
+vi.mock("@solidjs/router", () => ({
+  useNavigate: () => () => {},
+  useMatch: () => () => route.sheet,
+}));
+
+vi.mock("../../data/searchApi", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../data/searchApi")>();
+  return {
+    ...real,
+    askPicture: (_blob: Blob, signal: AbortSignal) =>
+      new Promise((resolve) => {
+        signal.addEventListener("abort", () => resolve(null));
+        void (sent.answer as Promise<unknown> | null)?.then(resolve);
+      }),
+  };
+});
+
+// the canvas work belongs to the browser; the band only needs the bytes to come back
+vi.mock("../../data/pictureInput", () => ({
+  prepare: async (file: Blob) => {
+    if (sent.encodeGate) await sent.encodeGate;
+    return { blob: file };
+  },
+}));
+
+const { picture } = await import("../../stores/semanticStore");
 
 let host!: HTMLDivElement;
 let disposeApp!: () => void;
@@ -177,5 +209,116 @@ describe("the charts beside the search circle", () => {
     expect(
       stats().querySelector(`button[aria-label="${tr("chrome.stats")}"]`),
     ).toBeTruthy();
+  });
+});
+
+describe("Escape in picture mode", () => {
+  const esc = () =>
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+  const pictureOn = () => band().dataset.picture === "true";
+
+  beforeEach(() => {
+    sent.answer = null;
+    sent.encodeGate = null;
+    route.sheet = false;
+    picture.close();
+    setSemanticSearch(true);
+  });
+
+  afterEach(() => {
+    picture.close();
+    setSemanticSearch(false);
+    route.sheet = false;
+  });
+
+  // The band holds the mode through every one of these, so the key has to be answered in all of
+  // them: a wait the user cannot leave is a trap.
+  it("gives the mode up while the browser reads the picture", async () => {
+    let release = () => {};
+    sent.encodeGate = new Promise<void>((done) => {
+      release = done;
+    });
+    mountEmpty();
+    picture.open();
+    void picture.stage(new Blob(["x"], { type: "image/jpeg" }));
+    await settled();
+    expect(pictureOn()).toBe(true);
+
+    esc();
+    await settled();
+
+    expect(picture.on()).toBe(false);
+    expect(pictureOn()).toBe(false);
+    release();
+  });
+
+  it("gives the mode up while the service is still searching", async () => {
+    sent.answer = new Promise(() => {});
+    mountEmpty();
+    picture.open();
+    void picture.stage(new Blob(["x"], { type: "image/jpeg" }));
+    await settled();
+    await settled();
+    expect(pictureOn()).toBe(true);
+
+    esc();
+    await settled();
+
+    expect(picture.on()).toBe(false);
+  });
+
+  it("gives the mode up once the ranking is on screen", async () => {
+    sent.answer = Promise.resolve({ ids: [201], box: null });
+    mountEmpty();
+    picture.open();
+    void picture.stage(new Blob(["x"], { type: "image/jpeg" }));
+    await settled();
+    await settled();
+    expect(picture.state()).toBe("done");
+
+    esc();
+    await settled();
+
+    expect(picture.on()).toBe(false);
+    expect(picture.state()).toBe("empty");
+  });
+
+  // A draft an input method is holding answers Escape first, as it does for the field.
+  it("leaves an input method its Escape", async () => {
+    mountEmpty();
+    picture.open();
+    await settled();
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", isComposing: true }),
+    );
+    await settled();
+
+    expect(picture.on()).toBe(true);
+  });
+
+  it("leaves the sheet its Escape, and the picture with the band", async () => {
+    sent.answer = Promise.resolve({ ids: [201], box: null });
+    mountEmpty();
+    picture.open();
+    void picture.stage(new Blob(["x"], { type: "image/jpeg" }));
+    await settled();
+    await settled();
+    route.sheet = true;
+
+    esc();
+    await settled();
+
+    expect(picture.on()).toBe(true);
+  });
+
+  it("says nothing to Escape outside picture mode", async () => {
+    mountEmpty();
+    const closed = vi.spyOn(picture, "close");
+
+    esc();
+    await settled();
+
+    expect(closed).not.toHaveBeenCalled();
   });
 });

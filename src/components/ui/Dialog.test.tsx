@@ -162,6 +162,20 @@ describe("Dialog", () => {
     expect(closes()).toBe(1);
   });
 
+  // The band behind reads the same key as "leave picture mode", so a plate that is up keeps the
+  // key to itself.
+  test("Escape stops at the plate", () => {
+    const seen: string[] = [];
+    const onWindow = (e: KeyboardEvent): void => {
+      seen.push(e.key);
+    };
+    window.addEventListener("keydown", onWindow);
+    mount();
+    key("Escape");
+    window.removeEventListener("keydown", onWindow);
+    expect(seen).toEqual([]);
+  });
+
   test("a touch outside the plate answers nothing", () => {
     const { closes } = mount();
     plate()!.dispatchEvent(new MouseEvent("click", { bubbles: true }));

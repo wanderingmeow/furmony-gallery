@@ -6,6 +6,7 @@ import {
   type Sample,
 } from "../../draw/fling";
 import { SLIDE_MS } from "./sheetMotion";
+import { createAxisLock } from "../../draw/axisLock";
 
 /** The drag that closes a phone sheet: it takes the gesture only once the content cannot scroll up
  *  any more, reports how far the card travelled, and hands the decision to `shouldDismiss`. */
@@ -26,13 +27,21 @@ export function useSheetDrag(options: {
   // backdrop never closes the sheet. Both change: the sheet remounts on each open, a phone turns.
   const [scroller, setScroller] = createSignal<HTMLDivElement | null>(null);
 
+  let startX = 0;
   let startY = 0;
   let startScrollTop = 0;
+  // A hand cannot pan a row sideways without travelling some vertical, and the rows inside a sheet
+  // (the thumbs, the related cards) scroll under that same finger. So the drag waits for the gesture
+  // to say which way it is going, and a move that went further across than down is not the sheet's to
+  // take: taking it would have moved the card and, through preventDefault, stopped the row scrolling.
+  const lock = createAxisLock();
   let returnTimer: number | undefined;
   const samples: Sample[] = [];
 
   function onStart(e: TouchEvent) {
+    startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    lock.reset();
     startScrollTop = (e.currentTarget as HTMLElement).scrollTop;
     samples.length = 0;
     samples.push({ t: performance.now(), y: startY });
@@ -41,7 +50,9 @@ export function useSheetDrag(options: {
   function onMove(e: TouchEvent) {
     const sheet = options.getSheet();
     if (!sheet) return;
+    const dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
+    if (lock.of(dx, dy) !== "y") return;
     // Before the content runs out of room to scroll up, a downward drag just scrolls it.
     if (startScrollTop > 0 || dy <= 0) return;
     e.preventDefault();
