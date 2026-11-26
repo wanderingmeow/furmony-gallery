@@ -14,6 +14,7 @@ import {
   publishDayAt,
   raceDisplay,
   raceName,
+  shownStatus,
   type PriceMode,
 } from "./domain";
 
@@ -47,6 +48,32 @@ function planParts(l: AdoptListing) {
     throw new Error(`想要分期，拿到 ${JSON.stringify(p)}`);
   return p;
 }
+
+describe("the 状态 row's one word", () => {
+  const one = (over: Partial<AdoptListing>) =>
+    ({ adoptId: 1, ...over }) as AdoptListing;
+
+  it("takes the shelf's words in the order a buyer reads them", () => {
+    expect(shownStatus(one({}), false)).toBe("open");
+    expect(shownStatus(one({ isLock: 1 }), false)).toBe("locking");
+    expect(shownStatus(one({ isLock: 2 }), false)).toBe("locked");
+    expect(shownStatus(one({ status: 1 }), false)).toBe("adopted");
+  });
+
+  it("reads a paid lock ahead of an adoption the shelf has not recorded", () => {
+    expect(shownStatus(one({ status: 0, isLock: 2 }), false)).toBe("locked");
+  });
+
+  it("reads a debut album as the piece having gone out the door", () => {
+    expect(shownStatus(one({}), true)).toBe("adopted");
+    expect(shownStatus(one({ isLock: 1 }), true)).toBe("adopted");
+    expect(shownStatus(one({ isLock: 2 }), true)).toBe("adopted");
+  });
+
+  it("reads a missing flag as open", () => {
+    expect(shownStatus(one({ isLock: undefined }), false)).toBe("open");
+  });
+});
 
 describe("formatPrice", () => {
   it("draws a rounded number with ¥", () => {

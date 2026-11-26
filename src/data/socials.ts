@@ -1,8 +1,9 @@
-// Pure social-account domain (no reactivity, no I/O, no DOM) — unit-testable in isolation.
+// Pure social-account domain (no reactivity, no I/O, no DOM): unit-testable in isolation.
 //
-// Socials are hand-collected (NOT from the API), shipped as `public/socials.json` and fetched
-// at runtime. This module owns the schema validation, URL construction and searchable-text
-// extraction; the store/UI layers stay thin and call in here.
+// Socials are hand-collected, not from the API: typed into `scripts/socialsSource.json`, written to
+// `public/socials.json` by `npm run socials`, and fetched at runtime. This module owns the schema
+// validation, the URL construction and the searchable text. `scripts/buildSocials.ts` runs the same
+// parser over the source before it writes.
 export type PlatformKey =
   "x" | "bilibili" | "tiktok" | "douyin" | "xiaohongshu";
 

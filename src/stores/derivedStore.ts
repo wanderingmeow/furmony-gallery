@@ -22,9 +22,11 @@ import { createPriceFacet, type PriceFacet } from "./priceFacet";
 import { fetchFailed, listings, loadData } from "./listingsStore";
 import {
   DEFAULT_SORT,
+  debutOnly,
   priceRange,
   selectedColors,
   selectedRaces,
+  setDebutOnly,
   setPriceRange,
   setSearchText,
   setSelectedColors,
@@ -38,6 +40,7 @@ import {
 } from "./filterStore";
 import { wishlist } from "./wishlistStore";
 import { socialSearch } from "./socialsStore";
+import { debuts } from "./debutsStore";
 import {
   askFailure,
   picture,
@@ -67,6 +70,13 @@ export let socialCount: () => number;
  *  every listing, so a switch left on would empty the page. A switch on with nothing to filter on
  *  is not on. */
 export let socialFilterOn: () => boolean;
+/** Whether debuts.json brought in anything usable. */
+export let debutsReady: () => boolean;
+/** How many listings on the shelf have a debut album. The panel names this number before the
+ *  switch cuts the list down to it. */
+export let debutCount: () => number;
+/** The 出场照 filter as the list runs it, for the same reason as `socialFilterOn`. */
+export let debutFilterOn: () => boolean;
 /** What the 价格区间 block reads: the bars, where a thumb may rest, and what the band keeps. */
 export let price: PriceFacet;
 /** Why the list is empty and the one thing the reader can press, or null while there is nothing
@@ -92,6 +102,8 @@ export function listFilterBase(band: PriceRange | null = price.effective()) {
     wishlist: wishlist(),
     socials: socialSearch(),
     socialOnly: socialFilterOn(),
+    debutOnly: debutFilterOn(),
+    debuts: debuts(),
     priceRange: band,
     // A semantic result list is ordered by relevance, so the sort buttons are hidden while
     // one is on screen - and hiding them would be a lie if the sort still applied.
@@ -104,13 +116,19 @@ export function listFilterBase(band: PriceRange | null = price.effective()) {
 /* eslint-disable solid/reactivity -- the accessors live at module scope so callers read them as
   plain functions, and each is assigned once, here, in the order its readers need. */
 createRoot(() => {
-  // These three are created first. `listWith` below calls `listFilterBase()`, which reads
-  // `socialFilterOn`, and a memo created after that call would still be undefined inside it.
+  // These six are created first. `listWith` below calls `listFilterBase()`, which reads
+  // `socialFilterOn` and `debutFilterOn`, and a memo created after that call would still be
+  // undefined inside it.
   socialsReady = createMemo(() => socialSearch().size > 0);
   socialCount = createMemo(
     () => listings().filter((l) => hasSocial(l.adoptId, socialSearch())).length,
   );
   socialFilterOn = createMemo(() => socialOnly() && socialsReady());
+  debutsReady = createMemo(() => debuts().size > 0);
+  debutCount = createMemo(
+    () => listings().filter((l) => debuts().has(l.adoptId)).length,
+  );
+  debutFilterOn = createMemo(() => debutOnly() && debutsReady());
 
   /** The model's own order. `only` filters, it does not order: without this the hits come back
    *  in feed order and the ranking the reader asked for is gone. */
@@ -126,6 +144,7 @@ createRoot(() => {
     colors: new Set<string>(),
     races: new Set<string>(),
     socialOnly: false,
+    debutOnly: false,
   };
   const WIDE = true;
 
@@ -222,6 +241,7 @@ createRoot(() => {
       loadFailed: fetchFailed(),
       asking: semanticPending() || say === "working",
       socialOnly: socialFilterOn(),
+      debutOnly: debutFilterOn(),
       // A photograph's answer covers every tab, so the wishlist's own wording applies only while
       // the tab row is on screen.
       onWishlistTab: !pictureAnswers() && tab() === "wishlist",
@@ -272,6 +292,9 @@ export function applyEmptyAction(action: EmptyAction): void {
       return;
     case "socialOnly":
       setSocialOnly(false);
+      return;
+    case "debutOnly":
+      setDebutOnly(false);
   }
 }
 
@@ -283,6 +306,7 @@ export function filtersOnCount(): number {
     selectedColors().size +
     selectedRaces().size +
     (socialFilterOn() ? 1 : 0) +
+    (debutFilterOn() ? 1 : 0) +
     (price.on() ? 1 : 0)
   );
 }
@@ -295,6 +319,7 @@ export function resetFilters(): void {
     setSelectedColors(new Set());
     setSelectedRaces(new Set());
     setSocialOnly(false);
+    setDebutOnly(false);
     setPriceRange(null);
   });
 }

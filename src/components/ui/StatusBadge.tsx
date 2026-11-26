@@ -10,8 +10,10 @@ const COLOR_MAP: Record<BadgeColor, string> = {
 
 export function StatusBadge(props: { text: string; color: BadgeColor }) {
   return (
+    // The row's <dd> is a grid, and a grid stretches its items across the cell. `w-fit` keeps the
+    // badge the width of its word.
     <span
-      class={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${COLOR_MAP[props.color]}`}
+      class={`inline-flex w-fit items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${COLOR_MAP[props.color]}`}
     >
       {props.text}
     </span>

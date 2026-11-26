@@ -6,6 +6,7 @@ import {
   ArrowDownOutlined,
   ArrowUpOutlined,
   BgColorsOutlined,
+  CameraOutlined,
   ClockCircleOutlined,
   DollarOutlined,
   ExperimentOutlined,
@@ -16,6 +17,9 @@ import type { IconDefinition } from "@ant-design/icons-svg/lib/types";
 import {
   availableColors,
   availableRaces,
+  debutCount,
+  debutFilterOn,
+  debutsReady,
   filtersChanged,
   resetFilters,
   socialCount,
@@ -28,6 +32,7 @@ import {
   selectedRaces,
   setSelectedRaces,
   setSocialOnly,
+  setDebutOnly,
   setSortMode,
   sortMode,
 } from "../../stores/filterStore";
@@ -300,6 +305,35 @@ function OwnerBlock() {
   );
 }
 
+/** The debut-picture switch. The album of the day a listing first appeared comes from the studio's
+ *  Bilibili post, which the build reads into `debuts.json`: a listing without one may simply have
+ *  had no album posted, so the line names how many the build found. With the file missing the row
+ *  is gray, the list unfiltered, and a switch left on is kept. */
+function DebutBlock() {
+  const note = () =>
+    debutsReady()
+      ? tr("filter.debutNote", debutCount())
+      : tr("filter.debutMissing");
+  return (
+    <div class={PANEL_BLOCK}>
+      <PanelHeader icon={<AntIcon icon={CameraOutlined} />}>
+        {tr("filter.debutOnly")}
+        <div class="ml-auto">
+          <Switch
+            on={debutFilterOn()}
+            onChange={setDebutOnly}
+            label={tr("filter.debutOnly")}
+            disabled={!debutsReady()}
+          />
+        </div>
+      </PanelHeader>
+      <div class={UNDER_NOTE}>
+        <span class="block">{note()}</span>
+      </div>
+    </div>
+  );
+}
+
 // It owns the padding and the scrolling, so the blocks run to the glass edge and `FabMenu` only has
 // to draw the box.
 export function FilterPanel() {
@@ -331,6 +365,7 @@ export function FilterPanel() {
         )}
       />
       <OwnerBlock />
+      <DebutBlock />
       <PriceRangeBlock />
       <ResetRow changed={filtersChanged} onReset={resetFilters} />
     </div>

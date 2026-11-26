@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { prepare, type EncodeReply } from "./pictureInput";
+import { prepare, type EncodeReply } from "./input";
 import { scaleOf } from "./encodeSpec";
 
 /** The first bytes of a HEIF: the header, the major brand at byte 8, the compatible brands from
@@ -89,7 +89,7 @@ describe("prepare", () => {
       }
     }
     vi.stubGlobal("Image", FakeImage);
-    // A subclass rather than a bare object: the encode path builds a worker from
+    // URL stays a subclass: the encode path builds a worker from
     // `new URL('./encodeWorker.ts', import.meta.url)`, so URL has to stay constructible.
     vi.stubGlobal(
       "URL",

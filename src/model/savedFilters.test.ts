@@ -15,6 +15,7 @@ describe("what a saved filter blob may say", () => {
         races: [aRace],
         search: "黑龙",
         socialOnly: true,
+        debutOnly: true,
         price: [10, 90],
       }),
     );
@@ -25,6 +26,7 @@ describe("what a saved filter blob may say", () => {
       races: [aRace],
       search: "黑龙",
       socialOnly: true,
+      debutOnly: true,
       price: [10, 90],
     });
   });
@@ -34,6 +36,7 @@ describe("what a saved filter blob may say", () => {
       colors: [],
       races: [],
       socialOnly: false,
+      debutOnly: false,
     });
   });
 
@@ -83,6 +86,7 @@ describe("what a saved filter blob may say", () => {
       colors: [],
       races: [],
       socialOnly: false,
+      debutOnly: false,
     });
   });
 });

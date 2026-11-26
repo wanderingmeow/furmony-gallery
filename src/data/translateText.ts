@@ -15,7 +15,7 @@
  *   so the text is escaped before it leaves and unescaped after it returns.
  */
 
-import { decodeSetting } from "./encodedSetting";
+import { decodeSetting } from "./base64Setting";
 
 const URL = "https://translate-pa.googleapis.com/v1/translateHtml";
 // The key is public: the official site ships it in its own bundle. This build passes it in base64,

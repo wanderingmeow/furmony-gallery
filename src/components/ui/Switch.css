@@ -2,7 +2,7 @@
    which needs the same numbers to place the knob. */
 
 /* The band a tap still counts as: 10px past the track at the sides and 6px above and below, a 60×36
-   target. The track is wide rather than tall, so a finger is likelier to land beside it than over it.
+   target. The track is 40×24, so a finger is likelier to land beside it than over it.
    On the right the scroller's edge is 14px off, so this leaves 4px: a band reaching past that edge
    gives the panel a horizontal scrollbar. */
 .switch {
@@ -10,7 +10,7 @@
 }
 
 /* The band itself, one value away from the buzz label that sits on it (draw/haptics.css). A
-   pseudo-element rather than padding, so the track keeps its 40×24 box and the knob's offsets stay
+   band is a pseudo-element, so the track keeps its box and the knob's offsets stay
    measured from the track. */
 .switch::after {
   content: "";

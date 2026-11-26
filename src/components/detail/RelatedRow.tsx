@@ -40,15 +40,19 @@ import {
   THUMB_ASPECT,
 } from "../../draw/layout";
 import { pointerProgress, scrollThumb, type Thumb } from "../../draw/scrollbar";
-import { isAdopted, isLocked } from "../../model/domain";
+import { shownStatus } from "../../model/domain";
 import { LockedIcon } from "../ui/LockedIcon";
 import { SkelText } from "../ui/SkelText";
 import { onImageError, sizedUrl, stableImageUrl } from "../../data/image";
 import { SK_FILL } from "../ui/boxes";
 import { relatedSkeleton } from "../ui/skeletonView";
+import { debuts } from "../../stores/debutsStore";
 import "./RelatedRow.css";
 
-const isTaken = (l: AdoptListing) => isAdopted(l) || isLocked(l);
+// An album says the piece was made, so 只看可领养 leaves it out even while the shelf still reads
+// 未领养.
+const isTaken = (l: AdoptListing) =>
+  shownStatus(l, debuts().has(l.adoptId)) !== "open";
 
 export function RelatedRow(props: { item: AdoptListing; shape: Shape }) {
   const navigate = useNavigate();

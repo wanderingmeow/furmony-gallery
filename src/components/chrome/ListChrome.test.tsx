@@ -31,7 +31,7 @@ vi.mock("../../data/searchApi", async (importOriginal) => {
 });
 
 // the canvas work belongs to the browser; the band only needs the bytes to come back
-vi.mock("../../data/pictureInput", () => ({
+vi.mock("../../data/image/input", () => ({
   prepare: async (file: Blob) => {
     if (sent.encodeGate) await sent.encodeGate;
     return { blob: file };

@@ -61,7 +61,7 @@ vi.mock("../data/searchApi", async (importOriginal) => {
 
 // The canvas work belongs to the browser. The store is under test, and all it needs is for
 // the bytes to come back the other side of prepare().
-vi.mock("../data/pictureInput", () => ({
+vi.mock("../data/image/input", () => ({
   prepare: async (file: Blob) => {
     if (sent.encodeGate) await sent.encodeGate;
     return sent.unreadable

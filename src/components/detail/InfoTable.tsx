@@ -17,15 +17,15 @@ import {
   colorDisplay,
   colorNames,
   formatPrice,
-  isAdopted,
-  isLocked,
   painterAvatar,
   priceParts,
   raceDisplay,
+  shownStatus,
   type InstallmentPrice,
   type OncePrice,
 } from "../../model/domain";
 import { sizedUrl, stableImageUrl } from "../../data/image";
+import { debuts } from "../../stores/debutsStore";
 import { SkelImg } from "../ui/SkelImg";
 import { SkelText } from "../ui/SkelText";
 import { priceMode } from "../../stores/displayStore";
@@ -236,15 +236,20 @@ export function InfoTable(props: { listing: AdoptListing }) {
   });
   const owner = createMemo(() => socials().get(l().adoptId)?.ownerName);
   const colors = createMemo(() => colorNames(l()));
-  // isLock on the wire: 2 = locked, 1 = locking (deposit unpaid), 0 = free
-  const lock = createMemo(() =>
-    l().isLock === 1
-      ? { text: tr("detail.lockedNow"), color: "amber" as const }
-      : isLocked(l())
-        ? { text: tr("detail.locked"), color: "red" as const }
-        : { text: tr("detail.unlocked"), color: "green" as const },
-  );
-  const adopted = createMemo(() => isAdopted(l()));
+  // One word for the listing, in the order a buyer reads it: taken, paid, held, free.
+  const hasDebut = createMemo(() => debuts().has(l().adoptId));
+  const status = createMemo(() => {
+    switch (shownStatus(l(), hasDebut())) {
+      case "adopted":
+        return { text: tr("detail.adopted"), color: "purple" as const };
+      case "locked":
+        return { text: tr("detail.locked"), color: "red" as const };
+      case "locking":
+        return { text: tr("detail.lockedNow"), color: "amber" as const };
+      default:
+        return { text: tr("detail.unlocked"), color: "green" as const };
+    }
+  });
 
   return (
     <div class="rounded-xl bg-surface border border-border p-3">
@@ -319,13 +324,7 @@ export function InfoTable(props: { listing: AdoptListing }) {
         </OptRow>
 
         <Row label={tr("detail.status")}>
-          <div class="flex gap-1.5">
-            <StatusBadge text={lock().text} color={lock().color} />
-            <StatusBadge
-              text={adopted() ? tr("detail.adopted") : tr("detail.unadopted")}
-              color={adopted() ? "purple" : "blue"}
-            />
-          </div>
+          <StatusBadge text={status().text} color={status().color} />
         </Row>
 
         {/* In installment mode the plan above already labels this money 首付, so the row

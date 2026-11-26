@@ -1,10 +1,9 @@
-// How dark each end of a scrolling row should look, shared by the related row and the
-// filter tab row. The left follows how far the row has scrolled, the right follows how
-// much is left to scroll.
+// How dark each end of a scrolling row should look. The left follows how far the row has scrolled,
+// the right follows how much is left to scroll.
 //
-// Each row draws these numbers its own way — the card row sits on a plain canvas and
-// overlays a canvas-colored gradient, while the tab row sits on .glass and can only mask
-// its own content — so this module stops at the maths.
+// Each row draws these numbers its own way, so this module stops at the maths. The strip under the
+// detail art uses `fadeMask`, because a mask leaves a half-hidden thumb tappable where it is still
+// visible. An overlay painted over the row would answer the taps instead.
 
 export interface EdgeFade {
   /** 0..1 opacity for the left edge */

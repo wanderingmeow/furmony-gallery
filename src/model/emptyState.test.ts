@@ -10,6 +10,7 @@ const none: EmptyFacts = {
   loadFailed: false,
   asking: false,
   socialOnly: false,
+  debutOnly: false,
   onWishlistTab: false,
   savedCount: 0,
   query: "",
@@ -50,6 +51,12 @@ describe("pickEmptyState", () => {
     // No line: the switch is the whole reason, so a second sentence would only repeat it.
     expect(s.line).toBeUndefined();
     expect(s.action).toBe("socialOnly");
+  });
+
+  it("names the 出场照 filter, and the way to switch it off", () => {
+    const s = pick({ debutOnly: true });
+    expect(s.title).toBe("没有查到出场照的设定");
+    expect(s.action).toBe("debutOnly");
   });
 
   it("says an empty wishlist on its own, with nothing to press", () => {
@@ -172,6 +179,7 @@ describe("pickEmptyState", () => {
         {},
         { loadFailed: true },
         { socialOnly: true },
+        { debutOnly: true },
         { pictureSay: "noMatch" },
         { query: "x" },
         { picked: 1 },

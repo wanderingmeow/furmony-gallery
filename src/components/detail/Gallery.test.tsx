@@ -181,20 +181,28 @@ describe("A panel that holds its height", () => {
 });
 
 describe("A container that changes width", () => {
-  // The height the picture holds is pixels one width produced, so a new width must redo it.
-  const watchers: (() => void)[] = [];
+  // The height the picture holds is pixels one width produced, so a new width must redo it. Each
+  // observer is kept with the box it was pointed at, so the test fires the one the gallery aimed at
+  // the picture's own box rather than whichever was armed last.
+  const watchers: { cb: () => void; el: HTMLElement }[] = [];
   const stubObserver = () => {
+    watchers.length = 0;
     vi.stubGlobal(
       "ResizeObserver",
       class {
+        cb: () => void;
         constructor(cb: () => void) {
-          watchers.push(cb);
+          this.cb = cb;
         }
-        observe() {}
+        observe(el: HTMLElement) {
+          watchers.push({ cb: this.cb, el });
+        }
         disconnect() {}
       },
     );
   };
+  const widenWatcher = (pic: HTMLImageElement) =>
+    watchers.find((w) => w.el === pic.parentElement)!.cb;
   const widen = (el: HTMLElement, px: number) =>
     Object.defineProperty(el, "clientWidth", { value: px, configurable: true });
   // The element the gallery measures is the one in the document, not the job's stand-in.
@@ -217,7 +225,7 @@ describe("A container that changes width", () => {
     widen(pic.parentElement!, 300);
     withSource(pic, 1000, 500);
     pic.style.height = "242px"; // the height that a sideways screen left behind
-    watchers.at(-1)!();
+    widenWatcher(pic)();
     // The width observer is answered one frame later on purpose.
     await vi.waitFor(() => expect(pic.style.height).toBe("150px"));
     done();
@@ -245,7 +253,7 @@ describe("A container that changes width", () => {
     const pic = mainPic(host)!;
     widen(pic.parentElement!, 1000);
     withSource(pic, 1000, 500);
-    watchers.at(-1)!();
+    widenWatcher(pic)();
     // A source of 1000x500 stands 500 tall at 1000 of width; the short ceiling holds it at 150.
     await vi.waitFor(() => expect(pic.style.height).toBe("150px"));
     raise(600);

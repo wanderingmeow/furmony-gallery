@@ -1,8 +1,8 @@
-// src/stores/socialsStore.ts — runtime fetch of the hand-collected socials.json.
+// Runtime fetch of the hand-collected accounts.
 //
-// Socials are NOT part of the API; they live in `public/socials.json` (committed) and are
-// fetched once at init. Failure degrades gracefully: the app still works, search just
-// doesn't match owner/accounts and the detail social section stays hidden until it loads.
+// They are not part of the API: `npm run socials` writes `public/socials.json`, the repository does
+// not hold that file, and the app fetches it once at init. A failed load leaves the accounts empty,
+// so search stops matching owner names and the detail section stays hidden.
 import { createSignal } from "solid-js";
 import {
   parseSocials,

@@ -66,7 +66,12 @@ export const en: Dict = {
       "Search by meaning and by picture runs on an embedding model. The words and pictures you search with go to the server, and the server keeps no data.",
     socialOnly: "Owner account only",
     socialNote: (n: number) =>
-      `Only ${countOf(n, "listing")} ${n === 1 ? "has" : "have"} an owner account, so the list gets much shorter.`,
+      `Only ${countOf(n, "listing")} ${n === 1 ? "has" : "have"} an owner account so far; more are added by hand.`,
+    debutOnly: "Debut photos only",
+    debutNote: (n: number) =>
+      `Only ${countOf(n, "listing")} ${n === 1 ? "has" : "have"} debut photos so far; more are added by hand.`,
+    debutMissing:
+      "The debut photos did not load, so this filter is unavailable.",
     socialMissing:
       "Owner accounts did not load, so this filter is unavailable for now.",
     onlyUnlocked: "Unlocked only",
@@ -108,7 +113,6 @@ export const en: Dict = {
     locked: "Locked",
     unlocked: "Open",
     adopted: "Adopted",
-    unadopted: "Not adopted",
     notFound: "No such listing",
     goOfficial: "Official site",
   },
@@ -210,6 +214,7 @@ export const en: Dict = {
     fetchFailedTitle: "The listings did not load",
     fetchFailedAction: "Several attempts, and nothing came back",
     noSocialTitle: "No listing with an owner account",
+    noDebutTitle: "No listing with debut photos",
     noWishTitle: "Nothing saved yet",
     pictureFailedTitle: "No results",
     pictureFailedAction: "Try another picture, or retry in a moment",

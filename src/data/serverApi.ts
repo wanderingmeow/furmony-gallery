@@ -1,7 +1,7 @@
 // The one machine this app sends anything to: the address is decoded once here, and `PATH` says
 // what that machine answers. A new server feature is one line in `PATH` and one call where it is
 // used.
-import { decodeSetting } from "./encodedSetting";
+import { decodeSetting } from "./base64Setting";
 
 // Set at build time, base64, and the origin only. The paths are this file's to know, so an
 // address that names one endpoint cannot make the others look broken when a path moves.

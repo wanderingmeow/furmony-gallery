@@ -1,4 +1,4 @@
-// src/data/pictureInput.ts - the reader's own picture, made small enough to send.
+// The reader's own picture, made small enough to send.
 //
 // The service re-encodes whatever arrives at 768px anyway, so the browser downscales first: a
 // phone photo is a few megabytes, and the retrieval is the only thing it is used for. The long
@@ -7,8 +7,9 @@
 // `prepare` at the bottom tries three ways to open a picture, cheapest first, and the encode
 // worker runs that chain off the main thread. Every path applies the EXIF orientation tag.
 
-import type { LocalReason } from "./searchApi";
+import type { LocalReason } from "../searchApi";
 import { QUALITY, paintOnWhite, targetSize } from "./encodeSpec";
+import { offscreenImage } from "./load";
 
 const encodesOffThread = (): boolean =>
   typeof Worker !== "undefined" &&
@@ -104,7 +105,7 @@ async function encodeInWorker(
 async function encodeViaImage(file: File | Blob): Promise<Blob | null> {
   const url = URL.createObjectURL(file);
   try {
-    const img = new Image();
+    const img = offscreenImage();
     // No img.decode(): it resolves on a task that waits for a frame, and some WebViews stop
     // producing frames while the file picker is up.
     const loaded = await new Promise<boolean>((done) => {
@@ -151,7 +152,7 @@ export async function prepare(file: File | Blob): Promise<Prepared> {
     ? await encodeInWorker({ file, allowHeifParser: true }, deadline)
     : null;
   if (parsed?.blob) return { blob: parsed.blob };
-  // The parser opens the container, so we use its reason when it ran; otherwise the first
-  // worker's.
+  // The parser opens the container, so its reason is the better one when it ran. Otherwise the
+  // first worker's answer stands.
   return parsed ?? first ?? { blob: null, reason: "unreadable" };
 }

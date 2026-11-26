@@ -26,7 +26,7 @@ import { outcomeOf } from "../model/pictureOutcome";
 import { routeFor, shouldAskText, type Route } from "../model/queryRoute";
 // Static, not lazy: a chunk here puts one more request in front of the picture the user just
 // chose. The HEIF parser stays lazy, in a worker file that only a HEIC loads.
-import { prepare } from "../data/pictureInput";
+import { prepare } from "../data/image/input";
 import { searchText } from "./filterStore";
 import { semanticSearch } from "./displayStore";
 

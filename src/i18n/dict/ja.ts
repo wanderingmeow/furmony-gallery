@@ -64,7 +64,12 @@ export const ja: Dict = {
       "意味と画像の検索は Embedding モデルで動きます。検索に使う文字と画像はサーバーに送られ、サーバーはデータを一切保持しません。",
     socialOnly: "オーナーのSNS付きだけ",
     socialNote: (n: number) =>
-      `オーナーのSNSが分かるのは ${n} 件だけで、一覧はずいぶん短くなります。`,
+      `オーナーのSNSが分かるのは ${n} 件だけで、手作業で追加中です…`,
+    debutOnly: "登場写真のあるだけ",
+    debutNote: (n: number) =>
+      `登場写真があるのは ${n} 件だけで、手作業で追加中です…`,
+    debutMissing:
+      "登場写真のデータを読み込めなかったため、この絞り込みは使えません。",
     socialMissing:
       "オーナーのSNSの情報を読み込めなかったため、この絞り込みは使えません。",
     onlyUnlocked: "空きだけを表示",
@@ -105,7 +110,6 @@ export const ja: Dict = {
     locked: "確定",
     unlocked: "空き",
     adopted: "譲渡済み",
-    unadopted: "募集中",
     notFound: "その子は見つかりません",
     goOfficial: "公式サイトへ",
   },
@@ -206,6 +210,7 @@ export const ja: Dict = {
     fetchFailedTitle: "子の一覧を読み込めませんでした",
     fetchFailedAction: "何度か試しましたが、取得できませんでした",
     noSocialTitle: "オーナーのSNSの子が見つかりません",
+    noDebutTitle: "登場写真のある子が見つかりません",
     noWishTitle: "まだいいねがありません",
     pictureFailedTitle: "結果が見つかりません",
     pictureFailedAction: "別の画像を試すか、あとでもう一度",

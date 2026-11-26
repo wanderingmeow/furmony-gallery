@@ -6,6 +6,7 @@ import { SheetFab } from "../ui/SheetFab";
 import {
   ART_PLACEHOLDER,
   DETAIL_THUMB,
+  DETAIL_THUMB_INNER,
   DETAIL_THUMB_ROW,
   SHEET_FAB_BOX,
   SHEET_FAB_ROW,
@@ -35,18 +36,31 @@ export function DetailPulse(props: { shape: Shape }) {
       props.shape,
       safe().top,
     );
+  // One block, so the strip takes its own 8px and not the column's gap on top of it.
   const art = (
-    <>
+    <div>
       <div
         class={`sk-bar ${ART_PLACEHOLDER}`}
         style={{ height: `${artH()}px` }}
       />
-      <div class={DETAIL_THUMB_ROW}>
-        <For each={[0, 1, 2]}>
-          {() => <div class={`sk-bar ${DETAIL_THUMB}`} />}
-        </For>
+      <div
+        class={DETAIL_THUMB_ROW}
+        style={{
+          "margin-left": `${-box().stripBleed}px`,
+          "margin-right": `${-box().stripBleed}px`,
+          "padding-left": `${box().stripBleed}px`,
+        }}
+      >
+        <div
+          class={DETAIL_THUMB_INNER}
+          style={{ "padding-right": `${box().stripBleed}px` }}
+        >
+          <For each={[0, 1, 2]}>
+            {() => <div class={`sk-bar ${DETAIL_THUMB}`} />}
+          </For>
+        </div>
       </div>
-    </>
+    </div>
   );
   const lines = (
     <div class="flex flex-col gap-2.5">
@@ -60,7 +74,9 @@ export function DetailPulse(props: { shape: Shape }) {
     <Show
       when={props.shape === "panel"}
       fallback={
-        <div class="sk-pulse flex flex-col gap-5">
+        // The same space as `mt-4` on the table column in DetailBody, so the wait stands the height
+        // of the body it holds the place of.
+        <div class="sk-pulse flex flex-col gap-4">
           {art}
           {lines}
         </div>
@@ -97,7 +113,7 @@ export function SheetBodySkeleton(props: {
   pad?: string;
   padX?: number;
 }) {
-  // The screen decides its own padding; the placeholder repeats it so nothing moves on arrival.
+  // The screen carries its own padding, and the placeholder repeats it so nothing moves on arrival.
   const inset = () =>
     props.padX
       ? {

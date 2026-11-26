@@ -92,6 +92,11 @@ export default tseslint.config(
     files: ["*.config.ts", "eslint.config.js"],
     languageOptions: { globals: { ...globals.node } },
   },
+  {
+    // The build steps run on the command line too, and read the repository around them.
+    files: ["scripts/**/*.ts"],
+    languageOptions: { globals: { ...globals.node } },
+  },
   // Last, so it switches off the rules that disagree with Prettier about layout. Formatting itself
   // is Prettier's job: no prettier/prettier rule here, and `npm run format` does the writing.
   prettier,

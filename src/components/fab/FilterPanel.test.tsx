@@ -16,6 +16,8 @@ const facts = vi.hoisted(() => ({
   // The state behind the stores this panel reads and writes.
   filterOn: false,
   ready: true,
+  debutOn: false,
+  debutReady: true,
   semantic: false,
   changed: false,
 }));
@@ -30,6 +32,9 @@ vi.mock("../../stores/derivedStore", () => ({
   socialCount: () => 87,
   socialFilterOn: () => facts.filterOn,
   socialsReady: () => facts.ready,
+  debutCount: () => 21,
+  debutFilterOn: () => facts.debutOn,
+  debutsReady: () => facts.debutReady,
 }));
 vi.mock("../../stores/filterStore", () => ({
   selectedColors: () => facts.colors,
@@ -44,6 +49,7 @@ vi.mock("../../stores/filterStore", () => ({
     calls.push(`races:${[...v].join(",")}`);
   },
   setSocialOnly: (v: boolean) => calls.push(`socialOnly:${v}`),
+  setDebutOnly: (v: boolean) => calls.push(`debutOnly:${v}`),
   sortMode: () => facts.sort,
   setSortMode: (v: string) => {
     facts.sort = v as typeof facts.sort;
@@ -151,13 +157,18 @@ afterEach(() => {
 });
 
 describe("FilterPanel", () => {
-  it("reads top to bottom: order, colors, species, owner account, reset", () => {
+  it("reads top to bottom: order, colors, species, owner account, debut, reset", () => {
     facts.changed = true; // 重置 only shows when there is something to give back
     draw();
     const text = host.textContent ?? "";
-    const at = ["排序", "颜色", "物种", "只显示有主人账号的", "重置"].map((s) =>
-      text.indexOf(s),
-    );
+    const at = [
+      "排序",
+      "颜色",
+      "物种",
+      "只显示有主人账号的",
+      "只显示有出场照的",
+      "重置",
+    ].map((s) => text.indexOf(s));
     expect(at.every((i) => i >= 0)).toBe(true);
     expect(at).toEqual([...at].sort((a, b) => a - b));
   });
@@ -241,8 +252,39 @@ describe("FilterPanel", () => {
   it("names how many listings have an account", () => {
     draw();
     expect(host.textContent).toContain(
-      "查得到主人账号的只有 87 只，列表会短很多。",
+      "查得到主人账号的只有 87 只，正在手动补充中…",
     );
+  });
+
+  it("flips the 出场照 filter through the store", () => {
+    draw();
+    const sw = switchByLabel("只显示有出场照的");
+    expect(sw.getAttribute("aria-checked")).toBe("false");
+    expect(sw.disabled).toBe(false);
+    sw.click();
+    expect(calls).toEqual(["debutOnly:true"]);
+  });
+
+  it("names how many listings have a debut album", () => {
+    draw();
+    expect(host.textContent).toContain(
+      "查得到出场照的只有 21 只，正在手动补充中…",
+    );
+  });
+
+  // The albums come from a file the build writes, so a missing file is the same case as for
+  // socials: a switch that cannot filter is gray, and the stored flag waits for the file.
+  it("grays the 出场照 switch when the album table is not there", () => {
+    facts.debutReady = false;
+    draw();
+    const sw = switchByLabel("只显示有出场照的");
+    expect(sw.disabled).toBe(true);
+    expect(sw.getAttribute("aria-checked")).toBe("false");
+    expect(host.textContent).toContain(
+      "出场照的资料没有加载成功，这个筛选暂时用不了。",
+    );
+    sw.click();
+    expect(calls).toEqual([]);
   });
 
   // Why the switch reads off even when the stored flag is on: see `socialFilterOn`.

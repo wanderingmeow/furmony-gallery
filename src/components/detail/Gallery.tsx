@@ -14,16 +14,19 @@ import {
   type Accessor,
 } from "solid-js";
 import { tr } from "../../i18n";
+import { prefersReducedMotion } from "../../draw/anim";
 import { RemoteImg } from "../ui/RemoteImg";
 import { onImageError, preloadImage, imageReady } from "../../data/image";
 import { fittedHeight, heightStyle, moveStyle } from "./picHeight";
 import {
   ART_PLACEHOLDER,
   DETAIL_THUMB,
+  DETAIL_THUMB_INNER,
   DETAIL_THUMB_ROW,
   SK_FILL,
 } from "../ui/boxes";
 import { SkelImg } from "../ui/SkelImg";
+import { edgeFade, fadeMask } from "../../draw/fade";
 
 /** A picture and the height it stands at. A height of 0 leaves it to the layout. */
 type Pic = { src: string; h: number };
@@ -33,17 +36,31 @@ type GalleryFlow = {
   skeleton: { value: null; to: "still" };
   /** One picture is on screen with nothing in flight. */
   still: { input: Pic; value: Pic; to: "loading" };
-  /** A newer picture is being fetched behind the one on screen. */
-  loading: { value: { src: Accessor<string> }; to: "fading" | "still" };
+  /** A newer picture is being fetched behind the one on screen. The box dims while it waits, and the
+   *  spinner joins once the dim has landed and the picture is still out. */
+  loading: {
+    value: { src: Accessor<string>; spinner: Accessor<boolean> };
+    to: "fading" | "still";
+  };
   /** The newer picture is drawn over the one on screen and waits out its fade. */
   fading: { input: Pic; value: Pic; to: "still" | "loading" };
 };
 
-// A frame past the overlay's own 200ms fade.
-const FADE_MS = 220;
+// The fade of the arriving picture, and a frame past it.
+const PICTURE_FADE_MS = 200;
+const FADE_MS = PICTURE_FADE_MS + 20;
+
+// How long the dim takes to arrive. A picture already in memory answers inside a frame, so its
+// switch never gets the dim out of the way; a slow one earns the spinner only after the dim lands.
+const DIM_MS = 160;
+
+// How far each end of the thumbnail strip fades. See `draw/fade.ts`.
+const FADE_PX = 24;
 
 export function Gallery(props: {
   images: string[];
+  /** The small copy of each picture, for the strip below. Without it the strip reuses the picture. */
+  thumbs?: string[];
   index: () => number;
   setIndex: (i: number) => void;
   onOpenFull: () => void;
@@ -55,9 +72,56 @@ export function Gallery(props: {
   holdHeight?: boolean;
   /** The picture settled at a different height, so the card around it has to measure again. */
   onPicHeightChange?: () => void;
+  /** How far the strip runs past the card's padding to the screen edge, as the related row does. A
+   *  caller that gives nothing keeps the strip inside the padding. */
+  bleed?: () => number;
 }) {
   const count = () => props.images.length;
   const current = () => props.images[Math.min(props.index(), count() - 1)];
+
+  let strip!: HTMLDivElement;
+  // The strip runs to the screen edge and the padding that brings the first thumb back to that edge
+  // belongs to the scroller. The same on the far side belongs to the content: Chromium counts a
+  // scroller's own trailing padding as scrollable area and WebKit does not, so on the scroller the
+  // last thumb would reach the screen edge in one browser and stop short in the other.
+  const bleed = () => props.bleed?.() ?? 0;
+  const rowStyle = () => ({
+    "margin-left": `${-bleed()}px`,
+    "margin-right": `${-bleed()}px`,
+    "padding-left": `${bleed()}px`,
+  });
+  const innerStyle = () => ({ "padding-right": `${bleed()}px` });
+
+  // The shared edge maths, at a width wide enough that a thumb half out of the row reads as half out.
+  const fade = () => {
+    if (!strip) return;
+    const mask = fadeMask(edgeFade(strip, FADE_PX), FADE_PX);
+    // Both spellings, and from here rather than a stylesheet: Lightning CSS drops the unprefixed
+    // declaration next to the prefixed one, and Android WebView reads only that spelling.
+    const off = "none";
+    strip.style.setProperty("mask-image", mask ?? off);
+    strip.style.setProperty("-webkit-mask-image", mask ?? off);
+  };
+
+  // The strip holds the whole album, so the thumb of the picture on screen stays in view: a swipe
+  // past the squares on show would leave the current one off screen.
+  const keepInView = () => {
+    const thumb = strip?.querySelector<HTMLElement>(
+      `[data-thumb="${props.index()}"]`,
+    );
+    if (!thumb || strip.scrollWidth <= strip.clientWidth) return;
+    const box = thumb.getBoundingClientRect();
+    const row = strip.getBoundingClientRect();
+    const delta = box.left + box.width / 2 - (row.left + row.width / 2);
+    if (Math.abs(delta) < 2) return;
+    strip.scrollBy({
+      left: delta,
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
+  };
+  createEffect(
+    on([() => props.index(), () => props.images.length], keepInView),
+  );
 
   const DEFAULT_MAX_H = 400;
   const cap = () => props.maxH ?? DEFAULT_MAX_H;
@@ -108,6 +172,10 @@ export function Gallery(props: {
       // A cancelled job never settles, so leaving this state stops the download.
       loading(_, to) {
         const [wanted, setWanted] = createSignal("");
+        // The spinner waits the dim out. A picture that lands behind a dim that never finished would
+        // otherwise have put a second thing on screen for one frame and taken it away again.
+        const [spinner, setSpinner] = createSignal(false);
+        const late = setTimeout(() => setSpinner(true), DIM_MS);
         let job: ReturnType<typeof preloadImage> | undefined;
         const take = (src: string) => {
           job?.cancel();
@@ -132,8 +200,11 @@ export function Gallery(props: {
             take(src);
           }),
         );
-        onCleanup(() => job?.cancel());
-        return { src: wanted };
+        onCleanup(() => {
+          clearTimeout(late);
+          job?.cancel();
+        });
+        return { src: wanted, spinner };
       },
       // The take-over writes the picture and its height through `still`.
       fading(input, to) {
@@ -170,6 +241,14 @@ export function Gallery(props: {
     return null;
   });
 
+  // The dim belongs to the wait, not to a picture: it stands while the flow is fetching, and the
+  // spinner joins on the timer the `loading` state keeps for itself.
+  const dimmed = () => flow().type === "loading";
+  const waiting = () => {
+    const state = flow();
+    return state.type === "loading" && state.value.spinner();
+  };
+
   // The height the skeleton held comes first, then hPx, and 0 leaves the decision to the layout. A
   // held picture takes the screen's height, which is known before a picture arrives.
   const picHeight = () =>
@@ -198,13 +277,27 @@ export function Gallery(props: {
     requestAnimationFrame(() => setEased(true));
   };
   let sizes: ResizeObserver | undefined;
+  // One observer for both boxes this component watches: the picture, whose width sets the height it
+  // fits to, and the strip, whose width sets how far its content reaches. Answered one frame later,
+  // because a callback that wrote layout in the same step would re-enter the observer.
+  const observe = (el: HTMLElement) => {
+    if (typeof ResizeObserver === "undefined") return;
+    sizes ??= new ResizeObserver(() =>
+      requestAnimationFrame(() => {
+        refit();
+        fade();
+      }),
+    );
+    sizes.observe(el);
+  };
   const watchWidth = (el: HTMLDivElement) => {
     wrapperEl = el;
-    if (typeof ResizeObserver === "undefined") return;
-    // Answering in the same step is a ResizeObserver loop: the refit changes the height of a box
-    // inside the one being watched.
-    sizes ??= new ResizeObserver(() => requestAnimationFrame(refit));
-    sizes.observe(el);
+    observe(el);
+  };
+  const watchStrip = (el: HTMLDivElement) => {
+    strip = el;
+    fade();
+    observe(el);
   };
   onCleanup(() => sizes?.disconnect());
   createEffect(on(cap, refit));
@@ -228,6 +321,7 @@ export function Gallery(props: {
         <GallerySkeleton
           thumbs={props.images.length}
           maxH={cap()}
+          bleed={bleed()}
           onHeight={(px) => (skeletonH = px)}
         />
       </Match>
@@ -266,20 +360,34 @@ export function Gallery(props: {
                   class="absolute inset-0 w-full h-full object-contain rounded-xl bg-surface transition-opacity"
                   style={{
                     opacity: next().ready ? 1 : 0,
-                    "transition-duration": "200ms",
+                    "transition-duration": `${PICTURE_FADE_MS}ms`,
                   }}
                   onClick={() => props.onOpenFull()}
                   onError={onImageError}
                 />
               )}
             </Show>
-            {/* a switch shows the spinner while the picture decodes; a first picture shows the
-                skeleton */}
-            <Show when={overlay() && !overlay()!.ready}>
-              <div class="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-black/40 rounded-xl">
-                <div class="spinner w-6 h-6" />
-              </div>
-            </Show>
+            {/* The box dims while a switch is in flight and leaves at the pace of the picture that
+                replaces it, so the two cross instead of one blinking off. The spinner stands inside
+                the dim and waits for it, so a picture that arrives first never shows a spinner at
+                all. The layer takes no tap, which the scrim that stood here did: opening the zoom
+                stays possible while a picture is on its way. */}
+            <div
+              class="no-pick absolute inset-0 flex items-center justify-center rounded-xl bg-white/60 dark:bg-black/40 ease-out transition-opacity pointer-events-none"
+              style={{
+                opacity: dimmed() ? 1 : 0,
+                "transition-duration": `${dimmed() ? DIM_MS : PICTURE_FADE_MS}ms`,
+              }}
+              aria-hidden="true"
+            >
+              <div
+                class="spinner w-6 h-6 ease-out transition-opacity"
+                style={{
+                  opacity: waiting() ? 1 : 0,
+                  "transition-duration": `${dimmed() ? DIM_MS : PICTURE_FADE_MS}ms`,
+                }}
+              />
+            </div>
           </div>
           <div class="relative h-0">
             {/* The counter floats over the swipe surface, so a held thumb lands on it. A screen
@@ -297,17 +405,26 @@ export function Gallery(props: {
               </span>
             </span>
           </div>
-          {/* For keys on the url, so a re-render keeps the thumbnails that are already loaded */}
-          <div class={DETAIL_THUMB_ROW}>
-            <For each={props.images}>
-              {(url, i) => (
-                <SelectorThumb
-                  url={url}
-                  active={i() === props.index()}
-                  onSelect={() => props.setIndex(i())}
-                />
-              )}
-            </For>
+          {/* The small copies arrive later, so a square starts on the album's own address and only
+              its src changes when they do. */}
+          <div
+            class={DETAIL_THUMB_ROW}
+            ref={watchStrip}
+            style={rowStyle()}
+            on:scroll={fade}
+          >
+            <div class={DETAIL_THUMB_INNER} style={innerStyle()}>
+              <For each={props.images}>
+                {(url, i) => (
+                  <SelectorThumb
+                    url={props.thumbs?.[i()] ?? url}
+                    mark={i()}
+                    active={i() === props.index()}
+                    onSelect={() => props.setIndex(i())}
+                  />
+                )}
+              </For>
+            </div>
           </div>
         </div>
       </Match>
@@ -320,6 +437,7 @@ export function Gallery(props: {
 function GallerySkeleton(props: {
   thumbs: number;
   maxH: number;
+  bleed: number;
   onHeight: (px: number) => void;
 }) {
   let bar!: HTMLDivElement;
@@ -332,25 +450,40 @@ function GallerySkeleton(props: {
         style={{ height: `${props.maxH}px` }}
       />
       <Show when={props.thumbs > 0}>
-        <div class={DETAIL_THUMB_ROW}>
-          <For each={Array.from({ length: props.thumbs })}>
-            {() => <div class={`${SK_FILL} ${DETAIL_THUMB}`} />}
-          </For>
+        <div
+          class={DETAIL_THUMB_ROW}
+          style={{
+            "margin-left": `${-props.bleed}px`,
+            "margin-right": `${-props.bleed}px`,
+            "padding-left": `${props.bleed}px`,
+          }}
+        >
+          <div
+            class={DETAIL_THUMB_INNER}
+            style={{ "padding-right": `${props.bleed}px` }}
+          >
+            <For each={Array.from({ length: props.thumbs })}>
+              {() => <div class={`${SK_FILL} ${DETAIL_THUMB}`} />}
+            </For>
+          </div>
         </div>
       </Show>
     </div>
   );
 }
 
-// A thumbnail in the strip below the picture; it selects its own picture.
+// A thumbnail in the strip below the picture; it selects its own picture. `mark` is its place in
+// the album, which is how the strip finds the one to keep in view.
 function SelectorThumb(props: {
   url: string;
+  mark: number;
   active: boolean;
   onSelect: () => void;
 }) {
   return (
     <SkelImg
       url={props.url}
+      data-thumb={props.mark}
       box={`${DETAIL_THUMB} cursor-pointer border-2`}
       style={{
         "border-color": props.active ? "var(--color-accent)" : "transparent",

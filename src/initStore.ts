@@ -10,9 +10,14 @@ import { loadPush } from "./stores/pushStore";
 import { loadWishlist } from "./stores/wishlistStore";
 import { loadData } from "./stores/listingsStore";
 import { loadSocials } from "./stores/socialsStore";
+import { loadDebuts } from "./stores/debutsStore";
+import { probeAvif } from "./data/image";
 import { applyDocumentLocale, requestedLocale } from "./i18n";
 
 export function initStore(): void {
+  // First, because the answer comes a task later and every address written after it can then ask
+  // Bilibili for the smaller format.
+  probeAvif();
   applyDocumentLocale();
   loadSession();
   loadWishlist();
@@ -24,6 +29,7 @@ export function initStore(): void {
   if (asked) linkSort(asked);
   loadData();
   loadSocials();
+  loadDebuts();
   // Last: it reads the language the stores above settled on, and sends nothing before then.
   loadPush();
 

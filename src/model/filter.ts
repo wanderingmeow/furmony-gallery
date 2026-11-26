@@ -99,6 +99,12 @@ export interface ComputeOptions {
   // Keep the listings whose owner has an account we can link to. Only a few dozen listings have one,
   // so this list is short by design, and the panel says so.
   socialOnly?: boolean;
+  // Keep the listings the build found a debut album for. The albums live in a same-origin file, so
+  // a listing without one is either an album nobody posted or a build that read nothing: the panel
+  // names the count it found.
+  debutOnly?: boolean;
+  // The albums by listing id, from `debutsStore`.
+  debuts?: Map<number, string[]>;
   // Keep only these adoptIds. The semantic group reuses every other filter and brings its own text
   // match, because the shelf's descriptions often leave out what the piece looks like.
   only?: Set<number>;
@@ -156,6 +162,8 @@ export function compute(o: ComputeOptions): AdoptListing[] {
     wishlist,
     socials,
     socialOnly,
+    debutOnly,
+    debuts,
     priceRange,
     only,
     skip,
@@ -170,6 +178,7 @@ export function compute(o: ComputeOptions): AdoptListing[] {
   if (skip && skip.size > 0)
     result = result.filter((l) => !skip.has(l.adoptId));
   if (socialOnly) result = result.filter((l) => hasSocial(l.adoptId, socials));
+  if (debutOnly) result = result.filter((l) => !!debuts?.has(l.adoptId));
   if (priceRange) result = result.filter((l) => keepsByPrice(l, priceRange));
 
   if (colors.size > 0)

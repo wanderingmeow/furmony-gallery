@@ -17,7 +17,7 @@ const answers: boolean[] = [];
 const START_X = 100;
 
 // Where the knob rests or rides. A held knob adds the growth every pressed control shares, read from
-// the token rather than the number it resolves to, so the token stays the contract.
+// the token, so the token stays the contract.
 const at = (px: number) => `translateX(${px}px)`;
 const heldAt = (px: number) => `${at(px)} scale(var(--press-grow))`;
 

@@ -1,15 +1,23 @@
-// Functional tests for the signed-image URL map (image.ts). No network, no rendering.
-// fake-indexeddb provides a real-ish IndexedDB; localStorage comes from the testSetup shim.
+// Functional tests for the picture module: the signed URL map, the sizes, and the probe. No
+// network, no rendering. fake-indexeddb provides a real-ish IndexedDB; localStorage comes from
+// the testSetup shim.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-type ImageModule = typeof import("./image");
+type ImageModule = typeof import("./index");
 
-// fresh module per test → module-level imageUrlMap/dirtyPaths state is isolated
+// One module per test, because the map and the dirty set live at module level.
 let img: ImageModule;
 beforeEach(async () => {
   vi.resetModules();
-  img = await import("./image");
+  img = await import("./index");
 });
+
+// The write is reached the way the page reaches it: register for the exit, then let one arrive.
+const flushOnExit = async (): Promise<void> => {
+  img.flushUrlMapOnExit();
+  window.dispatchEvent(new Event("pagehide"));
+  await new Promise((done) => setTimeout(done, 10));
+};
 
 describe("stableImageUrl (img_url_map)", () => {
   it("maps a signed URL (with ?) and remembers the first-seen URL", () => {
@@ -31,10 +39,10 @@ describe("stableImageUrl (img_url_map)", () => {
 
   it("persists dirty entries to IndexedDB and reloads them on a fresh module", async () => {
     img.stableImageUrl("https://a.jpg?x=1");
-    await img.flushImageUrlMap();
+    await flushOnExit();
 
     vi.resetModules();
-    img = await import("./image");
+    img = await import("./index");
     await img.initImageUrlMap();
 
     // remembered URL from DB wins over the fresh signature
@@ -60,10 +68,10 @@ describe("stableImageUrl (img_url_map)", () => {
 
     const el = { src: dead, dataset: {} } as unknown as HTMLImageElement;
     img.onImageError({ target: el } as unknown as Event);
-    await img.flushImageUrlMap();
+    await flushOnExit();
 
     vi.resetModules();
-    img = await import("./image");
+    img = await import("./index");
     await img.initImageUrlMap();
     expect(img.stableImageUrl("https://cdn.example/2.jpg?sig=later")).toBe(
       "https://cdn.example/2.jpg?sig=new",
@@ -84,7 +92,7 @@ describe("flushUrlMapOnExit", () => {
     await new Promise((done) => setTimeout(done, 10));
 
     vi.resetModules();
-    img = await import("./image");
+    img = await import("./index");
     await img.initImageUrlMap();
     expect(img.stableImageUrl("https://a.jpg?y=9")).toBe("https://a.jpg?x=1");
     expect(img.stableImageUrl("https://b.jpg?z=9")).toBe("https://b.jpg?z=9");
@@ -187,6 +195,26 @@ describe("sizedUrl", () => {
     expect(el.src).not.toMatch(/imageMogr2/);
   });
 
+  it("writes the size on the path for a Bilibili address", () => {
+    const bili = "https://i0.hdslb.com/bfs/new_dyn/7519fd93.jpg";
+    expect(img.sizedUrl(bili, "detail")).toBe(`${bili}@1300w.webp`);
+    expect(img.sizedUrl(bili, "card")).toBe(`${bili}@600w.webp`);
+    expect(img.sizedUrl(bili, "badge")).toBe(`${bili}@180w.webp`);
+  });
+
+  it("asks Bilibili for a format only after the browser says it can", () => {
+    const bili = "https://i1.hdslb.com/bfs/new_dyn/a.jpg";
+    expect(img.sizedUrl(bili, "detail")).toMatch(/\.webp$/);
+  });
+
+  it("asking Bilibili twice writes the size once", () => {
+    const once = img.sizedUrl(
+      "https://i0.hdslb.com/bfs/new_dyn/a.jpg",
+      "detail",
+    )!;
+    expect(img.sizedUrl(once, "detail")).toBe(once);
+  });
+
   it("leaves anything the bucket cannot resize alone", () => {
     expect(img.sizedUrl("https://other.example.com/a.jpg?x=1", "card")).toBe(
       "https://other.example.com/a.jpg?x=1",
@@ -206,7 +234,9 @@ class FakeImage {
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
   complete = false;
+  naturalWidth = 0;
   src = "";
+  referrerPolicy = "";
   constructor() {
     FakeImage.last = this;
   }
@@ -252,6 +282,11 @@ describe("preloadImage", () => {
     expect(pic).toBe(FakeImage.last);
   });
 
+  it("names no page, because a host with a referrer rule reads that as the answer", () => {
+    img.preloadImage("https://a.jpg");
+    expect(FakeImage.last!.referrerPolicy).toBe("no-referrer");
+  });
+
   it("cancel clears an address that is still pending", () => {
     const job = img.preloadImage("https://a.jpg");
     job.cancel();
@@ -275,5 +310,38 @@ describe("preloadImage", () => {
     FakeImage.last!.broken();
     await flush();
     expect(settled).toBe(false);
+  });
+});
+
+describe("the format Bilibili is asked for", () => {
+  const bili = "https://i0.hdslb.com/bfs/new_dyn/a.jpg";
+  beforeEach(() => {
+    FakeImage.last = undefined;
+    vi.stubGlobal("Image", FakeImage);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("is webp while the browser has not answered", () => {
+    expect(img.sizedUrl(bili, "badge")).toBe(`${bili}@180w.webp`);
+  });
+
+  it("is AVIF once the probe draws", () => {
+    img.probeAvif();
+    FakeImage.last!.naturalWidth = 1;
+    FakeImage.last!.arrive();
+    expect(img.sizedUrl(bili, "badge")).toBe(`${bili}@180w.avif`);
+  });
+
+  it("is webp again when the probe cannot draw", () => {
+    img.probeAvif();
+    FakeImage.last!.broken();
+    expect(img.sizedUrl(bili, "badge")).toBe(`${bili}@180w.webp`);
+  });
+
+  it("the probe names no page and carries no download", () => {
+    img.probeAvif();
+    const el = FakeImage.last!;
+    expect(el.referrerPolicy).toBe("no-referrer");
+    expect(el.src.startsWith("data:image/avif;base64,")).toBe(true);
   });
 });

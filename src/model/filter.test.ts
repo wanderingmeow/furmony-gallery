@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import {
   compute,
+  type ComputeOptions,
   hasSocial,
   orderLabel,
   sortFromQuery,
@@ -691,6 +692,51 @@ describe("compute - socialOnly filter", () => {
         }),
       ),
     ).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe("compute - debutOnly filter", () => {
+  // An album is a list of addresses, so a listing is either in the table or not. A table with
+  // nothing in it is what a build that read no album leaves behind.
+  const DEBUTS = new Map<number, string[]>([
+    [1, ["https://cdn.example/one.jpg"]],
+    [2, ["https://cdn.example/two.jpg", "https://cdn.example/two-b.jpg"]],
+  ]);
+  const rows = [listing(1), listing(2), listing(3), listing(4)];
+
+  const under = (over: Partial<ComputeOptions>) =>
+    ids(
+      compute({
+        rows,
+        tab: "all",
+        sort: "timeAsc",
+        colors: EMPTY,
+        races: EMPTY,
+        query: "",
+        wishlist: EMPTY_MAP,
+        ...over,
+      }),
+    );
+
+  it("keeps the listings that have an album", () => {
+    expect(under({ debutOnly: true, debuts: DEBUTS })).toEqual([1, 2]);
+  });
+
+  it("leaves the list alone while the switch is off", () => {
+    expect(under({ debuts: DEBUTS })).toEqual([1, 2, 3, 4]);
+  });
+
+  // `debutFilterOn` in the derived store keeps this from running: a switch on with no table is not
+  // on, so the reader never sees the page go empty over a file that failed to load.
+  it("asks for nothing when the album table never arrived", () => {
+    expect(under({ debutOnly: true })).toEqual([]);
+  });
+
+  it("applies within the locked tab", () => {
+    const locked = [listing(1, { isLock: 2 }), listing(3, { isLock: 2 })];
+    expect(
+      under({ rows: locked, tab: "locked", debutOnly: true, debuts: DEBUTS }),
+    ).toEqual([1]);
   });
 });
 

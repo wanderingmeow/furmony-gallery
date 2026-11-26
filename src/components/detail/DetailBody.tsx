@@ -27,6 +27,8 @@ export function DetailBody(props: {
   listing: AdoptListing;
   /** The resized detail pictures; the head picture is already in this list. */
   images: string[];
+  /** The small copy of each one, for the strip under the picture. */
+  thumbs: string[];
   index: () => number;
   setIndex: (i: number) => void;
   onOpenFull: () => void;
@@ -60,10 +62,12 @@ export function DetailBody(props: {
           >
             <Gallery
               images={props.images}
+              thumbs={props.thumbs}
               index={props.index}
               setIndex={props.setIndex}
               onOpenFull={props.onOpenFull}
               maxH={picMaxH()}
+              bleed={() => BOX[shape()].stripBleed}
               holdHeight={panel()}
               onPicHeightChange={props.onContentChange}
             />

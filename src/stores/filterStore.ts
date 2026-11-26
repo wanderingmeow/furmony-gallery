@@ -1,5 +1,5 @@
 // src/stores/filterStore.ts: filter state signals (tab / sort / colors / races / search / 主人账号
-// / 价格区间).
+// / 出场照 / 价格区间).
 //
 // The filter signals live in memory, and the setters write them to localStorage on the spot,
 // so a refresh keeps the filters the reader left.
@@ -22,6 +22,7 @@ const [selectedRaces, setSelectedRacesSignal] = createSignal<Set<string>>(
 );
 const [searchText, setSearchTextSignal] = createSignal("");
 const [socialOnly, setSocialOnlySignal] = createSignal(false);
+const [debutOnly, setDebutOnlySignal] = createSignal(false);
 // 价格区间. null is the whole list: the reader has not narrowed the price.
 const [priceRange, setPriceRangeSignal] = createSignal<PriceRange | null>(
   null,
@@ -38,6 +39,7 @@ function persistFilters(): void {
     races: [...selectedRaces()],
     search: searchText(),
     socialOnly: socialOnly(),
+    debutOnly: debutOnly(),
     price: priceRange(),
   };
   try {
@@ -48,7 +50,14 @@ function persistFilters(): void {
 }
 
 export type FilterChangeKind =
-  "tab" | "sort" | "search" | "colors" | "races" | "socialOnly" | "priceRange";
+  | "tab"
+  | "sort"
+  | "search"
+  | "colors"
+  | "races"
+  | "socialOnly"
+  | "debutOnly"
+  | "priceRange";
 /** The page hands the store what a filter change should do. The store never touches the document,
  *  so the waterfall registers its own scroll reset here. */
 let onFilterChange: ((kind: FilterChangeKind) => void) | null = null;
@@ -117,6 +126,14 @@ export function setSocialOnly(v: boolean): void {
     notify("socialOnly");
   });
 }
+// The debut-picture switch. `debutFilterOn` in the derived store decides whether it may run.
+export function setDebutOnly(v: boolean): void {
+  batch(() => {
+    setDebutOnlySignal(v);
+    persistFilters();
+    notify("debutOnly");
+  });
+}
 // The band compares by what it keeps, so a drag's repeated pair is neither a recompute nor a
 // reason to persist and jump the list back to the top.
 export function setPriceRange(v: PriceRange | null): void {
@@ -148,6 +165,7 @@ export {
   selectedRaces,
   searchText,
   socialOnly,
+  debutOnly,
   priceRange,
 };
 
@@ -163,6 +181,7 @@ export function loadFilters(): void {
       setSelectedRacesSignal(new Set(saved.races));
       if (saved.search !== undefined) setSearchTextSignal(saved.search);
       setSocialOnlySignal(saved.socialOnly);
+      setDebutOnlySignal(saved.debutOnly);
       if (saved.price) setPriceRangeSignal(saved.price);
     });
   } catch {

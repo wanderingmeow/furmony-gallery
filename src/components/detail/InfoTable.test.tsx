@@ -10,6 +10,19 @@ import { rememberWords } from "../../model/translatedText";
 import { FLOW_OVER_MS } from "./FlowText";
 import { InfoTable } from "./InfoTable";
 
+// The 状态 row can read further along than the shelf does: an album of the debut day is the studio's
+// own photo of a piece that exists. The table reads that table from `debutsStore`.
+const albums = vi.hoisted(() => ({ current: new Map<number, string[]>() }));
+vi.mock("../../stores/debutsStore", () => ({ debuts: () => albums.current }));
+
+// A socials entry only means the studio posted the piece somewhere: a piece still waiting to be
+// made also has one. The 状态 row has to stay unmoved by it.
+const socials = vi.hoisted(() => ({ current: new Map<number, unknown>() }));
+vi.mock("../../stores/socialsStore", () => ({
+  socials: () => socials.current,
+  socialSearch: () => [],
+}));
+
 // Made-up words about nothing. The translation cache is keyed by text, so each listing carries its
 // own id and one test cannot read another test's answer.
 const words = (id: number) =>
@@ -80,6 +93,7 @@ afterEach(() => {
   dispose = undefined;
   hosts.forEach((host) => host.remove());
   hosts = [];
+  albums.current = new Map();
   setLocale("zh");
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -105,6 +119,62 @@ function draw(
   );
   return { host, body: () => label!.parentElement! };
 }
+
+describe("the 状态 row", () => {
+  const one = (adoptId: number) =>
+    ({ ...row(adoptId), status: 0, isLock: 1 }) as AdoptListing;
+
+  it("reads an album as one word: Adopted", () => {
+    albums.current = new Map([[41, ["https://cdn.example/debut.jpg"]]]);
+    const { host } = draw(one(41), "en");
+    expect(host.textContent).toContain("Adopted");
+    expect(
+      host.textContent,
+      "a hold with an album is no longer in progress",
+    ).not.toContain("Lock in progress");
+    expect(host.textContent).not.toContain("Open");
+  });
+
+  // The row's own box: the table holds other badges, and one of them is not this row's business.
+  const statusRow = (host: HTMLElement) => {
+    const dt = [...host.querySelectorAll("dt")].find(
+      (d) => d.textContent === "Status",
+    );
+    expect(dt, "the row is drawn").toBeTruthy();
+    return [...dt!.parentElement!.querySelectorAll("span")].map((b) =>
+      b.textContent?.trim(),
+    );
+  };
+
+  it("shows one word, not a pair of badges", () => {
+    const { host } = draw(one(43), "en");
+    expect(statusRow(host)).toEqual(["Lock in progress"]);
+  });
+
+  it("shows one word for an album too", () => {
+    albums.current = new Map([[47, ["https://cdn.example/debut.jpg"]]]);
+    const { host } = draw(one(47), "en");
+    expect(statusRow(host)).toEqual(["Adopted"]);
+  });
+
+  it("stays put on a socials entry, which a piece waiting to be made also has", () => {
+    socials.current = new Map([[49, { ownerName: "测试主人", platforms: {} }]]);
+    const { host } = draw(one(49), "en");
+    expect(host.textContent, "the entry is the one being read").toContain(
+      "测试主人",
+    );
+    expect(statusRow(host)).toEqual(["Lock in progress"]);
+  });
+
+  it("shows the lock the shelf recorded", () => {
+    const held = { ...one(44), isLock: 1 } as AdoptListing;
+    const paid = { ...one(45), isLock: 2 } as AdoptListing;
+    const free = { ...one(46), isLock: 0 } as AdoptListing;
+    expect(draw(held, "en").host.textContent).toContain("Lock in progress");
+    expect(draw(paid, "en").host.textContent).toContain("Locked");
+    expect(draw(free, "en").host.textContent).toContain("Open");
+  });
+});
 
 describe("the description row", () => {
   it("holds three lines of their own length while the translation is on its way", () => {

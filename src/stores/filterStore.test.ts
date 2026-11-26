@@ -17,6 +17,8 @@ import {
   setSocialOnly,
   searchText,
   socialOnly,
+  setDebutOnly,
+  debutOnly,
 } from "./filterStore";
 
 const KEY = "furmony_filter";
@@ -95,6 +97,19 @@ describe("the stored 主人账号 switch", () => {
     localStorage.setItem(KEY, JSON.stringify({ socialOnly: true }));
     loadFilters();
     expect(socialOnly()).toBe(true);
+  });
+});
+
+describe("the stored 出场照 switch", () => {
+  beforeEach(() => {
+    localStorage.removeItem(KEY);
+    setDebutOnly(false);
+  });
+
+  it("restores the switch the reader left behind", () => {
+    localStorage.setItem(KEY, JSON.stringify({ debutOnly: true }));
+    loadFilters();
+    expect(debutOnly()).toBe(true);
   });
 });
 

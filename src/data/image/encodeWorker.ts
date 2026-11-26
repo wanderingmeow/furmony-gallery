@@ -1,12 +1,12 @@
-// src/data/encodeWorker.ts - decode, scale, flatten and encode, off the main thread.
+// Decode, scale, flatten and encode, off the main thread.
 //
 // The whole chain belongs here, not just the encode: `canvas.toBlob()` is async but stays on
 // the main thread, and so does `createImageBitmap(canvas)` on a drawn canvas. On a phone each
 // measured around 200ms - enough to delay the frames that show the reader their own picture.
 // The file arrives as a reference, not a copy.
 
-import type { LocalReason } from "./searchApi";
-import type { EncodeReply, EncodeRequest } from "./pictureInput";
+import type { LocalReason } from "../searchApi";
+import type { EncodeReply, EncodeRequest } from "./input";
 import type { HeicAnswer } from "./heicWorker";
 import { QUALITY, paintOnWhite, targetSize } from "./encodeSpec";
 
@@ -37,7 +37,7 @@ async function heicPixels(
       worker.postMessage(file);
     });
     if (!png.blob) return { bitmap: null, heic: png.heic };
-    // PNG bytes rather than a bitmap - see heicWorker for what that avoids. Decoded here, the
+    // The copy comes back as PNG bytes; `heicWorker.ts` says what that avoids. Decoded here, the
     // composite is an ordinary single-frame image from then on.
     return { bitmap: await createImageBitmap(png.blob), heic: false };
   } finally {

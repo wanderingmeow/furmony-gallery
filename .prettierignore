@@ -13,3 +13,13 @@ node_modules
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+
+# Written by `npm run socials` and `npm run debuts`, minified: a reformat adds bytes that every visit
+# pays for.
+public/debuts.json
+public/socials.json
+scripts/debutState.json
+
+# The state block cut out of a real Bilibili page. It is the fixture a test parses, so it stays the
+# way the page wrote it: one line, exactly those bytes.
+scripts/opus.sample.json

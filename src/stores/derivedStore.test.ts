@@ -28,7 +28,7 @@ vi.mock("../data/searchApi", async (importOriginal) => {
 });
 
 // The re-encode is the browser's work. The store only needs a blob back.
-vi.mock("../data/pictureInput", () => ({
+vi.mock("../data/image/input", () => ({
   prepare: async (file: Blob) => ({ blob: file }),
 }));
 

@@ -13,6 +13,7 @@ import { Portal } from "solid-js/web";
 import { useParams, useLocation } from "@solidjs/router";
 import { ArrowLeftOutlined, CloseOutlined } from "@ant-design/icons-svg";
 import { listings, isLoading, dataReady } from "../stores/listingsStore";
+import { debuts } from "../stores/debutsStore";
 import { detailImages } from "../model/domain";
 import type { AdoptListing } from "../model/types";
 import type { DetailEntry } from "../model/detailTrail";
@@ -97,16 +98,22 @@ export function Detail(props: { onClose: () => void }) {
     const l = listing();
     return l ? detailImages(l) : [];
   });
+  // The debut album of Bilibili photos follows the studio's own art, so one swipe runs through both.
+  const debut = createMemo(() => debuts().get(listing()?.adoptId ?? 0) ?? []);
+  const pictures = createMemo(() => [...images(), ...debut()]);
   // The gallery paints resized copies; the zoom keeps the raw address for the whole picture.
-  const shown = createMemo(() => images().map((u) => sizedUrl(u, "detail")!));
+  const shown = createMemo(() => pictures().map((u) => sizedUrl(u, "detail")!));
+  // The strip under the picture stands at 60 pixels and asks for the badge size. The album addresses
+  // carry no size of their own, so a strip of nine would otherwise pull the large copy of each.
+  const thumbs = createMemo(() => pictures().map((u) => sizedUrl(u, "badge")!));
   const at = (list: string[]): string | undefined =>
     list[Math.min(index(), Math.max(0, list.length - 1))];
   const head = () => stableImageUrl(listing()?.adoptHeadPicture);
   const current = () => at(shown()) ?? sizedUrl(head(), "detail");
-  const currentRaw = () => at(images()) ?? head();
+  const currentRaw = () => at(pictures()) ?? head();
   // With no detail pictures the zoom shows the head picture, so the counter reads 1 of 1.
   const zoomCount = () =>
-    images().length || (listing()?.adoptHeadPicture ? 1 : 0);
+    pictures().length || (listing()?.adoptHeadPicture ? 1 : 0);
 
   // The card is as tall as its content, so each source that changes it measures again: a new listing
   // and a new window here, the picture and the table settling through DetailBody.
@@ -177,6 +184,7 @@ export function Detail(props: { onClose: () => void }) {
           <DetailBody
             listing={l()}
             images={shown()}
+            thumbs={thumbs()}
             index={index}
             setIndex={setIndex}
             onOpenFull={() => setFull(true)}

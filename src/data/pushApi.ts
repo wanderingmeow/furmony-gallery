@@ -3,7 +3,7 @@
 // Anyone who can post to the endpoint can send this browser a notification. So it leaves in a POST
 // body only, never in a query, never in storage, and never in a log. The browser keeps it, and this
 // file reads it from the browser each time it is needed.
-import { decodeSetting } from "./encodedSetting";
+import { decodeSetting } from "./base64Setting";
 import { PATH, serverUrl } from "./serverApi";
 
 // Set at build time as base64 of the key. The key is public: a subscription is opened with it in

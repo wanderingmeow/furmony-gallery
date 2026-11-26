@@ -14,7 +14,7 @@ export type RemoteImgProps = {
  * answers 403, and on an `<img>` a 403 is a blank box with nothing to say about why - the same
  * shape as a picture that stopped existing. Every picture this app shows arrives from somewhere it
  * does not run, so the ask is fixed here, and writing `<img>` by hand is what the test in
- * `src/noReferrerImages.test.ts` refuses.
+ * `src/noReferrerImages.test.tsx` refuses.
  */
 export function RemoteImg(props: RemoteImgProps): JSX.Element {
   const [own, rest] = splitProps(props, ["src", "alt", "ref"]);

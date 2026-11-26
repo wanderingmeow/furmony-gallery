@@ -124,8 +124,14 @@ export const SHEET_FAB_ROW = `absolute z-20 flex items-center gap-2
 /** The art block, the same height wherever it appears. */
 export const ART_PLACEHOLDER = "h-72 w-full rounded-xl";
 
-/** GallerySkeleton draws the same strip, so the thumbs cannot push the table down when they arrive. */
-export const DETAIL_THUMB_ROW = "flex gap-1.5 justify-center mt-2";
+/** The strip under the detail art, and the small copy of each. A debut album makes it longer than
+ *  the card, so it scrolls and the screen edge fades to say there is more. The inner row centers
+ *  while everything fits: centering the scroller would push the first thumb past what a scroll can
+ *  reach. GallerySkeleton draws the same strip, so the thumbs cannot push the table down when they
+ *  arrive. */
+export const DETAIL_THUMB_ROW =
+  "mt-2 overflow-x-auto overscroll-x-contain no-scrollbar";
+export const DETAIL_THUMB_INNER = "flex gap-1.5 w-max mx-auto";
 export const DETAIL_THUMB = "w-15 h-15 shrink-0 rounded-md";
 
 // shared with SheetSkeleton, so the placeholder cannot land a few pixels from the real header

@@ -4,7 +4,7 @@
 // Only depends on the image-URL service (image.ts); it never touches the listings cache
 // or network layer, so domain logic stays off infrastructure.
 import type { AdoptListing } from "./types";
-import { stableImageUrl } from "../data/image";
+import { stableImageUrl } from "../data/image/urlMap";
 import { tr } from "../i18n";
 import { listingPainterName } from "./translatedText";
 import {
@@ -93,6 +93,20 @@ export function displayPrice(listing: AdoptListing): number {
 
 export function isAdopted(listing: AdoptListing): boolean {
   return listing.status === 1;
+}
+
+/** The one word the 状态 row shows. The studio posts the album of the debut day itself, and it posts
+ *  it once the piece is sold, so a listing with an album is sold: `status` and `isLock` both lag
+ *  behind. Display only - the tab counts and the notification rules keep reading `isAdopted` and
+ *  `isLocked`. */
+export function shownStatus(
+  listing: AdoptListing,
+  hasDebut: boolean,
+): "open" | "locking" | "locked" | "adopted" {
+  if (isAdopted(listing) || hasDebut) return "adopted";
+  if (isCommittedLock(listing)) return "locked";
+  if (isLocked(listing)) return "locking";
+  return "open";
 }
 
 /** Not available for purchase: either a hold or a paid lock. The card's lock, the 已锁定 tab and

@@ -13,7 +13,7 @@ export type PictureSay = "failed" | "noMatch";
 
 /** What the user can press. The component knows what each one does. */
 export type EmptyAction =
-  "search" | "filters" | "retry" | "retryAsk" | "socialOnly";
+  "search" | "filters" | "retry" | "retryAsk" | "socialOnly" | "debutOnly";
 
 export interface EmptyFacts {
   loadFailed: boolean;
@@ -22,6 +22,7 @@ export interface EmptyFacts {
   asking: boolean;
   /** The switch that keeps only the listings whose owner has an account we can link to. */
   socialOnly: boolean;
+  debutOnly: boolean;
   onWishlistTab: boolean;
   savedCount: number;
   query: string;
@@ -71,6 +72,13 @@ export function pickEmptyState(f: EmptyFacts): EmptyState | null {
       icon: "filter",
       title: tr("empty.noSocialTitle"),
       action: "socialOnly",
+    };
+  }
+  if (f.debutOnly) {
+    return {
+      icon: "filter",
+      title: tr("empty.noDebutTitle"),
+      action: "debutOnly",
     };
   }
   if (f.onWishlistTab && f.savedCount === 0) {
@@ -136,6 +144,7 @@ const EMPTY_ACTION_KEY = {
   retry: "common.retry",
   retryAsk: "common.retry",
   socialOnly: "empty.closeFilter",
+  debutOnly: "empty.closeFilter",
 } as const;
 
 export const emptyActionLabel = (action: EmptyAction): string =>

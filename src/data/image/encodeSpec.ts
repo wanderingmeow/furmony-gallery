@@ -1,4 +1,4 @@
-// src/data/encodeSpec.ts - what a picture is turned into before it is sent.
+// What a picture is turned into before it is sent.
 //
 // Shared by the worker and the fallback path so the two cannot drift apart.
 

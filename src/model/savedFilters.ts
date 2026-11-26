@@ -17,6 +17,7 @@ export interface SavedFilters {
   races: string[];
   search?: string;
   socialOnly: boolean;
+  debutOnly: boolean;
   price?: [number, number];
 }
 
@@ -64,6 +65,7 @@ export function readSavedFilters(raw: string): SavedFilters {
     races: knownNames(isKnownRaceName, f.races),
     search: keptQuery(f.search),
     socialOnly: f.socialOnly === true,
+    debutOnly: f.debutOnly === true,
     price: orderedPair(f.price),
   };
 }

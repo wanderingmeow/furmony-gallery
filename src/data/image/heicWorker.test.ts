@@ -1,6 +1,6 @@
 // The HEIF worker's own contract: what it answers, and with which words. The app never talks to
-// the library directly, so if this mapping drifts, the reader's sentence drifts with it - and no
-// other test can see it, because every other test fakes the worker rather than running it.
+// the library directly, so if this mapping drifts, the reader's sentence drifts with it. No other
+// test can see it: every other test fakes the worker.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MAX_EDGE } from "./encodeSpec";
 import type { HeicAnswer } from "./heicWorker";
