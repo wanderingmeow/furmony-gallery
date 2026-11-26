@@ -46,13 +46,13 @@ import { SkelText } from "../ui/SkelText";
 import { onImageError, sizedUrl, stableImageUrl } from "../../data/image";
 import { SK_FILL } from "../ui/boxes";
 import { relatedSkeleton } from "../ui/skeletonView";
-import { debuts } from "../../stores/debutsStore";
+import { hasDebutAlbum } from "../../stores/debutsStore";
 import "./RelatedRow.css";
 
 // An album says the piece was made, so 只看可领养 leaves it out even while the shelf still reads
 // 未领养.
 const isTaken = (l: AdoptListing) =>
-  shownStatus(l, debuts().has(l.adoptId)) !== "open";
+  shownStatus(l, hasDebutAlbum(l.adoptId)) !== "open";
 
 export function RelatedRow(props: { item: AdoptListing; shape: Shape }) {
   const navigate = useNavigate();

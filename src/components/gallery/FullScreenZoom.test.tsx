@@ -79,7 +79,7 @@ function mount(): { container: HTMLDivElement; stage: HTMLElement } {
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-/** The reader zooms with the wheel, so that is how these tests get a transform to check. */
+/** The user zooms with the wheel, so that is how these tests get a transform to check. */
 const wheel = (container: HTMLDivElement): void => {
   container.dispatchEvent(
     new WheelEvent("wheel", { deltaY: -240, bubbles: true, cancelable: true }),
@@ -190,5 +190,15 @@ describe("the overlay over the sheet it opens from", () => {
   it("out-ranks the sheet, whose z-[60] would otherwise cover it", () => {
     const { container } = mount();
     expect(container.className).toContain("z-[70]");
+  });
+});
+
+describe("a control at its zoom limit", () => {
+  it("lowers the whole control from the first frame", () => {
+    const { container } = mount();
+    const [zoomIn, zoomOut] = [...container.querySelectorAll("button.w-9")];
+    expect((zoomOut as HTMLButtonElement).disabled).toBe(true);
+    expect(zoomOut!.className).toContain("opacity-60");
+    expect(zoomIn!.className).not.toContain("opacity-60");
   });
 });

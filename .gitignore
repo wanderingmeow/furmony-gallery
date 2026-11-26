@@ -26,11 +26,7 @@ embedding/
 # A local copy for development. The published copy is the current one, so do not commit this.
 public/related.json
 
-# The readers of other sites' posts, and the tables they read from. These are scrapers: the
-# addresses they ask, the shape of the answers they parse, and the logins they send are all written
-# down here, and publishing that is a guide to the walls they walk around. What they write ships
-# through the Pages branch alone, so a machine without this directory builds a site with no debuts
-# and no socials. `npm run data` runs the readers and is theirs to run.
+# These read other sites' posts with a login, and the tables they read name real accounts.
 scripts/
 public/socials.json
 public/debuts.json

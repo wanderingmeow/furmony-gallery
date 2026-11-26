@@ -6,6 +6,7 @@ import {
   RELATED_CARD_GAP,
   RELATED_CARD_MIN,
   VIEW_PAD,
+  detailClipHeight,
   detailPictureHeight,
   indexOfRow,
   panelArtWidth,
@@ -332,6 +333,47 @@ describe("the detail's shape and box", () => {
       detailPictureHeight(sheetCardBox(700, 200), "panel"),
       "below this the zoom is how you look at it",
     ).toBe(120);
+  });
+
+  // A debut clip is shot standing up, so the ceiling that holds a still to its own
+  // width is not asked of it. The half-card ceiling is, and so is the room left once the thumbs and
+  // the bar are paid for.
+  it("plays a clip at the height a still is refused, under the same half-card ceiling", () => {
+    const phone = sheetCardBox(393, 852);
+    expect(detailClipHeight(phone, "sheet"), "half the card").toBeCloseTo(
+      phone.h * 0.5,
+    );
+    expect(
+      detailClipHeight(phone, "sheet"),
+      "taller than the box a still stands at",
+    ).toBeGreaterThan(detailPictureHeight(phone, "sheet"));
+    // The band a notch costs is paid for before the ceiling is read.
+    const notched = sheetCardBox(393, 852, {
+      top: 47,
+      bottom: 34,
+      left: 0,
+      right: 0,
+    });
+    expect(detailClipHeight(notched, "sheet", 47)).toBeLessThan(
+      detailClipHeight(phone, "sheet"),
+    );
+    for (const [w, h, shape] of [
+      [393, 852, "sheet"],
+      [744, 1133, "sheet"],
+      [852, 393, "panel"],
+      [1133, 744, "panel"],
+    ] as [number, number, Shape][]) {
+      const box = sheetCardBox(w, h);
+      const clip = detailClipHeight(box, shape);
+      if (shape === "sheet")
+        expect(clip, `${w}x${h} stays under half the card`).toBeLessThanOrEqual(
+          box.h * 0.5,
+        );
+      expect(
+        clip,
+        `${w}x${h} ${shape} never shorter than a still`,
+      ).toBeGreaterThanOrEqual(detailPictureHeight(box, shape));
+    }
   });
 
   it("holds a sheet's art to half its card", () => {

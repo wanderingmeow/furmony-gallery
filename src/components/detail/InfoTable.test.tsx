@@ -7,13 +7,18 @@ import { render } from "solid-js/web";
 import type { AdoptListing } from "../../model/types";
 import { setLocale } from "../../i18n";
 import { rememberWords } from "../../model/translatedText";
+import type { Debut } from "../../data/debuts";
 import { FLOW_OVER_MS } from "./FlowText";
 import { InfoTable } from "./InfoTable";
 
 // The 状态 row can read further along than the shelf does: an album of the debut day is the studio's
 // own photo of a piece that exists. The table reads that table from `debutsStore`.
-const albums = vi.hoisted(() => ({ current: new Map<number, string[]>() }));
-vi.mock("../../stores/debutsStore", () => ({ debuts: () => albums.current }));
+const albums = vi.hoisted(() => ({ current: new Map<number, Debut>() }));
+vi.mock("../../stores/debutsStore", () => ({
+  debuts: () => albums.current,
+  hasDebutAlbum: (id: number) =>
+    (albums.current.get(id)?.pictures.length ?? 0) > 0,
+}));
 
 // A socials entry only means the studio posted the piece somewhere: a piece still waiting to be
 // made also has one. The 状态 row has to stay unmoved by it.
@@ -125,7 +130,9 @@ describe("the 状态 row", () => {
     ({ ...row(adoptId), status: 0, isLock: 1 }) as AdoptListing;
 
   it("reads an album as one word: Adopted", () => {
-    albums.current = new Map([[41, ["https://cdn.example/debut.jpg"]]]);
+    albums.current = new Map([
+      [41, { pictures: ["https://cdn.example/debut.jpg"] }],
+    ]);
     const { host } = draw(one(41), "en");
     expect(host.textContent).toContain("Adopted");
     expect(
@@ -152,7 +159,9 @@ describe("the 状态 row", () => {
   });
 
   it("shows one word for an album too", () => {
-    albums.current = new Map([[47, ["https://cdn.example/debut.jpg"]]]);
+    albums.current = new Map([
+      [47, { pictures: ["https://cdn.example/debut.jpg"] }],
+    ]);
     const { host } = draw(one(47), "en");
     expect(statusRow(host)).toEqual(["Adopted"]);
   });

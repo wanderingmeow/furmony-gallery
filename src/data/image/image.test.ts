@@ -345,3 +345,44 @@ describe("the format Bilibili is asked for", () => {
     expect(el.src.startsWith("data:image/avif;base64,")).toBe(true);
   });
 });
+
+describe("the size Qzone is asked for", () => {
+  // The host writes the size as the last letter of the path: `!/m` is 200x300, `!/c` 640 wide, and
+  // `!/b` the original. The token and the tail here are invented; the shape is the host's.
+  const psc =
+    "https://m.qpic.cn/psc?/V51ExampleAlbumToken/an-invented-path-tail!/b";
+  const at = (letter: string): string =>
+    psc.replace(/!\/[a-z]$/, `!/${letter}`);
+
+  it("asks the small boxes for a drawn size", () => {
+    expect(img.sizedUrl(psc, "badge")).toBe(at("m"));
+    expect(img.sizedUrl(psc, "card")).toBe(at("c"));
+  });
+
+  // The biggest view opens on the original, and the original is what the album file holds.
+  it("leaves the big view on the original", () => {
+    expect(img.sizedUrl(psc, "detail")).toBe(psc);
+  });
+
+  // The same picture arrives from three hosts, and they answer the same.
+  it("answers for the hosts the picture arrives on", () => {
+    for (const host of ["a1.qpic.cn", "a.qpic.cn", "photo.store.qq.com"]) {
+      const one = psc.replace("m.qpic.cn", host);
+      expect(img.sizedUrl(one, "badge"), one).toBe(
+        one.replace(/!\/[a-z]$/, "!/m"),
+      );
+    }
+  });
+
+  // An address that already carries a letter was written by a hand that chose it, and a second
+  // letter would overwrite that choice.
+  it("leaves an address that already asks for less", () => {
+    const small = at("l");
+    expect(img.sizedUrl(small, "card")).toBe(small);
+  });
+
+  it("passes a picture from another host", () => {
+    const other = "https://example.com/a.jpg";
+    expect(img.sizedUrl(other, "card")).toBe(other);
+  });
+});

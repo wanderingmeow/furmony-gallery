@@ -326,6 +326,18 @@ const PIC_CAP = 0.5;
 // narrow to grow the card. PIC_PANEL_WIDE is the same rule where the window has room to spare.
 const PIC_PANEL_MAX = 0.75;
 
+/** The room the art has: what is left of the card once the chrome above it, the strip under it and,
+ *  in a sheet, the bar that sits outside the scroller are paid for. A panel hands its whole column
+ *  to the art, so the bar is not asked of it. */
+function artRoom(box: CardBox, shape: Shape, safeTop: number): number {
+  return (
+    box.h -
+    detailChrome(safeTop) -
+    DETAIL_STRIP_H -
+    (shape === "panel" ? 0 : SHEET_BAR_H)
+  );
+}
+
 /** The height the art's box takes: a panel hands over its whole left column, a sheet fits the art to
  *  its card, keeps the bar's height outside the scroller, and stops at `PIC_CAP` of the card. A
  *  sheet is one column, so a taller cover leaves the table below the fold entirely. */
@@ -334,11 +346,7 @@ export function detailPictureHeight(
   shape: Shape,
   safeTop = 0,
 ): number {
-  const room =
-    box.h -
-    detailChrome(safeTop) -
-    DETAIL_STRIP_H -
-    (shape === "panel" ? 0 : SHEET_BAR_H);
+  const room = artRoom(box, shape, safeTop);
   if (shape === "panel")
     return Math.max(PIC_MIN_H, Math.min(room, box.w * PIC_PANEL_MAX));
   const fitted = Math.min(
@@ -346,6 +354,22 @@ export function detailPictureHeight(
     Math.max(PIC_MIN_H, room),
   );
   return Math.min(fitted, box.h * PIC_CAP);
+}
+
+/**
+ * The height a debut clip is played at. A clip is shot standing up, so the ceiling
+ * that holds a still to its own width is not asked of it. The two that keep a sheet readable are:
+ * half the card, and the room left once the thumbs and the bar are paid for. A panel hands its
+ * whole column to the art and holds it there, so it keeps the room alone.
+ */
+export function detailClipHeight(
+  box: CardBox,
+  shape: Shape,
+  safeTop = 0,
+): number {
+  const room = artRoom(box, shape, safeTop);
+  if (shape === "panel") return Math.max(PIC_MIN_H, room);
+  return Math.max(PIC_MIN_H, Math.min(room, box.h * PIC_CAP));
 }
 
 // The strip under the info table. A card's width follows the width the strip has, so a view holds a

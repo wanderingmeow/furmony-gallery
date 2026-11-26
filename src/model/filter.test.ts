@@ -9,6 +9,7 @@ import {
   type SortMode,
 } from "./filter";
 import type { SocialSearchEntry } from "../data/socials";
+import type { Debut } from "../data/debuts";
 import type { AdoptListing } from "./types";
 import { MISSING_PRICE } from "./domain";
 
@@ -696,11 +697,32 @@ describe("compute - socialOnly filter", () => {
 });
 
 describe("compute - debutOnly filter", () => {
-  // An album is a list of addresses, so a listing is either in the table or not. A table with
-  // nothing in it is what a build that read no album leaves behind.
-  const DEBUTS = new Map<number, string[]>([
-    [1, ["https://cdn.example/one.jpg"]],
-    [2, ["https://cdn.example/two.jpg", "https://cdn.example/two-b.jpg"]],
+  // The switch is named for the album of photos, and the reading of `Adopted` rests on it: the clip
+  // is a showcase of the finished suit, which says nothing about who owns it now. So #3 has the clip
+  // and no album, and it stays out. A table with nothing in it is what a build that read no album
+  // leaves behind.
+  const DEBUTS = new Map<number, Debut>([
+    [1, { pictures: ["https://cdn.example/one.jpg"] }],
+    [
+      2,
+      {
+        pictures: [
+          "https://cdn.example/two.jpg",
+          "https://cdn.example/two-b.jpg",
+        ],
+      },
+    ],
+    [
+      3,
+      {
+        pictures: [],
+        video: {
+          bv: "BV1GJ411x7h7",
+          cover: "https://cdn.example/cover.jpg",
+          seconds: 18,
+        },
+      },
+    ],
   ]);
   const rows = [listing(1), listing(2), listing(3), listing(4)];
 

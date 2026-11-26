@@ -1,6 +1,6 @@
 import type { IconDefinition } from "@ant-design/icons-svg/lib/types";
 import { ArrowDownOutlined, ArrowUpOutlined } from "@ant-design/icons-svg";
-import { AntIcon } from "./AntIcon";
+import { AntIcon } from "../ui/AntIcon";
 
 /**
  * The order in one mark: the arrow in front, the icon it sorts by behind it.

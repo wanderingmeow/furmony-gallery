@@ -17,7 +17,7 @@ import {
   sortModeLabel,
   type SortMode,
 } from "../../model/filter";
-import { SortMark } from "../ui/SortMark";
+import { SortMark } from "./SortMark";
 import { tr } from "../../i18n";
 import { FabMenu } from "./FabMenu";
 import { FilterPanel } from "./FilterPanel";

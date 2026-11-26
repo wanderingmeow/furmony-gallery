@@ -102,3 +102,66 @@ describe("the screen's bands", () => {
     dispose();
   });
 });
+
+// A callback that writes layout in the step the observer fired from re-enters the observer, so a
+// watcher that measures and then writes has to answer one frame later. A watcher that only stores
+// what it read, like the bands above, does not.
+describe("one box's size", () => {
+  let reported: (() => void) | undefined;
+  let frames: (() => void)[] = [];
+  let disconnected = 0;
+
+  class LateObserver {
+    constructor(read: () => void) {
+      reported = read;
+    }
+    observe(): void {}
+    disconnect(): void {
+      disconnected++;
+    }
+  }
+
+  /** The browser painting the next frame. */
+  const paint = (): void => {
+    frames.splice(0).forEach((one) => one());
+  };
+
+  async function load(observer = true): Promise<typeof import("./viewport")> {
+    vi.stubGlobal("ResizeObserver", observer ? LateObserver : undefined);
+    vi.stubGlobal("requestAnimationFrame", (cb: () => void) => frames.push(cb));
+    vi.resetModules();
+    return await import("./viewport");
+  }
+
+  afterEach(() => {
+    reported = undefined;
+    frames = [];
+    disconnected = 0;
+  });
+
+  it("answers one frame after the box reports its size", async () => {
+    const { watchSize } = await load();
+    let answered = 0;
+    watchSize(document.createElement("div"), () => answered++);
+    reported?.();
+    expect(answered, "in the step the observer fired").toBe(0);
+    paint();
+    expect(answered, "one frame later").toBe(1);
+  });
+
+  it("stops watching the box when it is let go", async () => {
+    const { watchSize } = await load();
+    watchSize(document.createElement("div"), () => {})();
+    expect(disconnected).toBe(1);
+  });
+
+  it("watches nothing in a browser without an observer", async () => {
+    const { watchSize } = await load(false);
+    let answered = 0;
+    const stop = watchSize(document.createElement("div"), () => answered++);
+    expect(reported, "no observer was made").toBeUndefined();
+    expect(stop).toBeTypeOf("function");
+    expect(() => stop()).not.toThrow();
+    expect(answered).toBe(0);
+  });
+});

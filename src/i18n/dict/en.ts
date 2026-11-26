@@ -92,7 +92,7 @@ export const en: Dict = {
   detail: {
     fields: "Listing details",
     /** The counter reads as a sentence: a bare 1 / 2 says nothing about pictures. */
-    photoOf: (n: number, total: number) => `Picture ${n} of ${total}`,
+    positionOf: (n: number, total: number) => `${n} of ${total}`,
     owner: "Owner",
     painter: "Painter",
     painterNumbered: (n: number) => `Painter ${n}`,
@@ -115,6 +115,9 @@ export const en: Dict = {
     adopted: "Adopted",
     notFound: "No such listing",
     goOfficial: "Official site",
+    /** The clip of the suit's debut, which the studio posts on its own account. */
+    playDebut: "Play the debut clip",
+    openPicture: "Open this picture",
   },
 
   card: {
@@ -148,6 +151,13 @@ export const en: Dict = {
     unreadable: "This picture could not be read",
     heic: "This browser cannot decode HEIC photos",
     tooBig: "This picture is too large",
+    missing: "The picture did not load",
+    xBlocked: "This network cannot reach X (Twitter)",
+    xBlockedNote: "This is not your fault, and it is not ours",
+    xRefused: "Your browser blocked the pictures from X (Twitter)",
+    xRefusedNote: "Firefox and other browsers put it on a tracking filter list",
+    xRefusedFix:
+      "Turn off enhanced tracking protection in the button at the left of the address bar, or tap here to open the picture",
     noAnswer: "The service did not answer",
     offline: "Could not reach the service",
     timeout: "It took too long",

@@ -2,7 +2,7 @@
 // visits, and the elements that download them.
 export { imageReady, offscreenImage, preloadImage } from "./load";
 export { probeAvif } from "./avif";
-export { sizedUrl } from "./hosts";
+export { isTwimg, sizedUrl } from "./hosts";
 export {
   flushUrlMapOnExit,
   initImageUrlMap,
@@ -10,4 +10,4 @@ export {
   stableImageUrl,
   urlPath,
 } from "./urlMap";
-export type { PictureSize } from "./size";
+export type { PictureSize } from "./hosts";

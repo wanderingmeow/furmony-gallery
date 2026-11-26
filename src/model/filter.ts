@@ -4,6 +4,7 @@ import type { AdoptListing } from "./types";
 import { tr } from "../i18n";
 import { listingDescription, listingName } from "./translatedText";
 import type { SocialSearchEntry } from "../data/socials";
+import type { Debut } from "../data/debuts";
 import {
   colorNames,
   countedRaceName,
@@ -103,8 +104,9 @@ export interface ComputeOptions {
   // a listing without one is either an album nobody posted or a build that read nothing: the panel
   // names the count it found.
   debutOnly?: boolean;
-  // The albums by listing id, from `debutsStore`.
-  debuts?: Map<number, string[]>;
+  // The debuts by listing id, from `debutsStore`. A listing that has only the clip stays out of this
+  // filter: the switch is named for the photos, and the clip is offered in the gallery either way.
+  debuts?: Map<number, Debut>;
   // Keep only these adoptIds. The semantic group reuses every other filter and brings its own text
   // match, because the shelf's descriptions often leave out what the piece looks like.
   only?: Set<number>;
@@ -178,7 +180,10 @@ export function compute(o: ComputeOptions): AdoptListing[] {
   if (skip && skip.size > 0)
     result = result.filter((l) => !skip.has(l.adoptId));
   if (socialOnly) result = result.filter((l) => hasSocial(l.adoptId, socials));
-  if (debutOnly) result = result.filter((l) => !!debuts?.has(l.adoptId));
+  if (debutOnly)
+    result = result.filter(
+      (l) => (debuts?.get(l.adoptId)?.pictures.length ?? 0) > 0,
+    );
   if (priceRange) result = result.filter((l) => keepsByPrice(l, priceRange));
 
   if (colors.size > 0)

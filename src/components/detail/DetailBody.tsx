@@ -1,9 +1,11 @@
 import { Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { AdoptListing } from "../../model/types";
+import type { GallerySlot } from "../gallery/slots";
 import {
   BOX,
   DETAIL_PAD_X,
+  detailClipHeight,
   detailPictureHeight,
   PANEL_GRID,
   shapeAt,
@@ -14,7 +16,7 @@ import { watchViewport } from "../ui/viewport";
 import { useSheetFooter } from "../ui/boxes";
 import { AnimatedHeight } from "../ui/AnimatedHeight";
 import { DetailToolbar } from "./DetailToolbar";
-import { Gallery } from "./Gallery";
+import { Gallery } from "../gallery/Gallery";
 import { InfoTable } from "./InfoTable";
 import { RelatedRow } from "./RelatedRow";
 
@@ -25,10 +27,9 @@ import { RelatedRow } from "./RelatedRow";
  */
 export function DetailBody(props: {
   listing: AdoptListing;
-  /** The resized detail pictures; the head picture is already in this list. */
-  images: string[];
-  /** The small copy of each one, for the strip under the picture. */
-  thumbs: string[];
+  /** The gallery's squares in the order a user swipes them: the resized pictures, with the debut's
+   *  clip standing among them as one more square. */
+  slots: GallerySlot[];
   index: () => number;
   setIndex: (i: number) => void;
   onOpenFull: () => void;
@@ -41,6 +42,7 @@ export function DetailBody(props: {
   const box = () => BOX[shape()];
   const cardBox = () => sheetCardBox(viewportW(), viewportH(), safe());
   const picMaxH = () => detailPictureHeight(cardBox(), shape(), safe().top);
+  const clipMaxH = () => detailClipHeight(cardBox(), shape(), safe().top);
   const footerHost = useSheetFooter();
 
   return (
@@ -61,12 +63,12 @@ export function DetailBody(props: {
             }
           >
             <Gallery
-              images={props.images}
-              thumbs={props.thumbs}
+              slots={props.slots}
               index={props.index}
               setIndex={props.setIndex}
               onOpenFull={props.onOpenFull}
               maxH={picMaxH()}
+              clipMaxH={clipMaxH()}
               bleed={() => BOX[shape()].stripBleed}
               holdHeight={panel()}
               onPicHeightChange={props.onContentChange}

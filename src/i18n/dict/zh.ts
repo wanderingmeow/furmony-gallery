@@ -73,7 +73,7 @@ export const zh = {
 
   detail: {
     fields: "商品信息",
-    photoOf: (n: number, total: number) => `第 ${n} 张，共 ${total} 张`,
+    positionOf: (n: number, total: number) => `第 ${n} 个，共 ${total} 个`,
     owner: "主人",
     painter: "画师",
     painterNumbered: (n: number) => `画师${n}`,
@@ -96,6 +96,9 @@ export const zh = {
     adopted: "已领养",
     notFound: "未找到该设定",
     goOfficial: "前往官网",
+    /** The clip of the suit's debut, which the studio posts on its own account. */
+    playDebut: "播放出场视频",
+    openPicture: "打开这张图",
   },
 
   card: {
@@ -133,6 +136,13 @@ export const zh = {
     unreadable: "这张图片读不出来",
     heic: "这个浏览器解不了 HEIC 照片",
     tooBig: "这张图片太大了",
+    missing: "图片加载失败",
+    xBlocked: "当前网络无法连接到 X（Twitter）",
+    xBlockedNote: "这不是你的错，也不是我们的问题",
+    xRefused: "你的浏览器拦截了 X（Twitter）上的图片",
+    xRefusedNote: "Firefox 等浏览器把它放进了防跟踪过滤名单",
+    xRefusedFix:
+      "在地址栏左边的按钮里关闭增强型跟踪保护，或点击这里直接打开图片",
     noAnswer: "服务没有应答",
     offline: "没连上服务",
     timeout: "等得太久了",

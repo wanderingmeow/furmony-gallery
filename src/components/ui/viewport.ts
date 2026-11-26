@@ -58,7 +58,7 @@ function readBands(): Accessor<Insets> {
         a.left === b.left,
     });
     const read = () => set(readInsets());
-    // A fullscreen web app gets its bands a little after launch, and neither `resize` nor
+    // A fullscreen web app gets its bands a little after launch, and no `resize` or
     // `orientationchange` fires when they arrive, so these boxes are what to watch.
     if (typeof ResizeObserver !== "undefined") {
       const watch = new ResizeObserver(read);
@@ -74,8 +74,8 @@ function readBands(): Accessor<Insets> {
 
 /** The window's size, the width left inside its bands, and the bands themselves, kept current.
  *
- *  `safe` is one shared signal rather than a measurement taken where it is used: turning a phone
- *  around moves the island from one side to the other and changes neither size.
+ *  `safe` is one shared signal, read once and kept current: turning a phone around moves the
+ *  island from one side to the other, and the two sizes stay as they were.
  *
  *  Waterfall and WaterfallSkeleton read the same `frameW`, so both paint one column count.
  */
@@ -115,4 +115,15 @@ export function steadyViewportH(): number {
     document.body.appendChild(tallProbe);
   }
   return tallProbe.getBoundingClientRect().height || window.innerHeight;
+}
+
+/** Watch one box's size, answered one frame after the browser reports it. A callback that writes
+ *  layout in the step the observer fired from re-enters the observer, so the answer waits for the
+ *  paint. A browser without the observer gets nothing watched; the returned call lets the box go
+ *  either way. */
+export function watchSize(el: HTMLElement, onSize: () => void): () => void {
+  if (typeof ResizeObserver === "undefined") return () => {};
+  const sizes = new ResizeObserver(() => requestAnimationFrame(onSize));
+  sizes.observe(el);
+  return () => sizes.disconnect();
 }

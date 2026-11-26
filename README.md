@@ -1,67 +1,122 @@
+<div align="center">
+  <img src="public/icon-192.png" width="72" height="72" alt="" />
+
 # Furmony Gallery
 
-一个浏览 [Furmony](https://furmony.com) 领养委托（Adopt）列表的单页网页。由于官方网站翻页浏览很卡，因此这里使用虚拟化的瀑布流。浏览器直接向官方网站的公共 API 发出请求，无需账号、代理；除了可选的“设定搜索增强”，也不需要后端。
+Every Furmony adoption, on one page.
 
-线上地址：<https://wanderingmeow.github.io/furmony-gallery/>
+The studio's whole listing on a phone: what is open, what it costs, and when it changes.
+</div>
 
-## 快速开始
+<p align="center">
+  <a href="https://wanderingmeow.github.io/furmony-gallery/"><strong>Open the gallery</strong></a> •
+  <a href="https://wanderingmeow.github.io/furmony-gallery/stats"><strong>Market stats</strong></a> •
+  <a href="https://furmony.com"><strong>The studio</strong></a> •
+  <a href="https://github.com/wanderingmeow/furmony-gallery/issues"><strong>Report a problem</strong></a>
+</p>
+
+<p align="center">
+  Unofficial field guide. Orders go to the official site.<br />
+  <img src="https://img.shields.io/badge/license-MIT-orange?style=flat-square" alt="MIT license" />
+</p>
+
+## About
+
+> A listing dropped at 9am and you found out at noon?
+> The official site stalls on a phone?
+> **This is the guide.**
+
+_Furmony Gallery_ is a **static site** that reads the public listing of [Furmony](https://furmony.com), a Chinese studio that makes fursuits from kemono to mixed styles, and puts the whole thing in **one feed** that opens fast on a phone.
+
+- **One feed.** A virtualized waterfall on **SolidJS**: no virtual tree to diff, and only the cards on screen are in the document. The official site draws its thumbnails from the full-size picture, so the 22 covers above the fold cost 14.05 MB there and 1.01 MB here.
+- **Search by meaning and by picture.** **Enhanced search** turns the box into a sentence: `a small dragon that loves meat` returns the listings that show it, and none of those words has to appear on a listing. The picture button beside the box takes a convention snapshot or a design draft and returns the listings that look like it. Both run on an embedding model, and the panel turns them on.
+- **Installment prices.** Full price, 12 monthly payments, or no price, on every card and detail page at once.
+- **Market stats.** `/stats` charts price distribution, colors, species, and new listings per month.
+- **Similar listings.** Covers close to the one you are reading, with a back button that returns in the order you came.
+- **Owner accounts.** X, Bilibili, TikTok, Douyin, and Xiaohongshu handles, collected by hand.
+- **Debut photos.** The day a suit first appeared, read from the studio's own album on Bilibili or its finished-commission post on X, and matched to the listing it became. Set beside the design sheet, they show what the studio does between a flat drawing and a suit you can wear.
+- **Four languages.** 简体中文, 繁體中文, 日本語, English. Where the studio's own words did not come in yours, the description arrives machine-translated, and the original stays a tap away.
+
+Thinking about **buying**? The parts that matter first:
+
+- The status row reads **Open**, **Lock in progress**, **Locked**, or **Adopted**. A hold lasts 15 minutes and most of them lapse unpaid; a lock is a paid deposit.
+- A listing with debut photos is already adopted: the studio posts that album on the day the suit goes to its owner, so this site reads **Adopted** while the official flag still says open.
+- **Debut photos only** keeps the suits with a photo from their first outing.
+- Push tells you when a listing appears, a lock changes, or the full price moves.
+
+No account, no analytics. It opens in Safari or Chrome as it is. Adding it to the Home Screen is only for notices: iPhone and iPad deliver Web Push to an installed web app.
+
+## Notifications
+
+A notice arrives before you think to refresh: a new listing, a lock change, or a price move.
+
+Web Push carries the three things worth interrupting somebody for: a listing appears, a lock state changes, the full price moves. Tapping a notice opens that listing. The bell in the corner holds the same list with a count.
+
+Sending push needs a server that holds subscriptions and watches the official API. That service, and the one behind enhanced search, live outside this repository. Subscribing is opt-in, and the browser prompt never appears before you ask.
+
+## Say it, or show it
+
+_A sheep in wolf's clothing_ is a search. So is a snapshot.
+
+Enhanced search is off by default and still beta: a wrong guess happens now and then. Turn it on in the panel, and the search box takes a whole sentence. Listings whose name, description, number, or owner account contains the words come first; the model's nearest matches follow. The photo icon next to the box searches by image alone, with no text layer.
+
+The service keeps nothing. Text and images are used in memory to answer the request and are dropped once the response is sent.
+
+## When the one you wanted is locked
+
+A lock means sold. Cards and the detail page show one word for the status, and a lock beside the name.
+
+Two ways forward from a locked listing:
+
+- **Similar listings** shows what sits close to it, with a back button that returns in the order you came.
+- **Unlocked only** hides the locked and adopted listings.
+
+## Opens on 3G
+
+Measured in November 2026 on the same network, counting every byte the browser pulls before the first screen draws.
+
+<img src="assets/traffic.svg" width="1280" alt="First paint: the official site 31.01 MB, here 3.64 MB, and 0.5 MB after the first visit. The 22 covers above the fold: 14.05 MB of originals against 1.01 MB sized for the box.">
+
+Three things get it there:
+
+- **The document renders in one round trip.** The build inlines the CSS into the HTML, so the browser never waits for a second request. The gzipped document stays under 10 TCP packets. An inline script in `index.html` starts the list request while the document is still parsing.
+- **Covers are resized at the URL.** The originals are often 1 MB PNGs. Every image URL carries Tencent COS `imageMogr2` parameters that scale to the box, convert to WebP, and strip metadata. The 22 covers above the fold went from 14.05 MB to 1.01 MB.
+- **A service worker caches the shell.** `precache.json` is the single list of what to keep. The second visit pulls about 0.5 MB (only the whole listing from API), and the app opens with the cached list when the network is unreachable.
+
+## Run it
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173/furmony-gallery/
-npm test           # 不会联网
-npm run build      # 构建 dist/，并复制一份 dist/404.html 供 GitHub Pages SPA 模式使用
+npm test           # offline: mocked APIs, happy-dom, fake-indexeddb
+npm run build      # dist/, plus dist/404.html for GitHub Pages SPA fallback
+npm run lint       # eslint
+npm run format     # prettier
 ```
 
-在开发模式下，`src/data/api.ts` 会先尝试使用 `agent/listings_sample.json` 和 `agent/series_sample.json`。
-`agent/` 目录没有提交。如果存在这两个文件，将使用其中的数据；反之则直接向线上接口发出请求。打包时，这些分支和数据都不会被放进 `dist/`。
+The browser talks to the official public API directly. No account, no proxy.
 
-## 功能
+In dev mode, `src/data/api.ts` prefers `agent/listings_sample.json` and `agent/series_sample.json` when they exist, and falls back to the live API when they do not. `agent/` is not committed, and none of that reaches `dist/`.
 
-- **瀑布流**：只有屏幕中显示的卡片会放进 DOM。可滚动上千行。
-- **四个标签页、搜索、排序、筛选**：全部 / 未锁定 / 已锁定 / 收藏。
-  搜索匹配名称和描述。数字输入时，匹配编号的前缀（输入 `3` 可找到 #3, #31, #300）。也可搜索匹配主人的社交媒体账号（X、B 站、TikTok、抖音、小红书 ）。右下角按钮打开颜色和物种筛选。
-- **三种价格显示方式**：通过右下角按钮切换 一口价 / 12期分期 / 不显示价格，卡片和详情页同时生效。
-- **收藏**：点击红心，保存在本地。
-- **已锁定的设定**：卡片和类似设定卡片都会在名称行旁显示一把锁。被锁定的设定表示已售罄。
-- **详情页**：从底部滑入，可向下拖动关闭。包含：
-  - 图片画廊（支持全屏缩放）
-  - 信息表格
-  - “前往官方网站” 按钮
-  - 如设定已被锁定，还会显示主人的社交图标。点击图标打开其个人页面。
-- **类似设定**：信息表格下方横向排列若干封面，并按相似度排序。点击一张设定，详情页会平滑滚动至顶部并显示该设定。关闭按钮旁边会同时出现一个返回按钮，允许按原顺序回退。
-- **设定搜索增强（Beta）**：在右下角的按钮里（默认关闭）。打开后有两种搜法：
-  - 搜索框接受一句话描述，如 “爱吃肉的棒小龙”。名称、描述、设定编号、主人账号里包含搜索词的排在前面，模型认为相似的接在后面。
-  - 搜索框右侧会出现照片图标，选一张图（展会随拍、设计稿都行）就立刻按这张图来搜：结果全部来自这张图，没有文字匹配那一层。
-- **变更通知**：设定被锁定或一次性付清的价格发生变化时，会在右上角显示带徽章的通知。点击通知会打开该设定的详情页。
-- **统计页** `/stats`：价格分布、颜色、物种、每月新增设定等图表。模块会在需要时才加载。
-- **暗色主题**：跟随系统设置；所有动画都支持 `prefers-reduced-motion`。
-- **四种界面语言**：简体中文 / 繁體中文 / 日本語 / English。第一次打开按浏览器语言决定，右下角面板里可随时切换。
+Three files are generated and are not authored by hand:
 
-## 加载性能
+- `public/socials.json` carries the owner accounts of each listing, and `public/debuts.json` carries the photos of its debut day. Both are written off this machine, from the studios' own posts, and the tables they are read from name real accounts, so neither the tables nor the scripts that fill them in are published here. The published branch carries the two files: a machine without them builds a site with no owner chips and no debut album, and nothing else breaks.
+- `public/related.json` is built nightly by the search service from fresh cover images. Nothing in the repository generates it locally. A missing file hides the similar row and breaks nothing else.
 
-- **首屏 1 个 RTT 就能渲染**：外链的 CSS 要等 HTML 加载完后才去请求，构建的时候，直接把样式内联到 HTML 里。并且，在 gzip 压缩后，[大小不超过 10-MSS （10 个 TCP 包）](https://endtimes.dev/why-your-website-should-be-under-14kb-in-size/)。
-- **在首屏就发起列表请求**：`index.html` 中有一段内联脚本，首屏加载时立即请求全量列表。
-- **图片加载优化**：封面图片原图常常是 1MB 上下的 PNG 图片。在渲染时，给图片地址加上腾讯云 COS 的 `imageMogr2` 参数，缩放到所需尺寸、转成 WebP、去除元数据。首屏的 22 张缩略图，从 14.05 MB 缩减到了 1.01 MB（-92.8%）。
+## Data and privacy
 
-## 数据与隐私
+- Owner accounts and debut photos are collected by hand, one listing at a time. A model can read a studio post and pick the pictures out of it, and its accuracy is not high enough yet to publish what it finds unchecked.
+- Want your listing kept out of the owner accounts or the debut photos? [Open an issue](https://github.com/wanderingmeow/furmony-gallery/issues) and it is removed.
+- Listing and image data live in IndexedDB. Filters, likes, price display mode, and scroll position live in localStorage. A storage warning appears when the browser refuses to keep them.
+- With enhanced search off, no queries leave the device. Turning it on sends only what you type or pick.
+- The search service keeps nothing: no logs of queries, no images retained.
 
-- API 有两个：主列表（`entrustAdopt/list`）和“新作登场”频道用的（`productSeries/list`）。后者的条目不会出现在主列表中，因此需要请求两者。
-- 列表和图片 URL 保存在 IndexedDB。筛选条件、收藏、价格显示模式、滚动位置保存在 localStorage。
-- `public/socials.json`（主人社交账号，手工收集）随版本发布，运行时再加载。如无法读取，将隐藏依赖它的部分，其他功能不受影响。
-- `public/related.json`（相邻表）不在仓库里：服务器每晚获取封面重建向量，随站点一起发布。本地开发想看到“类似设定”，从线上取一份放到这个路径就行；没有它只是不显示这一块，其余功能不受影响。
-  - 相邻表是从设定编号到最像的几张设定的编号的映射表，按相似度排序：下载每张封面的缩略图，用 Google EmbeddingGemma 2 得到每张封面的向量表示，然后取出最接近的几个编号。
-- 不启用 “设定搜索增强” 功能时，不收集任何用户数据。只有在用户主动打开搜索按钮的“设定搜索增强”开关，搜索框的输入信息以及上传的图片才会被发送。服务端实行零数据保留（ZDR）原则：文字和图片只在服务器内存中用于生成结果，返回即消失，不被记录，也不用于模型训练。
+## Stack
 
-## 测试
+[SolidJS](https://solidjs.com) and TypeScript, with [@solid-primitives/i18n](https://github.com/solid-primitives/solid-primitives) and [@solidjs/router](https://github.com/solidjs/router) · [Vite](https://vite.dev) · [Tailwind CSS](https://tailwindcss.com) v4 · [@panzoom/panzoom](https://github.com/anvaka/panzoom) for full-screen zoom · [uPlot](https://github.com/leeoniya/uPlot) for the charts · [Ant Design icons](https://ant.design) · [Vitest](https://vitest.dev) with happy-dom and fake-indexeddb.
 
-`npm test` 覆盖定价规则、筛选、搜索请求的拼装与响应解析、图片上传前的缩放与方向、设定搜索增强的状态、邻居查找与解析、卡片布局、背景滚动锁定、如何合并两个列表。
-使用 happy-dom 作为 DOM， fake-indexeddb 作为存储。测试用 mock 的 API，不会发出请求。
+## Credits and license
 
-## 技术栈
+[MIT](LICENSE). All images and text belong to Furmony (furmony.com) and their original authors. This site only reads material the official site already publishes, and takes no commercial use of it.
 
-[SolidJS](https://solidjs.com) + TypeScript · [@solid-primitives/i18n](https://github.com/solid-primitives/solid-primitives) · [Vite](https://vite.dev) · [Tailwind CSS](https://tailwindcss.com) v4 · [@solidjs/router](https://github.com/solidjs/router) · [Ant Design icons](https://ant.design) · [@panzoom/panzoom](https://github.com/anvaka/panzoom) · [uPlot](https://github.com/leeoniya/uPlot) + [@dschz/solid-uplot](https://github.com/dschz/solid-uplot) · 测试：[Vitest](https://vitest.dev) + happy-dom + fake-indexeddb
-
-## 许可与版权
-
-[MIT](LICENSE)。所有图片和文字素材属于 Furmony（furmony.com）及其原作者。此网页仅浏览官方网站公开的素材，不作商业用途。
+Built by a long-horizon coding agent on a local machine, along with a human who care about user experience.

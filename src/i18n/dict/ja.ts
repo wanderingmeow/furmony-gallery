@@ -89,7 +89,7 @@ export const ja: Dict = {
 
   detail: {
     fields: "商品情報",
-    photoOf: (n: number, total: number) => `全 ${total} 枚中 ${n} 枚目`,
+    positionOf: (n: number, total: number) => `全 ${total} 件中 ${n} 件目`,
     owner: "オーナー",
     painter: "絵師",
     painterNumbered: (n: number) => `絵師${n}`,
@@ -112,6 +112,8 @@ export const ja: Dict = {
     adopted: "譲渡済み",
     notFound: "その子は見つかりません",
     goOfficial: "公式サイトへ",
+    playDebut: "登場動画を再生",
+    openPicture: "この画像を開く",
   },
 
   card: {
@@ -143,6 +145,14 @@ export const ja: Dict = {
     unreadable: "この画像を読み込めません",
     heic: "このブラウザでは HEIC 写真を開けません",
     tooBig: "この画像は大きすぎます",
+    missing: "画像を読み込めませんでした",
+    xBlocked: "現在のネットワークでは X（Twitter）に接続できません",
+    xBlockedNote: "あなたのせいでも、こちらの問題でもありません",
+    xRefused: "ブラウザが X（Twitter）の画像をブロックしました",
+    xRefusedNote:
+      "Firefox などはそれをトラッキング防止フィルターリストに入れています",
+    xRefusedFix:
+      "アドレスバーの左側のボタンで強化トラッキング防止をオフにするか、ここをタップして画像を直接開けます",
     noAnswer: "サービスが応答しません",
     offline: "サービスに接続できません",
     timeout: "時間がかかりすぎました",

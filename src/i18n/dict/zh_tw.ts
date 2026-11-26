@@ -69,7 +69,7 @@ export const zh_tw: Dict = {
 
   detail: {
     fields: "商品資訊",
-    photoOf: (n: number, total: number) => `第 ${n} 張，共 ${total} 張`,
+    positionOf: (n: number, total: number) => `第 ${n} 個，共 ${total} 個`,
     owner: "主人",
     painter: "畫師",
     painterNumbered: (n: number) => `畫師${n}`,
@@ -90,6 +90,8 @@ export const zh_tw: Dict = {
     adopted: "已領養",
     notFound: "找不到該設定",
     goOfficial: "前往官網",
+    playDebut: "播放出場影片",
+    openPicture: "打開這張圖",
   },
 
   card: {
@@ -121,6 +123,13 @@ export const zh_tw: Dict = {
     unreadable: "這張圖片讀不出來",
     heic: "這個瀏覽器解不了 HEIC 照片",
     tooBig: "這張圖片太大了",
+    missing: "圖片載入失敗",
+    xBlocked: "當前網路無法連接到 X（Twitter）",
+    xBlockedNote: "這不是你的錯，也不是我們的問題",
+    xRefused: "你的瀏覽器攔截了 X（Twitter）上的圖片",
+    xRefusedNote: "Firefox 等瀏覽器把它放進了防追蹤過濾名單",
+    xRefusedFix:
+      "在網址列左邊的按鈕裡關閉增強型追蹤保護，或點擊這裡直接開啟圖片",
     noAnswer: "服務沒有回應",
     offline: "沒連上服務",
     timeout: "等太久了",

@@ -16,6 +16,7 @@ import { listings, isLoading, dataReady } from "../stores/listingsStore";
 import { debuts } from "../stores/debutsStore";
 import { detailImages } from "../model/domain";
 import type { AdoptListing } from "../model/types";
+import { gallerySlots } from "../components/gallery/slots";
 import type { DetailEntry } from "../model/detailTrail";
 import { sizedUrl, stableImageUrl } from "../data/image";
 import { QuestionOutlined } from "@ant-design/icons-svg";
@@ -26,7 +27,7 @@ import { DetailPulse } from "../components/sheet/SheetSkeleton";
 import { SHEET_FAB_ROW } from "../components/ui/boxes";
 import { BOX, DETAIL_PAD_X, shapeAt } from "../draw/layout";
 import { DetailBody } from "../components/detail/DetailBody";
-import { FullScreenZoom } from "../components/detail/FullScreenZoom";
+import { FullScreenZoom } from "../components/gallery/FullScreenZoom";
 import { scrollSheetToTop } from "../components/sheet/sheetScroll";
 import { fitSheetCard, type FitCause } from "../components/sheet/sheetFit";
 import { watchViewport } from "../components/ui/viewport";
@@ -99,21 +100,49 @@ export function Detail(props: { onClose: () => void }) {
     return l ? detailImages(l) : [];
   });
   // The debut album of Bilibili photos follows the studio's own art, so one swipe runs through both.
-  const debut = createMemo(() => debuts().get(listing()?.adoptId ?? 0) ?? []);
-  const pictures = createMemo(() => [...images(), ...debut()]);
+  const debut = createMemo(() => debuts().get(listing()?.adoptId ?? 0));
+  const pictures = createMemo(() => [
+    ...images(),
+    ...(debut()?.pictures ?? []),
+  ]);
+  const clip = createMemo(() => debut()?.video);
   // The gallery paints resized copies; the zoom keeps the raw address for the whole picture.
   const shown = createMemo(() => pictures().map((u) => sizedUrl(u, "detail")!));
   // The strip under the picture stands at 60 pixels and asks for the badge size. The album addresses
   // carry no size of their own, so a strip of nine would otherwise pull the large copy of each.
   const thumbs = createMemo(() => pictures().map((u) => sizedUrl(u, "badge")!));
-  const at = (list: string[]): string | undefined =>
+  // The clip's square, with the two sizes of cover it asks for. Its player costs more to show than
+  // the whole first screen here, so the gallery hands over a cover and asks before it arrives.
+  const square = createMemo(() => {
+    const video = clip();
+    if (!video) return undefined;
+    return {
+      url: sizedUrl(video.cover, "detail") ?? video.cover,
+      thumb: sizedUrl(video.cover, "badge") ?? video.cover,
+      clip: video,
+    };
+  });
+  // One list of squares: the studio's own art, the clip, then the album of the debut day. The strip,
+  // the highlight, the counter and a left-right gesture all read this one list.
+  const slots = createMemo(() =>
+    gallerySlots(shown(), thumbs(), square(), images().length),
+  );
+  const at = <T,>(list: T[]): T | undefined =>
     list[Math.min(index(), Math.max(0, list.length - 1))];
   const head = () => stableImageUrl(listing()?.adoptHeadPicture);
-  const current = () => at(shown()) ?? sizedUrl(head(), "detail");
-  const currentRaw = () => at(pictures()) ?? head();
+  // The zoom holds a picture, and the clip's box is already as big as it gets: the gallery leaves
+  // the zoom alone while that square is on screen, so what is read here is a picture or the head.
+  const current = (): string => {
+    const one = at(slots());
+    return one?.kind === "pic" ? one.url : (sizedUrl(head(), "detail") ?? "");
+  };
+  const currentRaw = (): string => {
+    const one = at(slots());
+    return one?.kind === "pic" ? pictures()[one.pic] : (head() ?? "");
+  };
   // With no detail pictures the zoom shows the head picture, so the counter reads 1 of 1.
   const zoomCount = () =>
-    pictures().length || (listing()?.adoptHeadPicture ? 1 : 0);
+    slots().length || (listing()?.adoptHeadPicture ? 1 : 0);
 
   // The card is as tall as its content, so each source that changes it measures again: a new listing
   // and a new window here, the picture and the table settling through DetailBody.
@@ -183,8 +212,7 @@ export function Detail(props: { onClose: () => void }) {
         {(l) => (
           <DetailBody
             listing={l()}
-            images={shown()}
-            thumbs={thumbs()}
+            slots={slots()}
             index={index}
             setIndex={setIndex}
             onOpenFull={() => setFull(true)}

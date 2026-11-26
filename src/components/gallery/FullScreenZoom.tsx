@@ -18,16 +18,16 @@ import { onImageError, preloadImage } from "../../data/image";
 import { AntIcon } from "../ui/AntIcon";
 import { watchTaps } from "../ui/tapGate";
 
-/** The three controls over the picture share one look. Tailwind gives a button the default cursor,
- *  so `ENABLED` names the hand and `DISABLED` the flat look of a control at its zoom limit. */
+/** The three controls over the picture share one look. Tailwind resets a button's cursor, so the
+ *  hand is spelled out in `ENABLED`. */
 const CONTROL =
-  "flex items-center justify-center text-white transition-colors backdrop-blur-lg";
+  "flex items-center justify-center text-white transition-[color,background-color,opacity] backdrop-blur-lg";
 const ENABLED =
   "cursor-pointer bg-black/40 hover:bg-white/15 active:bg-white/25";
-const DISABLED = "bg-black/20 text-white/40 cursor-not-allowed";
+const DISABLED = "opacity-60 bg-black/20 text-white/40 cursor-not-allowed";
 
 /** Paint `show` once `pic` has pixels to paint. A layer with none is transparent, so an engine
- *  without `decode` shows the picture underneath for a frame or two rather than a blank box. */
+ *  without `decode` keeps the picture underneath visible for a frame or two. */
 function revealWhenDecoded(pic: HTMLImageElement, show: () => void): void {
   if (!pic.decode) {
     show();
@@ -56,7 +56,7 @@ export function FullScreenZoom(props: {
   // own src, so a whole picture that never arrives costs nothing.
   const [sharp, setSharp] = createSignal(false);
 
-  // Panzoom drives the wrapper that holds both layers, so a reader panned to 3x sees the new pixels
+  // Panzoom drives the wrapper that holds both layers, so a user panned to 3x sees the new pixels
   // land on the old ones: the swap moves nothing.
   createEffect(
     on([() => props.fullUrl, () => props.imageUrl], ([url, thumb]) => {
@@ -120,7 +120,7 @@ export function FullScreenZoom(props: {
     }),
   );
 
-  // document-level keys so they work regardless of focus: Esc/X close, +/- zoom
+  // Keys are bound on the document, so they answer whoever holds the focus.
   onMount(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape" || e.key === "x" || e.key === "X") props.onClose();

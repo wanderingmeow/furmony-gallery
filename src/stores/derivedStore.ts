@@ -40,7 +40,7 @@ import {
 } from "./filterStore";
 import { wishlist } from "./wishlistStore";
 import { socialSearch } from "./socialsStore";
-import { debuts } from "./debutsStore";
+import { debuts, hasDebutAlbum } from "./debutsStore";
 import {
   askFailure,
   picture,
@@ -126,7 +126,7 @@ createRoot(() => {
   socialFilterOn = createMemo(() => socialOnly() && socialsReady());
   debutsReady = createMemo(() => debuts().size > 0);
   debutCount = createMemo(
-    () => listings().filter((l) => debuts().has(l.adoptId)).length,
+    () => listings().filter((l) => hasDebutAlbum(l.adoptId)).length,
   );
   debutFilterOn = createMemo(() => debutOnly() && debutsReady());
 

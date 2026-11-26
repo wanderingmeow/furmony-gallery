@@ -25,7 +25,7 @@ import {
   type OncePrice,
 } from "../../model/domain";
 import { sizedUrl, stableImageUrl } from "../../data/image";
-import { debuts } from "../../stores/debutsStore";
+import { hasDebutAlbum } from "../../stores/debutsStore";
 import { SkelImg } from "../ui/SkelImg";
 import { SkelText } from "../ui/SkelText";
 import { priceMode } from "../../stores/displayStore";
@@ -237,7 +237,7 @@ export function InfoTable(props: { listing: AdoptListing }) {
   const owner = createMemo(() => socials().get(l().adoptId)?.ownerName);
   const colors = createMemo(() => colorNames(l()));
   // One word for the listing, in the order a buyer reads it: taken, paid, held, free.
-  const hasDebut = createMemo(() => debuts().has(l().adoptId));
+  const hasDebut = createMemo(() => hasDebutAlbum(l().adoptId));
   const status = createMemo(() => {
     switch (shownStatus(l(), hasDebut())) {
       case "adopted":
