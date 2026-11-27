@@ -1,0 +1,43 @@
+{
+  "name": "Furmony Gallery",
+  "name_localized": {
+    "zh-Hans": "Furmony 画廊",
+    "zh-Hant": "Furmony 畫廊",
+    "ja": "Furmony ギャラリー"
+  },
+  "short_name": "Furmony",
+  "description": "Furmony Gallery: browse the Furmony listings in a waterfall, filter by price, date, color and breed, with search, a saved list, a detail view and a one-tap jump to the shop.",
+  "description_localized": {
+    "zh-Hans": "Furmony 画廊：浏览 Furmony 商品瀑布流，按价格、时间、颜色、种族筛选，支持搜索、收藏、详情查看与一键前往官网。",
+    "zh-Hant": "Furmony 畫廊：瀏覽 Furmony 商品瀑布流，按價格、時間、顏色、種族篩選，支援搜尋、收藏、詳情檢視與一鍵前往官網。",
+    "ja": "Furmony ギャラリー：Furmony の子の一覧を価格・日時・毛色・種族で絞り込んで眺められます。検索とお気に入り、詳細ページ、ワンタップで公式サイトへ。"
+  },
+  "id": "/furmony-gallery/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f5f7",
+  "theme_color": "#f5f5f7",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
