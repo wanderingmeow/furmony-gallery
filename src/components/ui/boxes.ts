@@ -71,7 +71,7 @@ export const CHROME_PLATE =
 export const CHROME_PLATE_REST = "chrome-glass fab-circle";
 /** The plate is the whole box, so it takes the tap a user aims at the field itself. */
 export const CHROME_PLATE_BOX =
-  "glass chrome-glass shadow-sm dark:shadow-md pointer-events-auto";
+  "glass shadow-sm dark:shadow-md pointer-events-auto";
 export const PLATE_OPEN_R = "28px";
 /* Half the circle: a radius above the clamp would be held there, and the corner would change
    shape only in the last frames. */
@@ -133,6 +133,9 @@ export const DETAIL_THUMB_ROW =
   "mt-2 overflow-x-auto overscroll-x-contain no-scrollbar";
 export const DETAIL_THUMB_INNER = "flex gap-1.5 w-max mx-auto";
 export const DETAIL_THUMB = "w-15 h-15 shrink-0 rounded-md";
+// A border's inner curve is the box's radius less its own width, which is where the picture ends.
+export const DETAIL_THUMB_PIC =
+  "h-full w-full rounded-[calc(var(--radius-md)_-_2px)]";
 
 // shared with SheetSkeleton, so the placeholder cannot land a few pixels from the real header
 export const SHEET_HEADER_ROW = `flex items-center gap-4 px-4 pb-4 bg-canvas

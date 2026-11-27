@@ -301,14 +301,16 @@ export const zh = {
 
   storage: {
     /** The notice after the first save, on a browser that deletes stored data without a visit. */
-    title: "Safari 会忘掉你收藏的设定",
-    fact: "Safari 会在你连续 7 天没打开这个网站后，清掉它替你记着的东西。",
-    installIosLine: "添加到主屏幕，它就能保住自己的记忆。",
-    installMacLine: "把这个网站转换成 App，它就能保住自己的记忆。",
+    title: "Safari 会忘记你收藏的设定",
+    fact: "在你连续 7 天没有打开这个网站后，Safari 会移除本网站的数据。",
+    installIosLine:
+      "添加到主屏幕，Safari 就不会再清理这些数据，你还可以接收新设定上架和锁定状态变化的通知。",
+    installMacLine:
+      "把这个网站转换成 App，Safari 就不会再清理这些数据，你还可以接收新设定上架和锁定状态变化的通知。",
     keepLine: "在 Safari 里打开这个页面才可以添加。",
     /** The other way out, the one that asks nothing of the browser. */
-    visitLine: "或者记得常来哦～",
-    /** The link sits inside the sentence above and closes it, punctuation included. */
+    visitLine: "或者，记得常来哦～",
+    /** The link follows the sentence above as a sentence of its own. */
     appleGuide: "看 Apple 的官方说明。",
   },
 

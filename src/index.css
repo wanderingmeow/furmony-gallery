@@ -165,12 +165,24 @@ body[data-scroll-locked] {
   overscroll-behavior: contain;
 }
 
-/* The material of the popups, the sheet and the preview chip. The default is a near-opaque fill that
-   reads without blur, because older Android WebView has no backdrop-filter; a browser that has it
-   wears the same fill with the filter stack. */
+/* The material of the popups, the preview chip, the sheet's circle and the open search plate. The
+   default is a near-opaque fill that reads without blur, because older Android WebView has no
+   backdrop-filter; a browser that has it wears the same fill with the filter stack. Light lifts the
+   backdrop to 1.12. Dark presses it to 0.8: that palette is light text on a dark fill, and a
+   brighter backdrop eats the contrast the text stands on. */
+:root {
+  --glass-filter: blur(var(--blur-xl)) saturate(200%) brightness(1.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glass-filter: blur(var(--blur-xl)) saturate(200%) brightness(0.8);
+  }
+}
+
 .glass {
   background: var(--chrome-glass);
-  -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(200%) brightness(1.12);
+  -webkit-backdrop-filter: var(--glass-filter);
 }
 
 /* The unprefixed property gets its own @supports block instead of sitting beside the -webkit- one:
@@ -178,22 +190,7 @@ body[data-scroll-locked] {
    would vanish from production builds. */
 @supports (backdrop-filter: blur(0)) {
   .glass {
-    backdrop-filter: blur(var(--blur-xl)) saturate(200%) brightness(1.12);
-  }
-}
-
-/* The palette flips in theme.css; what stays here are the surfaces that hold their own color. System
-   dark only, and placed after the @supports block so it overrides it. */
-@media (prefers-color-scheme: dark) {
-  .glass {
-    background: var(--chrome-glass);
-    -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(200%)
-      brightness(1.12);
-  }
-  @supports (backdrop-filter: blur(0)) {
-    .glass {
-      backdrop-filter: blur(var(--blur-xl)) saturate(200%) brightness(1.12);
-    }
+    backdrop-filter: var(--glass-filter);
   }
 }
 
@@ -358,18 +355,6 @@ body[data-scroll-locked] {
   }
 }
 
-/* The lift arrives with the box and goes with it, eased over the same 300ms as the growth: a circle
-   that brightened in the frame the user touched it would read as a flicker. */
-[data-chrome="band"][data-open="true"] [data-chrome="plate"] {
-  -webkit-backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
-}
-
-@supports (backdrop-filter: blur(0)) {
-  [data-chrome="band"][data-open="true"] [data-chrome="plate"] {
-    backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .press-card,
   .press-face,
@@ -523,8 +508,8 @@ body[data-scroll-locked] {
 
 /* The chrome blurs the cards behind it and leaves their brightness alone: a brightened patch over a
    photograph is the brightest thing on the screen whatever it sits on, and on an HDR display it
-   clips first. The circle, the corner controls, the popups and the pill wear the plain blur; the lift
-   belongs to the open box, the one surface the user is working in. */
+   clips first. The circle and the resting plate wear this; the open box wears `glass`, the one
+   surface the user is working in. */
 .chrome-glass {
   background: var(--chrome-glass);
   -webkit-backdrop-filter: blur(var(--blur-xl));

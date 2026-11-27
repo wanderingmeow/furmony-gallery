@@ -7,10 +7,12 @@ import { edgeFade, fadeMask } from "../../draw/fade";
 import {
   DETAIL_THUMB,
   DETAIL_THUMB_INNER,
+  DETAIL_THUMB_PIC,
   DETAIL_THUMB_ROW,
 } from "../ui/boxes";
 import { SkelImg } from "../ui/SkelImg";
 import { watchSize } from "../ui/viewport";
+import { lastScroll, stripScroll, worthMoving } from "./stripScroll";
 import type { GallerySlot } from "./slots";
 import type { XGallery } from "../../stores/xReachStore";
 
@@ -66,9 +68,14 @@ export function GalleryStrip(props: {
     const box = thumb.getBoundingClientRect();
     const row = strip.getBoundingClientRect();
     const delta = box.left + box.width / 2 - (row.left + row.width / 2);
-    if (Math.abs(delta) < 2) return;
-    strip.scrollBy({
-      left: delta,
+    const to = stripScroll(
+      strip.scrollLeft,
+      delta,
+      lastScroll(strip.scrollWidth, strip.clientWidth),
+    );
+    if (!worthMoving(to, strip.scrollLeft)) return;
+    strip.scrollTo({
+      left: to,
       behavior: prefersReducedMotion() ? "auto" : "smooth",
     });
   };
@@ -142,11 +149,7 @@ function VideoThumb(props: {
       aria-pressed={props.playing}
       onClick={() => props.onAsk()}
     >
-      <SkelImg
-        url={props.url}
-        box="h-full w-full rounded-[inherit]"
-        gallery={props.gallery}
-      />
+      <SkelImg url={props.url} box={DETAIL_THUMB_PIC} gallery={props.gallery} />
       <span class="absolute inset-0 grid place-items-center bg-black/35">
         <svg viewBox="0 0 24 24" class="w-5 h-5 text-white" fill="currentColor">
           <path d="M8 5v14l11-7z" />
@@ -179,11 +182,7 @@ function SelectorThumb(props: {
       }}
       onClick={() => props.onSelect()}
     >
-      <SkelImg
-        url={props.url}
-        box="h-full w-full rounded-[inherit]"
-        gallery={props.gallery}
-      />
+      <SkelImg url={props.url} box={DETAIL_THUMB_PIC} gallery={props.gallery} />
     </div>
   );
 }

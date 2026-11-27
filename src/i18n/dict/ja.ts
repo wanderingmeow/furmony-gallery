@@ -300,10 +300,12 @@ export const ja: Dict = {
 
   storage: {
     /** The notice after the first save, on a browser that deletes stored data without a visit. */
-    title: "Safari はいいねしたものを忘れてしまいます",
-    fact: "Safari は 7 日間開かなかったサイトについて、覚えておいてくれたものを消してしまいます。",
-    installIosLine: "ホーム画面に追加すると、記憶を保てます。",
-    installMacLine: "ウェブサイトをアプリにすると、記憶を保てます。",
+    title: "Safari はいいねと設定を忘れてしまいます",
+    fact: "このサイトを 7 日間開かなかった場合、Safari はこのサイトのデータを削除します。",
+    installIosLine:
+      "ホーム画面に追加すると Safari はこれらのデータを消さなくなり、新しい設定が並ぶかロック状態が変わったときの通知も受け取れるようになります。",
+    installMacLine:
+      "ウェブサイトをアプリにすると Safari はこれらのデータを消さなくなり、新しい設定が並ぶかロック状態が変わったときの通知も受け取れるようになります。",
     keepLine: "追加するには Safari でこのページを開いてください。",
     /** The other way out, the one that asks nothing of the browser. */
     visitLine: "こまめに訪れてあげてくださいね。",

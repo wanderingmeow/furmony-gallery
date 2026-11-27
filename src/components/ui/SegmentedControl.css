@@ -26,13 +26,13 @@
   --seg-type-min: 0.9;
 }
 
-/* The bottom pill's glass. The brightness lift is what keeps it reading as one object over both
-   dark and blown-out covers; chrome that floats over a photo stays plain blur. Written at this
+/* The bottom pill's glass. It wears `--glass-filter`, the stack the popups wear, because it sits over
+   covers the way they do; chrome that only floats over a photo keeps the plain blur. Written at this
    specificity to outrank the gray track above. */
 .seg-row.seg-glass {
   border: 1px solid var(--color-border);
   background: rgba(255, 255, 255, 0.92);
-  -webkit-backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
+  -webkit-backdrop-filter: var(--glass-filter);
 }
 
 /* The unprefixed property gets its own @supports block, as in `.glass`: the build drops it as
@@ -40,7 +40,7 @@
    blur the fill can be thinner. */
 @supports (backdrop-filter: blur(0)) {
   .seg-row.seg-glass {
-    backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
+    backdrop-filter: var(--glass-filter);
     background: var(--chrome-glass);
   }
 }
@@ -198,24 +198,19 @@
 }
 @media (prefers-color-scheme: dark) {
   .seg-row {
-    background: rgba(120, 120, 128, 0.24);
+    background: rgba(120, 120, 128, 0.16);
   }
-  /* The same fill the search box wears, so the two edges of the screen read as one material. */
+  /* The fill matches the search box, so the two edges of the screen read as one material. The
+     filter needs nothing here: `--glass-filter` is pressed in dark already. */
   .seg-row.seg-glass {
     border-color: rgba(255, 255, 255, 0.16);
     background: var(--chrome-glass);
-    -webkit-backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
-  }
-  @supports (backdrop-filter: blur(0)) {
-    .seg-row.seg-glass {
-      backdrop-filter: blur(var(--blur-xl)) brightness(1.12);
-      background: var(--chrome-glass);
-    }
   }
   /* A gray lifted off the track and short of the page's own ink: white would read as a second text
-     color, and the chip carries no shadow to separate it. */
+     color, and the chip carries no shadow to separate it. The same gray as the track at an alpha that
+     lets the groove read through it. */
   .seg-chip {
-    background: #48484a;
+    background: rgba(120, 120, 128, 0.55);
   }
   .seg-item:not(.seg-first)::before {
     background: rgba(180, 180, 190, 0.28);

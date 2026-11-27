@@ -307,14 +307,16 @@ export const en: Dict = {
 
   storage: {
     /** The notice after the first save, on a browser that deletes stored data without a visit. */
-    title: "Safari forgets the listings you liked",
-    fact: "Safari forgets what it was holding for you once you have gone 7 days without opening the site.",
-    installIosLine: "Add it to the Home Screen and it keeps its memory.",
-    installMacLine: "Turn this website into an app and it keeps its memory.",
+    title: "Safari forgets your favorites and settings",
+    fact: "Safari removes this site's data once you have gone 7 days without opening it.",
+    installIosLine:
+      "Add it to the Home Screen: Safari stops clearing this data, and you can get notices when a new listing appears or a lock changes.",
+    installMacLine:
+      "Turn this website into an app: Safari stops clearing this data, and you can get notices when a new listing appears or a lock changes.",
     keepLine: "Open this page in Safari to add it.",
     /** The other way out, the one that asks nothing of the browser. */
     visitLine: "Or just keep coming back.",
-    // The leading space sets the link off from the sentence it closes.
+    // The leading space sets the link off from the sentence before it.
     appleGuide: " See Apple’s instructions.",
   },
 

@@ -269,13 +269,15 @@ export const zh_tw: Dict = {
 
   storage: {
     /** The notice after the first save, on a browser that deletes stored data without a visit. */
-    title: "Safari 會忘掉你收藏的設定",
-    fact: "Safari 會在你連續 7 天沒打開這個網站後，清掉它替你記著的東西。",
-    installIosLine: "添加到主螢幕，它就能保住自己的記憶。",
-    installMacLine: "把這個網站轉換成 App，它就能保住自己的記憶。",
-    keepLine: "在 Safari 中開啟這個頁面才可以添加。",
+    title: "Safari 會忘記你收藏的設定",
+    fact: "在你連續 7 天沒有開啟這個網站後，Safari 會移除本網站的資料。",
+    installIosLine:
+      "新增到主螢幕，Safari 就不會再清理這些資料，你還可以接收新設定上架和鎖定狀態變化的通知。",
+    installMacLine:
+      "將這個網站轉換成 App，Safari 就不會再清理這些資料，你還可以接收新設定上架和鎖定狀態變化的通知。",
+    keepLine: "在 Safari 中開啟這個頁面才可以新增。",
     /** The other way out, the one that asks nothing of the browser. */
-    visitLine: "或者記得常來喔～",
+    visitLine: "或者，記得常來喔～",
     appleGuide: "查看 Apple 的官方說明。",
   },
 
