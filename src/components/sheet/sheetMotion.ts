@@ -8,15 +8,13 @@ export const SLIDE_MS = 300;
 // reduce-motion phone sheet both present this way.
 export const FADE_MS = 180;
 
-// As a fraction of the sheet's height, about 100px on a phone: the corners finish rounding well
-// before the drag distance `shouldDismiss` counts as closing.
-const CORNER_TRAVEL = 0.12;
-
 /** Where the sheet is on its way between the bottom of the screen and home. */
 export interface SheetPose {
   /** 0 at home, 1 where a slide starts and where a fade has nothing to show. */
   pos: number;
   dragging: boolean;
+  /** The finger has touched this sheet. The flag stays true until the card lands. */
+  gestured: boolean;
   panel: boolean;
   fades: boolean;
   /** The gap between the card and the edges of the screen, in px. */
@@ -43,6 +41,7 @@ export function useSheetPose(drag: {
     pose: (): SheetPose => ({
       pos: drag.pos(),
       dragging: drag.dragging(),
+      gestured: drag.gestured(),
       panel: panel(),
       fades: fades(),
       inset: inset(),
@@ -75,15 +74,10 @@ export function layerStyle(pose: SheetPose): JSX.CSSProperties {
   };
 }
 
-/** The card itself. The finger sets the radius, so nothing may lag behind it; after a release the
- *  radius eases along with the slide. */
-export function cardStyle(
-  pose: SheetPose & { closing: boolean },
-): JSX.CSSProperties {
+/** The card itself. Its corners come from the stylesheet; see `sheetRounded`. */
+export function cardStyle(pose: SheetPose): JSX.CSSProperties {
   return {
-    "--sheet-pull": `${cornerPull(pose)}`,
     "--sheet-gap": `${pose.inset}px`,
-    transition: pose.dragging ? "none" : `border-radius ${SLIDE_MS}ms ${EASE}`,
     ...(pose.panel ? { "max-width": `${pose.maxW}px` } : null),
     // A card that stands in from the edges is as tall as the content fitSheetCard measured, with the
     // room the window leaves as its ceiling. A phone's sheet fills the screen it slides up on.
@@ -91,12 +85,12 @@ export function cardStyle(
   };
 }
 
-/** Only the drag and the exit round the top corners: opening also walks `pos` from 1 to 0, and the
- *  sheet arrives square. */
-export function cornerPull(
-  pose: Pick<SheetPose, "pos" | "dragging"> & { closing: boolean },
-): number {
-  return pose.dragging || pose.closing
-    ? Math.min(1, pose.pos / CORNER_TRAVEL)
-    : 0;
+/** Whether the card is away from the top edge, where its corners are round. A card that fills the
+ *  screen is square. Its corners round once the finger pulls the card away.
+ */
+export function sheetRounded(
+  pose: Pick<SheetPose, "inset" | "gestured">,
+  closing: boolean,
+): boolean {
+  return pose.inset === 0 && (pose.gestured || closing);
 }

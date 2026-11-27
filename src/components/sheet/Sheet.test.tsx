@@ -216,7 +216,6 @@ describe("the panel on a landscape screen", () => {
     dismissed = vi.fn();
     mount(body, [852, 393]);
     expect(frame().style.padding).toBe("0px");
-    // No marker, so the stylesheet keeps the card square at rest and lets the drag round it.
     expect((layer() as HTMLElement).hasAttribute("data-sheet-gapped")).toBe(
       false,
     );
@@ -376,6 +375,18 @@ describe("the drag that closes a phone sheet", () => {
     drag("touchmove", 300);
     expect(frame().style.transform).toBe(`translateY(${(200 / 852) * 100}%)`);
     expect(frame().style.transition).toBe("none");
+  });
+
+  it("keeps the corners square until the finger pulls the card away", () => {
+    dismissed = vi.fn();
+    mount(body);
+    const rounded = () =>
+      (layer() as HTMLElement).hasAttribute("data-sheet-rounded");
+    expect(rounded()).toBe(false);
+    drag("touchstart", 100);
+    expect(rounded()).toBe(false);
+    drag("touchmove", 140);
+    expect(rounded()).toBe(true);
   });
 
   it("closes on a pull past a third of the sheet, once the slide is over", () => {

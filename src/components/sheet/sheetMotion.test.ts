@@ -1,21 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   cardStyle,
-  cornerPull,
   layerStyle,
+  sheetRounded,
   type SheetPose,
 } from "./sheetMotion";
 
-const pose = (
-  over: Partial<SheetPose & { closing: boolean }> = {},
-): SheetPose & { closing: boolean } => ({
+const pose = (over: Partial<SheetPose> = {}): SheetPose => ({
   pos: 0,
   dragging: false,
+  gestured: false,
   panel: false,
   fades: false,
   inset: 12,
   maxW: 1080,
-  closing: false,
   ...over,
 });
 
@@ -74,29 +72,38 @@ describe("the card's own box", () => {
     expect(cardStyle(pose({ inset: 0 }))["--sheet-gap"]).toBe("0px");
   });
 
-  it("leaves every radius to the stylesheet, which reads the drag", () => {
+  it("leaves the radius to the stylesheet", () => {
     expect(cardStyle(pose({ inset: 0 }))["border-radius"]).toBeUndefined();
     expect(cardStyle(pose({ inset: 12 }))["border-radius"]).toBeUndefined();
   });
 
-  it("waits for the finger and eases the radius after a release", () => {
-    expect(cardStyle(pose({ dragging: true })).transition).toBe("none");
-    expect(cardStyle(pose({ dragging: false })).transition).toContain(
-      "border-radius",
-    );
+  it("animates nothing on the card", () => {
+    expect(cardStyle(pose({ dragging: true })).transition).toBeUndefined();
+    expect(cardStyle(pose({ dragging: false })).transition).toBeUndefined();
   });
 });
 
-describe("the top corners", () => {
-  it("stay square on the way in, because opening also moves pos", () => {
-    expect(cornerPull({ pos: 0.5, dragging: false, closing: false })).toBe(0);
+describe("the corners of a card away from the top edge", () => {
+  // The marker rounds the corners only on a phone's sheet: a card with a gap to the window is
+  // round all over.
+  const phone = { inset: 0 };
+
+  it("stay square while the card fills the screen, at rest and during the slide in", () => {
+    expect(sheetRounded(pose(phone), false)).toBe(false);
+    expect(sheetRounded(pose({ ...phone, pos: 1 }), false)).toBe(false);
   });
 
-  it("finish rounding long before a drag counts as closing", () => {
-    expect(cornerPull({ pos: 0.12, dragging: true, closing: false })).toBe(1);
+  it("turn round when the finger pulls the card", () => {
+    const pull = pose({ ...phone, dragging: true, gestured: true, pos: 0.01 });
+    expect(sheetRounded(pull, false)).toBe(true);
   });
 
-  it("follow the exit", () => {
-    expect(cornerPull({ pos: 0.06, dragging: false, closing: true })).toBe(0.5);
+  it("stay round while the card slides back and while it closes", () => {
+    expect(sheetRounded(pose({ ...phone, gestured: true }), false)).toBe(true);
+    expect(sheetRounded(pose(phone), true)).toBe(true);
+  });
+
+  it("stay off a card that stands in from the edges", () => {
+    expect(sheetRounded(pose({ inset: 12, gestured: true }), true)).toBe(false);
   });
 });

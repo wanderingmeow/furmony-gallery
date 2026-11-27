@@ -8,6 +8,7 @@ import { useSheetPresence } from "./useSheetPresence";
 import {
   cardStyle,
   layerStyle,
+  sheetRounded,
   useSheetPose,
   type SheetPose,
 } from "./sheetMotion";
@@ -118,7 +119,10 @@ function SheetCard(props: {
       class={`sheet-card relative w-full h-full bg-canvas clip-no-scroll flex flex-col
         ${CARD_BAND_PAD} sm:max-w-190 sm:shadow-2xl`}
       data-sheet-gapped={props.pose.inset > 0 ? "" : undefined}
-      style={cardStyle({ ...props.pose, closing: props.closing })}
+      data-sheet-rounded={
+        sheetRounded(props.pose, props.closing) ? "" : undefined
+      }
+      style={cardStyle(props.pose)}
     >
       {/* eslint-disable-next-line solid/reactivity -- the host is made once per sheet and never changes */}
       <SheetFooterSlot.Provider value={props.footerHost}>

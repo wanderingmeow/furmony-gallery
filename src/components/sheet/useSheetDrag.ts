@@ -30,6 +30,10 @@ export function useSheetDrag(options: {
   let startX = 0;
   let startY = 0;
   let startScrollTop = 0;
+  // The card's height, measured once per gesture. Reading `offsetHeight` makes the browser settle
+  // the style and layout tree, and each move writes a style, so a read inside a move costs one
+  // layout pass per move.
+  let sheetH = 0;
   // A hand cannot pan a row sideways without travelling some vertical, and the rows inside a sheet
   // (the thumbs, the related cards) scroll under that same finger. So the drag waits for the gesture
   // to say which way it is going, and a move that went further across than down is not the sheet's to
@@ -43,13 +47,13 @@ export function useSheetDrag(options: {
     startY = e.touches[0].clientY;
     lock.reset();
     startScrollTop = (e.currentTarget as HTMLElement).scrollTop;
+    sheetH = options.getSheet()?.offsetHeight || window.innerHeight;
     samples.length = 0;
     samples.push({ t: performance.now(), y: startY });
   }
 
   function onMove(e: TouchEvent) {
-    const sheet = options.getSheet();
-    if (!sheet) return;
+    if (!sheetH) return;
     const dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
     if (lock.of(dx, dy) !== "y") return;
@@ -58,8 +62,7 @@ export function useSheetDrag(options: {
     e.preventDefault();
     setDragging(true);
     setGestured(true);
-    const h = sheet.offsetHeight || window.innerHeight;
-    setPos(Math.min(Math.max(0, dy) / h, 1));
+    setPos(Math.min(Math.max(0, dy) / sheetH, 1));
     samples.push({ t: performance.now(), y: e.touches[0].clientY });
     if (samples.length > MAX_SAMPLES) samples.shift();
   }

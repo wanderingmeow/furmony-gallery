@@ -683,13 +683,12 @@ body[data-scroll-locked] {
   pointer-events: none;
 }
 
-/* A full-bleed sheet rests square against the screen edge. sheetMotion.ts writes --sheet-pull (0..1,
-   how far the drag has travelled), which rounds the top corners as the sheet detaches. A card that
-   stands in from the edges carries data-sheet-gapped and rests at one radius on all four corners:
-   an inline radius would outrank this rule and freeze the drag. */
-.sheet-card {
-  --sheet-corner: calc(var(--sheet-pull, 0) * 24px);
-  border-radius: var(--sheet-corner) var(--sheet-corner) 0 0;
+/* The corners of a card away from the top edge. Sheet.tsx writes this marker once per drag.
+   border-radius is not a composited property, and this card clips the whole sheet, so a radius
+   written during a drag repaints everything inside it. Renaming the marker means changing both
+   files. */
+.sheet-card[data-sheet-rounded] {
+  border-radius: 1rem 1rem 0 0;
 }
 @media (min-width: 640px) {
   .sheet-card[data-sheet-gapped] {
