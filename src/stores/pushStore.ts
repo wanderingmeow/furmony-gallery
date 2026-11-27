@@ -205,10 +205,16 @@ function installSuppliesIt(): boolean {
 /** Whether this browser has no way to wake a page, and no setting on this page adds one. In-app
  *  browsers and browsers that never shipped the API both answer no.
  */
-export function pushUnsupported(): boolean {
+function pushUnsupported(): boolean {
   if (typeof window === "undefined") return false;
   if (!("serviceWorker" in navigator)) return true;
   return !("PushManager" in window) && !needsInstall();
+}
+
+/** Whether a flip of this switch to on has no answer to give from this page: the install has not
+ *  happened yet, or nothing this browser ships can wake it. */
+export function pushBlocked(): boolean {
+  return pushUnsupported() || installSuppliesIt();
 }
 
 /** Whether the browser hides the push APIs at this address: http on any host but localhost. The row
@@ -268,6 +274,11 @@ export const pushOn = (): boolean => ON.includes(where());
  *  still being read the page shows a switch and a line, not picks it said it was reading.
  */
 export const pushRows = (): boolean => ROWS.includes(where());
+/** Whether this switch takes no flip. A flip that can only fail reads as a switch that stopped
+ *  working, and a reader whose address is on record can always take it back. */
+export function pushSwitchHeld(): boolean {
+  return pushBusy() || (pushBlocked() && !pushOn());
+}
 
 function fail(what: Trouble): void {
   batch(() => {

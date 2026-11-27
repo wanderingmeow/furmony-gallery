@@ -34,6 +34,7 @@ type PushState = {
   rows: boolean;
   line: string;
   busy: boolean;
+  held: boolean;
 };
 
 /** The store's answers. The two rows follow the switch unless a test says otherwise, because the
@@ -46,9 +47,15 @@ function state(over: Partial<PushState> = {}): PushState {
     rows: false,
     line: "",
     busy: false,
+    held: false,
     ...over,
   };
-  return { ...next, rows: over.rows ?? over.on ?? false };
+  return {
+    ...next,
+    rows: over.rows ?? over.on ?? false,
+    // The store holds the switch while a request is in flight too.
+    held: next.held || next.busy,
+  };
 }
 
 let push = state();
@@ -60,6 +67,7 @@ vi.mock("../../stores/pushStore", () => ({
   pushBusy: () => push.busy,
   pushOn: () => push.on,
   pushRows: () => push.rows,
+  pushSwitchHeld: () => push.held,
   pushLine: () => push.line,
   pushPicks: () => picks,
   pushHint: () => hint,
@@ -158,6 +166,23 @@ describe("SettingsPanel", () => {
   it("shows the row when the build has a service and a key", () => {
     draw();
     expect(host.textContent).toContain(tr("push.title"));
+  });
+
+  it("holds the notification switch when the store says it takes no flip", () => {
+    push = state({ hidden: false, on: false, held: true });
+    draw();
+    expect(switchRow(tr("push.title")).disabled).toBe(true);
+    switchRow(tr("push.title")).click();
+    expect(calls).not.toContain("turn:true");
+  });
+
+  it("holds the two picks with the master switch", () => {
+    push = state({ hidden: false, on: true, rows: true, held: true });
+    draw();
+    const held = [tr("push.title"), tr("push.news"), tr("push.lock")].map(
+      (label) => switchRow(label).disabled,
+    );
+    expect(held).toEqual([true, true, true]);
   });
 
   // The word 新设定 is in the note as well, so the row is the switch, not the text.

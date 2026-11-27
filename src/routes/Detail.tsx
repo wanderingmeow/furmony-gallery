@@ -136,9 +136,10 @@ export function Detail(props: { onClose: () => void }) {
     const one = at(slots());
     return one?.kind === "pic" ? one.url : (sizedUrl(head(), "detail") ?? "");
   };
-  const currentRaw = (): string => {
+  const currentFull = (): string => {
     const one = at(slots());
-    return one?.kind === "pic" ? pictures()[one.pic] : (head() ?? "");
+    const raw = one?.kind === "pic" ? pictures()[one.pic] : (head() ?? "");
+    return sizedUrl(raw, "full") ?? "";
   };
   // With no detail pictures the zoom shows the head picture, so the counter reads 1 of 1.
   const zoomCount = () =>
@@ -226,7 +227,7 @@ export function Detail(props: { onClose: () => void }) {
         <Portal>
           <FullScreenZoom
             imageUrl={current() ?? ""}
-            fullUrl={currentRaw() ?? ""}
+            fullUrl={currentFull()}
             count={zoomCount()}
             index={index}
             onClose={() => setFull(false)}

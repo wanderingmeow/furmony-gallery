@@ -43,6 +43,7 @@ import {
   pushOn,
   pushRows,
   pushPicks,
+  pushSwitchHeld,
   setPick,
   turn,
 } from "../../stores/pushStore";
@@ -164,7 +165,7 @@ function NewsRows() {
                 on={pushPicks()[which]}
                 // Held with the master switch: the body being sent carries both picks, so a second
                 // flip mid-send would be answered by a request that already left without it.
-                disabled={pushBusy()}
+                disabled={pushSwitchHeld()}
                 onChange={(v) => setPick(which, v)}
                 label={tr(NEWS_LABEL[which])}
               />
@@ -185,11 +186,9 @@ function PushBlock() {
       <PanelHeader icon={<AntIcon icon={BellOutlined} />}>
         {tr("push.title")}
         <div class="ml-auto">
-          {/* Held still until the service answers: the browser's own half is not the whole
-              transaction, and a second flip while the first is in flight can outrank it. */}
           <Switch
             on={pushOn()}
-            disabled={pushBusy()}
+            disabled={pushSwitchHeld()}
             onChange={(v) => void turn(v)}
             label={tr("push.title")}
           />

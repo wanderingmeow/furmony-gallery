@@ -688,19 +688,19 @@ describe("what the reader picked", () => {
   });
 });
 
-describe("what an off switch says", () => {
-  function fakeEnv(
-    onIos: boolean,
-    risk: string,
-    guide = "https://support.apple.test/guide",
-  ) {
-    vi.doMock("./persistenceStore", () => ({
-      onIosBrowser: () => onIos,
-      installCapable: () => risk === "install",
-      appleGuide: () => guide,
-    }));
-  }
+function fakeEnv(
+  onIos: boolean,
+  risk: string,
+  guide = "https://support.apple.test/guide",
+) {
+  vi.doMock("./persistenceStore", () => ({
+    onIosBrowser: () => onIos,
+    installCapable: () => risk === "install",
+    appleGuide: () => guide,
+  }));
+}
 
+describe("what an off switch says", () => {
   it("says nothing to a browser that can be woken up from a tab", async () => {
     fakeBrowser({ held: null });
     fakeEnv(false, "none");
@@ -737,8 +737,7 @@ describe("what an off switch says", () => {
     fakeBrowser({ held: null });
     fakeEnv(true, "install");
     delete (window as { PushManager?: unknown }).PushManager;
-    const { pushHint, pushUnsupported } = await freshStore();
-    expect(pushUnsupported()).toBe(false);
+    const { pushHint } = await freshStore();
     expect(pushHint()).toBe(tr("push.installIosLine"));
   });
 
@@ -807,6 +806,61 @@ describe("what an off switch says", () => {
     const { installHelpUrl, pushHint } = await freshStore();
     expect(pushHint()).toBe(tr("push.unsupported"));
     expect(installHelpUrl()).toBe("");
+  });
+});
+
+describe("what holds the switch still", () => {
+  it("lets a browser that wakes up from a tab answer a flip", async () => {
+    fakeBrowser({ held: null });
+    fakeEnv(false, "none");
+    const { pushBlocked } = await freshStore();
+    expect(pushBlocked()).toBe(false);
+  });
+
+  it("holds a flip on an iPhone tab whose Push API waits for the install", async () => {
+    fakeBrowser({ held: null });
+    fakeEnv(true, "install");
+    delete (window as { PushManager?: unknown }).PushManager;
+    const { pushBlocked } = await freshStore();
+    expect(pushBlocked()).toBe(true);
+  });
+
+  it("holds a flip on a desktop browser with no Push API to install its way out of", async () => {
+    fakeBrowser({ held: null });
+    fakeEnv(false, "none");
+    delete (window as { PushManager?: unknown }).PushManager;
+    const { pushBlocked } = await freshStore();
+    expect(pushBlocked()).toBe(true);
+  });
+
+  it("holds the switch where a flip on has no answer", async () => {
+    fakeBrowser({ held: null });
+    fakeEnv(true, "install");
+    delete (window as { PushManager?: unknown }).PushManager;
+    const { pushSwitchHeld } = await freshStore();
+    expect(pushSwitchHeld()).toBe(true);
+  });
+
+  it("keeps the way back out open for a switch whose address is on record", async () => {
+    fakeBrowser({ held: null, permission: "granted" });
+    fakeEnv(true, "install");
+    const { pushOn, pushSwitchHeld, turn } = await freshStore();
+    await turn(true);
+    expect(pushOn()).toBe(true);
+    // Safari gives the Push API to an installed page only, so the name can be absent while the
+    // browser still holds the address.
+    delete (window as { PushManager?: unknown }).PushManager;
+    expect(pushSwitchHeld()).toBe(false);
+  });
+
+  it("holds the switch while a request is in the air", async () => {
+    fakeBrowser({ held: null, permission: "granted" });
+    fakeEnv(false, "none");
+    const { pushOn, pushSwitchHeld, turn } = await freshStore();
+    const flip = turn(true);
+    expect(pushSwitchHeld()).toBe(true);
+    await flip;
+    expect(pushOn()).toBe(true);
   });
 });
 

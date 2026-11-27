@@ -225,6 +225,32 @@ describe("sizedUrl", () => {
     expect(img.sizedUrl("/local/a.jpg", "detail")).toBe("/local/a.jpg");
     expect(img.sizedUrl(undefined, "card")).toBeUndefined();
   });
+
+  it("asks X for the original step and no format", () => {
+    const x = "https://pbs.twimg.com/media/Ab1CdEfXyZ0.jpg";
+    const medium = img.sizedUrl(x, "detail")!;
+    expect(img.sizedUrl(x, "full")).toBe(`${x}?name=orig`);
+    expect(img.sizedUrl(medium, "full")).toBe(`${x}?name=orig`);
+  });
+
+  it("asks Bilibili for the path without the size suffix", () => {
+    const bili = "https://i0.hdslb.com/bfs/new_dyn/7519fd93.jpg";
+    expect(img.sizedUrl(bili, "full")).toBe(bili);
+    expect(img.sizedUrl(img.sizedUrl(bili, "card")!, "full")).toBe(bili);
+  });
+
+  it("asks the bucket with the address it is given", () => {
+    const signed = "https://x.cos.myqcloud.com/a.jpg?sign=1";
+    const card = img.sizedUrl(signed, "card")!;
+    expect(img.sizedUrl(signed, "full")).toBe(signed);
+    expect(img.sizedUrl(card, "full")).toBe(card);
+  });
+
+  it("takes the original letter off a Qzone address", () => {
+    expect(
+      img.sizedUrl("https://m.qpic.cn/psc?/TOKEN0/SECRET1!/c", "full"),
+    ).toBe("https://m.qpic.cn/psc?/TOKEN0/SECRET1!/b");
+  });
 });
 
 /** Stands in for the browser's image loader: nothing is fetched, and the test decides when the
